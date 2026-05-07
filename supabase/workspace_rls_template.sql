@@ -1,0 +1,16 @@
+-- Template RLS multi-tenant (workspaceId = tenant_id).
+-- O app Lex usa Prisma com DATABASE_URL direto; o role do Supabase costuma ignorar RLS.
+-- Use este script quando expuser tabelas via PostgREST/Realtime com JWT do Supabase Auth.
+--
+-- Exemplo de padrão (ajuste nomes de tabela e join User ↔ auth.users):
+--
+-- ALTER TABLE "Document" ENABLE ROW LEVEL SECURITY;
+--
+-- CREATE POLICY document_tenant_isolation ON "Document"
+--   FOR ALL
+--   USING (
+--     "workspaceId" IN (
+--       SELECT m."workspaceId" FROM "Membership" m
+--       WHERE m."userId" = (SELECT id FROM "User" WHERE email = auth.jwt() ->> 'email')
+--     )
+--   );

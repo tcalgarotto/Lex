@@ -1,0 +1,26 @@
+[
+  {
+    "layer": "jurisprudence",
+    "code": "STF-RE-DEMO-1",
+    "title": "Controle de constitucionalidade",
+    "tribunal": "STF",
+    "year": 2018,
+    "body": "A jurisprudência do STF reforça a necessidade de fundamentação adequada nos controle concentrado e na análise de repercussão geral, preservando a coerência do sistema constitucional."
+  },
+  {
+    "layer": "jurisprudence",
+    "code": "STJ-RESP-DEMO-1",
+    "title": "Responsabilidade civil",
+    "tribunal": "STJ",
+    "year": 2019,
+    "body": "Para configurar o dever de indenizar, exige-se a demonstração de conduta, dano, nexo causal e culpa, salvo hipóteses de responsabilidade objetiva previstas em lei."
+  },
+  {
+    "layer": "jurisprudence",
+    "code": "STJ-AGR-DEMO-1",
+    "title": "Tempestividade recursal",
+    "tribunal": "STJ",
+    "year": 2021,
+    "body": "O agravo interno deve observar os pressupostos legais de admissibilidade e tempestividade, sob pena de não conhecimento."
+  }
+]

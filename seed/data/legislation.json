@@ -1,0 +1,58 @@
+[
+  {
+    "layer": "legislation",
+    "code": "CF/1988",
+    "title": "Constituição Federal",
+    "articleRef": "Art. 1º",
+    "body": "A República Federativa do Brasil, formada pela união indissolúvel dos Estados e Municípios e do Distrito Federal, constitui-se em Estado Democrático de Direito e tem como fundamentos a soberania, a cidadania, a dignidade da pessoa humana, os valores sociais do trabalho e da livre iniciativa e o pluralismo político."
+  },
+  {
+    "layer": "legislation",
+    "code": "CF/1988",
+    "title": "Constituição Federal",
+    "articleRef": "Art. 5º",
+    "body": "Todos são iguais perante a lei, sem distinção de qualquer natureza, garantindo-se aos brasileiros e aos estrangeiros residentes no País a inviolabilidade do direito à vida, à liberdade, à igualdade, à segurança e à propriedade, nos termos seguintes: incisos I a LXXIV omitidos neste seed demonstrativo."
+  },
+  {
+    "layer": "legislation",
+    "code": "CPC/2015",
+    "title": "Código de Processo Civil",
+    "articleRef": "Art. 1º",
+    "body": "O processo civil será instrumento da atividade jurisdicional estatal de concretização da ordem jurídica, com efetividade, proporcionalidade, razoabilidade, publicidade e celeridade, observados os limites legais."
+  },
+  {
+    "layer": "legislation",
+    "code": "CPC/2015",
+    "title": "Código de Processo Civil",
+    "articleRef": "Art. 319",
+    "body": "A petição inicial indicará: I - o juízo a que é dirigida; II - os nomes, os prenomes, o estado civil, a existência de união estável, a profissão, o número de inscrição no Cadastro de Pessoas Físicas ou no Cadastro Nacional da Pessoa Jurídica, o endereço eletrônico, o domicílio e a residência do autor e do réu; III - o fato e os fundamentos jurídicos do pedido; IV - o pedido com as suas especificações; V - o valor da causa; VI - as provas com que o autor pretende demonstrar a verdade dos fatos alegados; VII - a opção do autor pela realização ou não de audiência de conciliação ou de mediação."
+  },
+  {
+    "layer": "legislation",
+    "code": "CC/2002",
+    "title": "Código Civil",
+    "articleRef": "Art. 186",
+    "body": "Aquele que, por ação ou omissão voluntária, negligência ou imprudência, violar direito e causar dano a outrem, ainda que exclusivamente moral, comete ato ilícito."
+  },
+  {
+    "layer": "legislation",
+    "code": "CC/2002",
+    "title": "Código Civil",
+    "articleRef": "Art. 927",
+    "body": "Aquele que, por ato ilícito (arts. 186 e 187), causar dano a outrem, fica obrigado a repará-lo."
+  },
+  {
+    "layer": "legislation",
+    "code": "CDC",
+    "title": "Código de Defesa do Consumidor",
+    "articleRef": "Art. 6º",
+    "body": "São direitos básicos do consumidor: I - a proteção da vida, saúde e segurança; II - a educação e divulgação sobre o consumo adequado dos produtos e serviços; III - a informação adequada e clara sobre os diferentes produtos e serviços, com especificação correta de quantidade, características, composição, qualidade, tributos incidentes e preço; IV - a proteção contra práticas comerciais coercitivas ou desleais; V - a modificação das cláusulas contratuais que estabeleçam previsões desproporcionais ou sua revisão em razão de fatos supervenientes; VI - a efetiva prevenção e reparação de danos patrimoniais e morais, individuais, coletivos e difusos; VII - o acesso aos órgãos judiciários e administrativos com vistas à prevenção ou reparação de danos patrimoniais e morais, individuais, coletivos ou difusos, assegurada a proteção jurídica, administrativa e técnica aos necessitados; VIII - a facilitação da defesa de seus direitos, inclusive com a inversão do ônus da prova, a seu favor, no processo civil, quando, a critério do juiz, for verossímil a alegação ou quando for ele hipossuficiente, segundo as regras ordinárias de experiências; IX - a adequada e eficaz prestação dos serviços públicos em geral."
+  },
+  {
+    "layer": "legislation",
+    "code": "CLT",
+    "title": "Consolidação das Leis do Trabalho",
+    "articleRef": "Art. 2º",
+    "body": "Considera-se empregador a empresa, individual ou coletiva, que, assumindo os riscos da atividade econômica, admite, assalaria e dirige a prestação pessoal de serviço."
+  }
+]

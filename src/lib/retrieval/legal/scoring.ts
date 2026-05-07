@@ -1,0 +1,159 @@
+/**
+ * Scoring pós-rerank: boosts (hierarquia, recência, alinhamento de intent)
+ * e cálculo do grounding/confidence finais.
+ *
+ * Determinístico, fácil de auditar. Cada boost tem nome legível pra log.
+ */
+
+import { NormKind, type LegalStructure } from "@prisma/client";
+import type { LegalIntent } from "./intent";
+import type {
+  ChunkWithLineage,
+  LegalRetrievedChunk,
+  ScoreBreakdown,
+} from "./types";
+
+/** Boosts são multiplicativos sobre o rerank score (todos em [0..1]). */
+const BOOSTS = {
+  /** Súmula vinculante > súmula simples > acórdão > legislação > genérico. */
+  kind: {
+    [NormKind.SUMULA_VINCULANTE]: 1.18,
+    [NormKind.SUMULA_STJ]: 1.12,
+    [NormKind.SUMULA_STF]: 1.12,
+    [NormKind.JURISPRUDENCE_STF]: 1.08,
+    [NormKind.JURISPRUDENCE_STJ]: 1.08,
+    [NormKind.CONSTITUTION]: 1.10,
+    [NormKind.CONSTITUTIONAL_AMENDMENT]: 1.08,
+    [NormKind.COMPLEMENTARY_LAW]: 1.05,
+    [NormKind.ORDINARY_LAW]: 1.0,
+  } as Partial<Record<NormKind, number>>,
+  /** ARTIGO/CAPUT > PARAGRAFO > INCISO > GENERIC. */
+  structure: {
+    ARTIGO: 1.10,
+    CAPUT: 1.08,
+    PARAGRAFO: 1.05,
+    INCISO: 1.02,
+    EMENTA: 1.05,
+    GENERIC: 0.85,
+    PREAMBULO: 0.9,
+  } as Partial<Record<LegalStructure, number>>,
+};
+
+const RECENCY_HALF_LIFE_DAYS = 365 * 4; // 4 anos.
+
+function computeRecencyBoost(publishedAt: Date | null, asOf: Date): number {
+  if (!publishedAt) return 1.0;
+  const ageDays = Math.max(0, (asOf.getTime() - publishedAt.getTime()) / (1000 * 60 * 60 * 24));
+  // Boost ∈ [0.85, 1.0]: norma recente = 1.0; norma muito antiga = 0.85.
+  const decay = 0.5 ** (ageDays / RECENCY_HALF_LIFE_DAYS);
+  return 0.85 + 0.15 * decay;
+}
+
+function computeIntentAlignmentBoost(
+  chunk: ChunkWithLineage,
+  intent: LegalIntent,
+): number {
+  let factor = 1.0;
+  if (intent.urns.includes(chunk.norm.urn)) factor *= 1.20;
+  if (intent.tribunals.length > 0 && chunk.norm.tribunal) {
+    if (intent.tribunals.includes(chunk.norm.tribunal)) factor *= 1.10;
+  }
+  if (intent.preferredKinds.length > 0 && intent.preferredKinds.includes(chunk.norm.kind)) {
+    factor *= 1.05;
+  }
+  if (intent.articleRefs.length > 0 && chunk.articleRef && intent.articleRefs.includes(chunk.articleRef)) {
+    factor *= 1.15;
+  }
+  const sumulaKinds: NormKind[] = [
+    NormKind.SUMULA_VINCULANTE,
+    NormKind.SUMULA_STJ,
+    NormKind.SUMULA_STF,
+  ];
+  if (intent.wantsSumula && sumulaKinds.includes(chunk.norm.kind)) {
+    factor *= 1.08;
+  }
+  return Math.min(factor, 1.6);
+}
+
+/**
+ * Aplica boosts compostos sobre `rerankScore` (0..1) e devolve o `final`.
+ * Idempotente.
+ */
+export function computeFinalScore(args: {
+  rerankScore?: number;
+  rrfScore: number;
+  rawScores: { dense?: number; bm25?: number };
+  chunk: ChunkWithLineage;
+  intent: LegalIntent;
+}): { breakdown: ScoreBreakdown; explanation: string } {
+  const base = args.rerankScore ?? args.rrfScore ?? 0;
+  const boostKind = BOOSTS.kind[args.chunk.norm.kind] ?? 1.0;
+  const boostStruct = BOOSTS.structure[args.chunk.structure] ?? 1.0;
+  const boostRecency = computeRecencyBoost(args.chunk.norm.publishedAt, args.intent.asOf ?? new Date());
+  const boostIntent = computeIntentAlignmentBoost(args.chunk, args.intent);
+  const boostTotal = boostKind * boostStruct * boostRecency * boostIntent;
+
+  const final = Math.min(1, base * boostTotal);
+
+  const explanation = [
+    args.chunk.norm.identifier ?? args.chunk.norm.title,
+    args.chunk.fullPath,
+    `[kind=${args.chunk.norm.kind}, struct=${args.chunk.structure}]`,
+    args.rerankScore !== undefined ? `rerank=${args.rerankScore.toFixed(3)}` : `rrf=${args.rrfScore.toFixed(3)}`,
+    `boost=${boostTotal.toFixed(2)} (kind×${boostKind.toFixed(2)} struct×${boostStruct.toFixed(2)} recency×${boostRecency.toFixed(2)} intent×${boostIntent.toFixed(2)})`,
+    `final=${final.toFixed(3)}`,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  const breakdown: ScoreBreakdown = {
+    rrf: args.rrfScore,
+    boost: boostTotal,
+    final,
+  };
+  if (args.rawScores.dense !== undefined) breakdown.dense = args.rawScores.dense;
+  if (args.rawScores.bm25 !== undefined) breakdown.bm25 = args.rawScores.bm25;
+  if (args.rerankScore !== undefined) breakdown.rerank = args.rerankScore;
+  return { breakdown, explanation };
+}
+
+/** Calcula grounding score 0..1 a partir dos chunks finais. */
+export function computeGroundingScore(args: {
+  chunks: LegalRetrievedChunk[];
+  intent: LegalIntent;
+}): number {
+  if (args.chunks.length === 0) return 0;
+
+  const top1 = args.chunks[0]!.scores.final;
+  const top3Avg =
+    args.chunks.slice(0, 3).reduce((s, c) => s + c.scores.final, 0) /
+    Math.min(3, args.chunks.length);
+
+  const distinctNorms = new Set(args.chunks.map((c) => c.norm.urn)).size;
+  const diversityBonus = Math.min(0.15, distinctNorms * 0.03);
+
+  // Bônus quando há normas que o intent pediu explicitamente.
+  let intentMatch = 0;
+  if (args.intent.urns.length > 0) {
+    const overlap = args.chunks.filter((c) => args.intent.urns.includes(c.norm.urn)).length;
+    if (overlap > 0) intentMatch = 0.1;
+  }
+
+  const score = 0.45 * top1 + 0.35 * top3Avg + diversityBonus + intentMatch;
+  return Math.min(1, Math.max(0, score));
+}
+
+/** Mapeia grounding em label de confidence. */
+export function groundingToConfidence(grounding: number): {
+  label: "Alta" | "Média" | "Baixa";
+  score: number;
+  reason: string;
+} {
+  if (grounding >= 0.7) {
+    return { label: "Alta", score: grounding, reason: "Forte alinhamento entre query, fontes e grounding." };
+  }
+  if (grounding >= 0.45) {
+    return { label: "Média", score: grounding, reason: "Fontes coerentes mas com sinais limitados." };
+  }
+  return { label: "Baixa", score: grounding, reason: "Recall fraco ou pouca diversidade de fontes." };
+}

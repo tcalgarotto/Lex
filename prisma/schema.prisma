@@ -1,0 +1,1379 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  LAWYER
+  ASSISTANT
+  CLIENT
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PARSING
+  CHUNKING
+  EMBEDDING
+  INDEXED
+  FAILED
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum MemoryKind {
+  PROCESS
+  CLIENT
+  STRATEGY
+  THESIS
+  STYLE_NOTE
+}
+
+enum LegalLayer {
+  legislation
+  jurisprudence
+  user_documents
+  legal_pieces
+  process_memory
+  style_examples
+}
+
+/**
+ * Classificação semântica do trecho (não indexar PDF cru — sempre texto estruturado).
+ */
+enum LegalChunkSection {
+  preliminaries
+  facts
+  grounds
+  legal_reasoning
+  case_law
+  requests
+  dispositive
+  thesis
+  article_norm
+  generic
+}
+
+enum CostCategory {
+  EMBEDDING
+  CHAT_COMPLETION
+  COMPLETION
+  RETRIEVAL
+  STORAGE
+  OTHER
+}
+
+enum JobRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  memberships   Membership[]
+  styleProfiles StyleProfile[]
+}
+
+model Workspace {
+  id                  String             @id @default(cuid())
+  name                String
+  slug                String             @unique
+  onboardingCompleted Boolean            @default(false)
+  onboardingJson      Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  memberships         Membership[]
+  clients             Client[]
+  processes           Process[]
+  documents           Document[]
+  threads             ChatThread[]
+  pieces              LegalPiece[]
+  memories            MemoryEntry[]
+  styles              StyleProfile[]
+  jobs                JobRun[]
+  activities          Activity[]
+  costEntries         CostLedgerEntry[]
+  observabilityLogs   ObservabilityLog[]
+  feedbacks           FeedbackEntry[]
+  invitations         Invitation[]
+  cases               Case[]
+  integrations        Integration[]
+  notifications       Notification[]
+  alerts              CaseAlert[]
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  workspaceId String
+  email       String
+  role        MembershipRole   @default(LAWYER)
+  /**
+   * Token opaco (~32 bytes hex) enviado no link. Único globalmente.
+   */
+  token       String           @unique
+  invitedById String
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  acceptedBy  String?
+  revokedAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email, status])
+  @@index([workspaceId])
+  @@index([email])
+}
+
+model Membership {
+  id          String         @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        MembershipRole @default(LAWYER)
+  createdAt   DateTime       @default(now())
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Client {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  documentId  String?
+  email       String?
+  phone       String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  processes   Process[]
+
+  @@index([workspaceId])
+}
+
+model Process {
+  id           String                 @id @default(cuid())
+  workspaceId  String
+  clientId     String?
+  number       String
+  title        String?
+  vara         String?
+  tribunal     String?
+  observations String?
+  tags         String[]               @default([])
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client       Client?                @relation(fields: [clientId], references: [id])
+  documents    Document[]
+  threads      ChatThread[]
+  pieces       LegalPiece[]
+  memories     MemoryEntry[]
+  timeline     ProcessTimelineEvent[]
+  feedbacks    FeedbackEntry[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, number])
+}
+
+model Document {
+  id              String          @id @default(cuid())
+  workspaceId     String
+  processId       String?
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  storagePath     String
+  status          DocumentStatus  @default(UPLOADED)
+  errorMessage    String?
+  /**
+   * Texto extraído (para viewer e debug); pode ser truncado.
+   */
+  extractedText   String?         @db.Text
+  extractedAt     DateTime?
+  /**
+   * Progresso aproximado 0..1 para UX (pipeline async).
+   */
+  progress        Float           @default(0)
+  totalChunks     Int?
+  processedChunks Int?
+  indexedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process         Process?        @relation(fields: [processId], references: [id])
+  chunks          DocumentChunk[]
+
+  @@index([workspaceId])
+  @@index([processId])
+  @@index([status])
+}
+
+model DocumentChunk {
+  id            String            @id @default(cuid())
+  documentId    String
+  chunkIndex    Int
+  text          String            @db.Text
+  textPreview   String            @db.Text
+  section       LegalChunkSection @default(generic)
+  contentHash   String?
+  qdrantPointId String?
+  tokenEstimate Int?
+  createdAt     DateTime          @default(now())
+  document      Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([contentHash])
+}
+
+model ChatThread {
+  id          String        @id @default(cuid())
+  workspaceId String
+  processId   String
+  title       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process     Process       @relation(fields: [processId], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+
+  @@unique([processId])
+  @@index([workspaceId])
+}
+
+model ChatMessage {
+  id            String     @id @default(cuid())
+  threadId      String
+  role          ChatRole
+  content       String     @db.Text
+  citationsJson Json?
+  reasoningJson Json?
+  createdAt     DateTime   @default(now())
+  thread        ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+}
+
+model LegalPiece {
+  id          String    @id @default(cuid())
+  workspaceId String
+  processId   String?
+  kind        String
+  title       String
+  contentJson Json
+  /**
+   * Metadados de geração (fontes, confiança, avisos) para painel do editor.
+   */
+  aiMetaJson  Json?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process     Process?  @relation(fields: [processId], references: [id])
+
+  @@index([workspaceId])
+  @@index([processId])
+}
+
+model MemoryEntry {
+  id          String     @id @default(cuid())
+  workspaceId String
+  processId   String?
+  kind        MemoryKind
+  title       String?
+  content     String     @db.Text
+  embeddingId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process     Process?   @relation(fields: [processId], references: [id])
+
+  @@index([workspaceId])
+  @@index([processId])
+}
+
+model StyleProfile {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  userId           String?
+  profileJson      Json
+  recurringPhrases String[]  @default([])
+  metricsJson      Json?
+  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime  @default(now())
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user             User?     @relation(fields: [userId], references: [id])
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+}
+
+model LegalSource {
+  id           String     @id @default(cuid())
+  layer        LegalLayer
+  code         String
+  title        String?
+  articleRef   String?
+  tribunal     String?
+  year         Int?
+  body         String     @db.Text
+  metadataJson Json?
+  createdAt    DateTime   @default(now())
+
+  @@index([layer])
+  @@index([code])
+}
+
+model JobRun {
+  id           String       @id @default(cuid())
+  workspaceId  String?
+  inngestRunId String?
+  name         String
+  status       JobRunStatus @default(PENDING)
+  payloadJson  Json?
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  workspace    Workspace?   @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([status])
+}
+
+model Activity {
+  id          String    @id @default(cuid())
+  workspaceId String
+  kind        String
+  title       String
+  metaJson    Json?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([createdAt])
+}
+
+model FeedbackEntry {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String?
+  processId   String?
+  rating      Int
+  comment     String?  @db.Text
+  difficulty  String?
+  highlight   String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process   Process?  @relation(fields: [processId], references: [id])
+
+  @@index([workspaceId])
+  @@index([createdAt])
+}
+
+model ProcessTimelineEvent {
+  id          String   @id @default(cuid())
+  processId   String
+  title       String
+  description String?  @db.Text
+  occurredAt  DateTime @default(now())
+  metaJson    Json?
+  process     Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  @@index([processId])
+}
+
+model CostLedgerEntry {
+  id               String       @id @default(cuid())
+  workspaceId      String
+  userId           String?
+  category         CostCategory
+  provider         String
+  model            String?
+  promptTokens     Int?
+  completionTokens Int?
+  totalTokens      Int?
+  costUsd          Float?
+  unitQuantity     Int?
+  metaJson         Json?
+  createdAt        DateTime     @default(now())
+  workspace        Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, category])
+  @@index([createdAt])
+}
+
+model ObservabilityLog {
+  id                String    @id @default(cuid())
+  workspaceId       String
+  userId            String?
+  traceId           String?
+  kind              String
+  name              String?
+  payloadJson       Json?
+  retrievalChunkIds Json?
+  latencyMs         Int
+  errorMessage      String?
+  createdAt         DateTime  @default(now())
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, kind])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// CORPUS JURÍDICO NACIONAL — entidades canônicas, multi-provider, temporal.
+// Compartilhadas por TODOS os workspaces (tenant = "__global__" no Qdrant).
+// ============================================================================
+
+/**
+ * Tipo da norma jurídica. Categorização canônica orientada a recuperação.
+ */
+enum NormKind {
+  CONSTITUTION
+  CONSTITUTIONAL_AMENDMENT
+  COMPLEMENTARY_LAW
+  ORDINARY_LAW
+  DELEGATED_LAW
+  PROVISIONAL_MEASURE
+  DECREE_LAW
+  DECREE
+  RESOLUTION
+  PORTARIA
+  NORMATIVE_INSTRUCTION
+  CIRCULAR
+  CODE
+  REGIMENT
+  JURISPRUDENCE_STF
+  JURISPRUDENCE_STJ
+  JURISPRUDENCE_TST
+  JURISPRUDENCE_OTHER
+  SUMULA_STF
+  SUMULA_STJ
+  SUMULA_VINCULANTE
+  REPETITIVE_THEME
+  OTHER
+}
+
+/**
+ * Esfera/poder ao qual a norma pertence.
+ */
+enum NormJurisdiction {
+  FEDERAL
+  STATE
+  MUNICIPAL
+  DISTRITAL
+  INTERNATIONAL
+  AGENCY
+  COURT
+  UNKNOWN
+}
+
+/**
+ * Status temporal/eficacial da norma.
+ */
+enum NormStatus {
+  ACTIVE
+  REVOKED
+  SUSPENDED
+  SUPERSEDED
+  DRAFT
+  UNKNOWN
+}
+
+/**
+ * Provedor de origem do dado.
+ */
+enum CorpusProvider {
+  LEXML
+  STF
+  STJ
+  TST
+  PLANALTO
+  DATAJUD
+  MANUAL
+  FIXTURE
+}
+
+/**
+ * Tipo de aresta no grafo de citações entre normas.
+ */
+enum CitationKind {
+  CITES
+  REFERENCED_BY
+  REVOKES
+  REVOKED_BY
+  AMENDS
+  AMENDED_BY
+  REGULATES
+  REGULATED_BY
+  OVERRULES
+  OVERRULED_BY
+  RELATES_TO
+}
+
+/**
+ * Posição estrutural do chunk dentro da hierarquia jurídica brasileira.
+ */
+enum LegalStructure {
+  EMENTA
+  PREAMBULO
+  PARTE
+  LIVRO
+  TITULO
+  CAPITULO
+  SECAO
+  SUBSECAO
+  ARTIGO
+  CAPUT
+  PARAGRAFO
+  INCISO
+  ALINEA
+  ITEM
+  ANEXO
+  NOTE
+  GENERIC
+}
+
+enum IngestionJobStatus {
+  PENDING
+  RUNNING
+  PARTIAL
+  COMPLETED
+  FAILED
+}
+
+/**
+ * Entidade canônica de norma jurídica (lei, decreto, súmula, acórdão...).
+ * Identificada UNICAMENTE pela URN-LEX. Provider é metadado de origem.
+ */
+model LegalNorm {
+  id               String           @id @default(cuid())
+  /**
+   * URN-LEX canônica. Ex.: "urn:lex:br:federal:lei:1990-09-11;8078"
+   */
+  urn              String           @unique
+  kind             NormKind
+  jurisdiction     NormJurisdiction @default(UNKNOWN)
+  status           NormStatus       @default(ACTIVE)
+  /**
+   * Curto, ex.: "Código de Defesa do Consumidor".
+   */
+  title            String           @db.Text
+  /**
+   * Identificador "humano", ex.: "Lei nº 8.078/1990".
+   */
+  identifier       String?
+  /**
+   * Tribunal ou autoridade emissora (para jurisprudência/atos).
+   */
+  authority        String?
+  /**
+   * Sigla do tribunal (STJ, STF, TST, TRF1…) quando aplicável.
+   */
+  tribunal         String?
+  /**
+   * Relator de acórdão / autor de PL.
+   */
+  rapporteur       String?
+  /**
+   * Ementa (quando há), independente de version.
+   */
+  ementa           String?          @db.Text
+  publishedAt      DateTime?
+  effectiveAt      DateTime?
+  revokedAt        DateTime?
+  /**
+   * Idioma ISO-639-1, default pt-BR.
+   */
+  language         String           @default("pt-BR")
+  /**
+   * Tags livres para classificação adicional.
+   */
+  tags             String[]         @default([])
+  /**
+   * Provedor que originou / mantém esta norma.
+   */
+  sourceProvider   CorpusProvider
+  /**
+   * URL canônica para o documento original (Planalto, DJE…).
+   */
+  sourceUrl        String?
+  /**
+   * Identificador opaco do provedor (ex.: oai-id, processo no STJ).
+   */
+  sourceExternalId String?
+  /**
+   * Última checagem/fetch contra a fonte.
+   */
+  lastFetchedAt    DateTime?
+  /**
+   * ETag/Last-Modified para HTTP conditional GET.
+   */
+  etag             String?
+  lastModifiedAt   DateTime?
+  /**
+   * Hash do payload mais recente (decide se reprocessamos).
+   */
+  contentHash      String?
+  /**
+   * Estrutura hierárquica resumida (índice, quando disponível).
+   */
+  hierarchyJson    Json?
+  metadataJson     Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  versions      LegalNormVersion[]
+  chunks        LegalChunk[]
+  citationsFrom LegalCitation[]    @relation("citationsFrom")
+  citationsTo   LegalCitation[]    @relation("citationsTo")
+
+  @@index([kind])
+  @@index([jurisdiction])
+  @@index([status])
+  @@index([sourceProvider])
+  @@index([publishedAt])
+  @@index([tribunal])
+}
+
+/**
+ * Versão temporal da norma. Cada alteração relevante (redação atualizada,
+ * revogação parcial) gera uma nova versão. Permite recuperação por data.
+ */
+model LegalNormVersion {
+  id            String    @id @default(cuid())
+  normId        String
+  /**
+   * Início de vigência desta versão.
+   */
+  validFrom     DateTime
+  /**
+   * Fim de vigência (null = vigente).
+   */
+  validTo       DateTime?
+  /**
+   * Hash sha256 do conteúdo desta versão. Imutável.
+   */
+  contentHash   String
+  /**
+   * Texto bruto canônico desta versão.
+   */
+  rawText       String    @db.Text
+  /**
+   * HTML/XML original (quando disponível).
+   */
+  htmlSource    String?   @db.Text
+  /**
+   * Estrutura hierárquica desta versão (árvore JSON tipada).
+   */
+  structureJson Json?
+  metadataJson  Json?
+  createdAt     DateTime  @default(now())
+
+  norm   LegalNorm    @relation(fields: [normId], references: [id], onDelete: Cascade)
+  chunks LegalChunk[]
+
+  @@unique([normId, validFrom])
+  @@unique([normId, contentHash])
+  @@index([normId])
+  @@index([validFrom])
+}
+
+/**
+ * Chunk indexável jurídico (separado do `DocumentChunk` user-side).
+ * Carrega lineage completo: norma + versão + estrutura hierárquica.
+ */
+model LegalChunk {
+  id             String                   @id @default(cuid())
+  normId         String
+  normVersionId  String
+  /**
+   * Posição estável (0..N) dentro da versão da norma.
+   */
+  ordinal        Int
+  structure      LegalStructure           @default(GENERIC)
+  /**
+   * Caminho hierárquico completo, ex.: "Art. 5º, § 2º, II, b".
+   */
+  fullPath       String?
+  articleRef     String?
+  paragraphRef   String?
+  incisoRef      String?
+  alineaRef      String?
+  text           String                   @db.Text
+  /**
+   * Hash do texto pra dedup e cache de embeddings.
+   */
+  contentHash    String
+  tokenEstimate  Int?
+  /**
+   * Id do ponto correspondente em Qdrant.
+   */
+  vectorPointId  String?
+  /**
+   * Versão do esquema do chunker (lineage).
+   */
+  chunkerVersion String                   @default("v2")
+  metadataJson   Json?
+  createdAt      DateTime                 @default(now())
+  /**
+   * Vetor textual gerado para BM25 (Postgres FTS). Coluna criada via migration
+   * SQL como `GENERATED ALWAYS AS (to_tsvector('portuguese', text)) STORED`,
+   * com índice GIN. Mapeada como Unsupported aqui porque Prisma não tem o tipo.
+   */
+  textTsv        Unsupported("tsvector")?
+
+  norm    LegalNorm        @relation(fields: [normId], references: [id], onDelete: Cascade)
+  version LegalNormVersion @relation(fields: [normVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([normVersionId, ordinal])
+  @@index([normId])
+  @@index([structure])
+  @@index([articleRef])
+  @@index([contentHash])
+}
+
+/**
+ * Aresta direcionada do grafo de citações entre normas.
+ * `targetUrn` permite registrar citação antes da norma destino existir
+ * (resolvemos o `targetNormId` quando ela aparecer no corpus).
+ */
+model LegalCitation {
+  id            String       @id @default(cuid())
+  sourceNormId  String
+  /**
+   * Pode ser nulo até resolver o destino (lazy).
+   */
+  targetNormId  String?
+  /**
+   * URN destino, sempre preenchida. Index pra resolver depois.
+   */
+  targetUrn     String
+  /**
+   * Texto bruto da citação como apareceu na fonte.
+   */
+  rawText       String?      @db.Text
+  kind          CitationKind @default(CITES)
+  /**
+   * Chunk de origem (de qual trecho extraímos a citação).
+   */
+  sourceChunkId String?
+  /**
+   * Confiança 0..1 da extração (regex vs LLM-resolved).
+   */
+  confidence    Float        @default(0.8)
+  metadataJson  Json?
+  createdAt     DateTime     @default(now())
+
+  source LegalNorm  @relation("citationsFrom", fields: [sourceNormId], references: [id], onDelete: Cascade)
+  target LegalNorm? @relation("citationsTo", fields: [targetNormId], references: [id])
+
+  @@index([sourceNormId])
+  @@index([targetNormId])
+  @@index([targetUrn])
+  @@index([kind])
+}
+
+/**
+ * Cursor de sincronização incremental por (provider, kind).
+ */
+model IngestionWatermark {
+  id           String         @id @default(cuid())
+  provider     CorpusProvider
+  kind         NormKind
+  /**
+   * Cursor opaco (data ISO, oai resumption token, page).
+   */
+  cursor       String?
+  lastSyncAt   DateTime?
+  itemsTotal   Int            @default(0)
+  metadataJson Json?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([provider, kind])
+}
+
+/**
+ * Auditoria por execução. Permite reprocessar e diagnosticar.
+ */
+model IngestionJob {
+  id             String             @id @default(cuid())
+  provider       CorpusProvider
+  kind           NormKind?
+  status         IngestionJobStatus @default(PENDING)
+  cursor         String?
+  startedAt      DateTime           @default(now())
+  finishedAt     DateTime?
+  itemsProcessed Int                @default(0)
+  itemsCreated   Int                @default(0)
+  itemsUpdated   Int                @default(0)
+  itemsSkipped   Int                @default(0)
+  itemsFailed    Int                @default(0)
+  errorMessage   String?            @db.Text
+  metadataJson   Json?
+
+  @@index([provider, status])
+  @@index([startedAt])
+}
+
+/**
+ * -----------------------------------------------------------------------
+ */
+/**
+ * Legal Workflow Automation
+ */
+/**
+ * -----------------------------------------------------------------------
+ */
+
+enum CaseStatus {
+  INTAKE
+  RESEARCH
+  DRAFTING
+  REVIEW
+  READY
+  FILED
+  CLOSED
+  ARCHIVED
+}
+
+enum CasePartyRole {
+  AUTHOR
+  DEFENDANT
+  INTERVENING
+  OTHER
+}
+
+enum CasePartyKind {
+  PERSON
+  COMPANY
+  PUBLIC_ENTITY
+  UNKNOWN
+}
+
+enum CaseRequestKind {
+  MAIN
+  SUBSIDIARY
+  URGENCY
+  PROVISIONAL
+  EVIDENCE
+  PROCEDURAL
+  OTHER
+}
+
+enum CaseRiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CaseRiskKind {
+  REVOKED_NORM
+  PRECEDENT_DIVERGENCE
+  HISTORIC_VERSION
+  MISSING_GROUNDING
+  WEAK_ARGUMENT
+  PROCEDURAL_GAP
+  OTHER
+}
+
+enum CaseDraftStatus {
+  PENDING
+  GENERATED
+  EDITED
+  APPROVED
+}
+
+enum CaseTimelineKind {
+  CASE_CREATED
+  INTAKE_COMPLETED
+  RESEARCH_RUN
+  DRAFT_GENERATED
+  DRAFT_EDITED
+  REVIEW_RUN
+  RISK_FLAGGED
+  STATUS_CHANGED
+  NOTE
+}
+
+/**
+ * Caso jurídico em workflow do Lex (multi-tenant por workspaceId).
+ */
+model Case {
+  id            String     @id @default(cuid())
+  workspaceId   String
+  createdById   String
+  /**
+   * Título humano (autocompletado pelo intake).
+   */
+  title         String
+  /**
+   * Resumo curto (1-2 linhas). Gerado deterministicamente no intake.
+   */
+  summary       String?    @db.Text
+  /**
+   * Texto bruto inicial enviado pelo advogado.
+   */
+  rawInput      String     @db.Text
+  status        CaseStatus @default(INTAKE)
+  /**
+   * Tribunal alvo (registry code, ex.: TJSP, TRF3). Opcional.
+   */
+  tribunalCode  String?
+  /**
+   * UF principal do caso.
+   */
+  uf            String?
+  /**
+   * Numero do processo, se já existir.
+   */
+  processNumber String?
+  metadataJson  Json?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  facts       CaseFact[]
+  parties     CaseParty[]
+  requests    CaseRequest[]
+  risks       CaseRisk[]
+  drafts      CaseDraft[]
+  reviews     CaseReview[]
+  timeline    CaseTimelineEvent[]
+  comments    CaseComment[]
+  annotations CaseAnnotation[]
+  approvals   DraftApproval[]
+  alerts      CaseAlert[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, updatedAt])
+  @@index([tribunalCode])
+}
+
+model CaseFact {
+  id         String   @id @default(cuid())
+  caseId     String
+  /**
+   * Ordem estável dentro do caso.
+   */
+  ordinal    Int
+  text       String   @db.Text
+  /**
+   * Categoria heurística do fato (datado, conduta, dano, vínculo, etc).
+   */
+  category   String?
+  /**
+   * Datas detectadas no fato (ISO).
+   */
+  dates      String[] @default([])
+  /**
+   * Confidence 0..1 do parser.
+   */
+  confidence Float    @default(0.6)
+  createdAt  DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, ordinal])
+  @@index([caseId])
+}
+
+model CaseParty {
+  id           String        @id @default(cuid())
+  caseId       String
+  role         CasePartyRole
+  kind         CasePartyKind @default(UNKNOWN)
+  name         String
+  /**
+   * CPF/CNPJ quando detectado.
+   */
+  document     String?
+  metadataJson Json?
+  createdAt    DateTime      @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model CaseRequest {
+  id            String          @id @default(cuid())
+  caseId        String
+  ordinal       Int
+  kind          CaseRequestKind @default(MAIN)
+  text          String          @db.Text
+  /**
+   * Norma de fundamentação (URN-LEX), opcional.
+   */
+  legalBasisUrn String?
+  metadataJson  Json?
+  createdAt     DateTime        @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, ordinal])
+  @@index([caseId])
+}
+
+model CaseRisk {
+  id               String           @id @default(cuid())
+  caseId           String
+  kind             CaseRiskKind
+  severity         CaseRiskSeverity
+  title            String
+  detail           String           @db.Text
+  /**
+   * ChunkIds que motivaram o risco (referência rápida).
+   */
+  evidenceChunkIds String[]         @default([])
+  /**
+   * URNs envolvidas.
+   */
+  evidenceNormUrns String[]         @default([])
+  resolvedAt       DateTime?
+  resolvedById     String?
+  createdAt        DateTime         @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, severity])
+}
+
+model CaseDraft {
+  id                String          @id @default(cuid())
+  caseId            String
+  /**
+   * Versão semântica auto-incremental por caso.
+   */
+  version           Int             @default(1)
+  status            CaseDraftStatus @default(PENDING)
+  /**
+   * Conteúdo Markdown da minuta gerada.
+   */
+  content           String          @db.Text
+  /**
+   * ChunkIds usados como fundamentação ao gerar.
+   */
+  groundingChunkIds String[]        @default([])
+  metadataJson      Json?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  case      Case            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  approvals DraftApproval[]
+
+  @@unique([caseId, version])
+  @@index([caseId, version])
+}
+
+model CaseReview {
+  id            String   @id @default(cuid())
+  caseId        String
+  /**
+   * Score 0..1 — quanto a peça está pronta.
+   */
+  score         Float
+  /**
+   * Mensagem global ("Pronta para protocolo", "Pendências críticas").
+   */
+  verdict       String
+  /**
+   * Itens do checklist (JSON).
+   */
+  checklistJson Json
+  /**
+   * Risks Ids relacionados (snapshot).
+   */
+  riskIds       String[] @default([])
+  createdAt     DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+}
+
+model CaseTimelineEvent {
+  id                String           @id @default(cuid())
+  caseId            String
+  kind              CaseTimelineKind
+  /**
+   * Texto livre (ex.: "Draft v1 gerado a partir de 12 chunks").
+   */
+  message           String
+  payloadJson       Json?
+  /**
+   * ChunkIds rastreados nesse evento (reasoning trace).
+   */
+  retrievalChunkIds String[]         @default([])
+  /**
+   * TraceID propagável p/ ObservabilityLog.
+   */
+  traceId           String?
+  /**
+   * UserId responsável.
+   */
+  userId            String?
+  createdAt         DateTime         @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+}
+
+// ============================================================================
+// COCKPIT OPERACIONAL — colaboração, alertas, integrações, notificações
+// ============================================================================
+
+enum CaseCommentVisibility {
+  WORKSPACE
+  PRIVATE
+}
+
+/**
+ * Comentário interno entre advogados, vinculado a um caso e opcionalmente a uma minuta.
+ */
+model CaseComment {
+  id          String                @id @default(cuid())
+  caseId      String
+  authorId    String
+  draftId     String?
+  body        String                @db.Text
+  visibility  CaseCommentVisibility @default(WORKSPACE)
+  refChunkIds String[]              @default([])
+  resolved    Boolean               @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, createdAt])
+  @@index([authorId, createdAt])
+  @@index([draftId])
+}
+
+enum CaseAnnotationKind {
+  HIGHLIGHT
+  WEAKNESS
+  STRENGTH
+  TODO
+  CITATION
+}
+
+/**
+ * Anotação visual no conteúdo de uma minuta (offset/length sobre Markdown).
+ */
+model CaseAnnotation {
+  id          String             @id @default(cuid())
+  caseId      String
+  draftId     String?
+  authorId    String
+  kind        CaseAnnotationKind @default(HIGHLIGHT)
+  startOffset Int
+  endOffset   Int
+  excerpt     String             @db.Text
+  note        String?            @db.Text
+  createdAt   DateTime           @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, draftId])
+  @@index([authorId, createdAt])
+}
+
+enum DraftApprovalStatus {
+  REQUESTED
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+/**
+ * Pedido + decisão de aprovação de minuta entre advogados.
+ */
+model DraftApproval {
+  id          String              @id @default(cuid())
+  caseId      String
+  draftId     String
+  requestedBy String
+  reviewerId  String?
+  status      DraftApprovalStatus @default(REQUESTED)
+  rationale   String?             @db.Text
+  decidedAt   DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  case  Case      @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  draft CaseDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([caseId, status])
+  @@index([draftId, status])
+}
+
+enum CaseAlertKind {
+  JURISPRUDENCE_DRIFT
+  THESIS_WEAKENED
+  CONTEXTUAL_RISK
+  RISING_RISK
+  RELEVANT_MOVEMENT
+  STRATEGIC_HISTORY
+  NORM_REVOKED
+  PRECEDENT_DIVERGENCE
+  DEADLINE
+}
+
+enum CaseAlertSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CaseAlertStatus {
+  OPEN
+  ACKED
+  DISMISSED
+  RESOLVED
+}
+
+/**
+ * Alerta operacional sobre um caso ou workspace (timeline viva).
+ * Pode ser gerado por engine determinística (contradições, drift) ou por integração externa.
+ */
+model CaseAlert {
+  id          String            @id @default(cuid())
+  workspaceId String
+  caseId      String?
+  kind        CaseAlertKind
+  severity    CaseAlertSeverity @default(INFO)
+  status      CaseAlertStatus   @default(OPEN)
+  title       String
+  message     String            @db.Text
+  reference   String?
+  fingerprint String
+  payloadJson Json?
+  ackedAt     DateTime?
+  ackedById   String?
+  resolvedAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  case      Case?     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, fingerprint])
+  @@index([workspaceId, status, severity])
+  @@index([caseId, status])
+  @@index([workspaceId, kind, createdAt])
+}
+
+enum IntegrationProvider {
+  PJE
+  ESAJ
+  PROJUDI
+  EPROC
+  DIARIO_OFICIAL
+  EMAIL
+  WHATSAPP
+  CALENDAR
+  WEBHOOK
+}
+
+enum IntegrationStatus {
+  DISCONNECTED
+  CONNECTED
+  ERROR
+  PAUSED
+}
+
+/**
+ * Configuração de integração externa por workspace.
+ * Credenciais ficam em `secretRef` (chave de cofre / env), nunca em plaintext.
+ */
+model Integration {
+  id           String              @id @default(cuid())
+  workspaceId  String
+  provider     IntegrationProvider
+  label        String
+  status       IntegrationStatus   @default(DISCONNECTED)
+  configJson   Json?
+  secretRef    String?
+  lastSyncedAt DateTime?
+  lastError    String?             @db.Text
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider, label])
+  @@index([workspaceId, provider, status])
+}
+
+enum NotificationKind {
+  ALERT
+  COMMENT
+  APPROVAL
+  INTEGRATION
+  SYSTEM
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+/**
+ * Notificação direcionada a um usuário (e/ou broadcast no workspace).
+ */
+model Notification {
+  id          String             @id @default(cuid())
+  workspaceId String
+  userId      String?
+  kind        NotificationKind
+  status      NotificationStatus @default(UNREAD)
+  title       String
+  body        String             @db.Text
+  href        String?
+  refIds      String[]           @default([])
+  payloadJson Json?
+  readAt      DateTime?
+  createdAt   DateTime           @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, userId, status])
+  @@index([workspaceId, kind, createdAt])
+}

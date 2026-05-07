@@ -1,0 +1,196 @@
+import { z } from "zod";
+
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    DATABASE_URL: z.string().url(),
+    /** Conexão direta para Prisma migrations (Supabase pooler em modo session). */
+    DIRECT_URL: z.string().url().optional(),
+    NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+    NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+    /**
+     * Service role key do Supabase. Necessária apenas para operações server-side privilegiadas
+     * (upload/download de Storage via admin client). Login/signup/middleware funcionam sem ela.
+     */
+    SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(""),
+    /** Provedor de chat (expandir com adapters em `src/lib/ai/providers/`). */
+    AI_CHAT_PROVIDER: z
+      .enum(["deepseek", "openai", "anthropic", "openrouter"])
+      .default("deepseek"),
+    AI_MODEL_CHAT: z.string().optional(),
+    AI_MODEL_COMPLETION: z.string().optional(),
+    DEEPSEEK_API_KEY: z.string().optional(),
+    DEEPSEEK_BASE_URL: z.string().url().default("https://api.deepseek.com"),
+    OPENAI_API_KEY: z.string().optional(),
+    ANTHROPIC_API_KEY: z.string().optional(),
+    OPENROUTER_API_KEY: z.string().optional(),
+    DEEPINFRA_API_KEY: z.string().optional().default(""),
+    DEEPINFRA_BASE_URL: z.string().url().default("https://api.deepinfra.com/v1/openai"),
+    QDRANT_URL: z.string().url(),
+    /** Vazio em Qdrant local sem autenticação */
+    QDRANT_API_KEY: z.string().optional().default(""),
+    QDRANT_COLLECTION: z.string().default("lex_main"),
+    /**
+     * Redis. Opcional em dev (rate limit/cache caem para fail-open in-memory).
+     * Em produção, `REDIS_REQUIRED=true` (default em prod) faz health virar
+     * 503 quando Redis cai.
+     */
+    REDIS_URL: z.string().url().optional(),
+    REDIS_REQUIRED: z
+      .union([z.literal("true"), z.literal("false"), z.literal("1"), z.literal("0")])
+      .optional(),
+    REDIS_NAMESPACE: z.string().optional(),
+    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
+    PRISMA_QUERY_LOGS: z
+      .union([z.literal("true"), z.literal("false"), z.literal("1"), z.literal("0")])
+      .optional(),
+    INNGEST_EVENT_KEY: z.string().optional(),
+    INNGEST_SIGNING_KEY: z.string().optional(),
+    STORAGE_BUCKET_DOCUMENTS: z.string().default("documents"),
+    OCR_PROVIDER: z.enum(["tesseract", "mistral"]).default("tesseract"),
+    MISTRAL_API_KEY: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Em produção exigimos a chave do provider configurado; em dev apenas avisamos.
+    if (data.NODE_ENV !== "production") return;
+    switch (data.AI_CHAT_PROVIDER) {
+      case "deepseek":
+        if (!data.DEEPSEEK_API_KEY?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "DEEPSEEK_API_KEY obrigatório quando AI_CHAT_PROVIDER=deepseek",
+            path: ["DEEPSEEK_API_KEY"],
+          });
+        }
+        break;
+      case "openai":
+        if (!data.OPENAI_API_KEY?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "OPENAI_API_KEY obrigatório quando AI_CHAT_PROVIDER=openai",
+            path: ["OPENAI_API_KEY"],
+          });
+        }
+        break;
+      case "anthropic":
+        if (!data.ANTHROPIC_API_KEY?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "ANTHROPIC_API_KEY obrigatório quando AI_CHAT_PROVIDER=anthropic",
+            path: ["ANTHROPIC_API_KEY"],
+          });
+        }
+        break;
+      case "openrouter":
+        if (!data.OPENROUTER_API_KEY?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "OPENROUTER_API_KEY obrigatório quando AI_CHAT_PROVIDER=openrouter",
+            path: ["OPENROUTER_API_KEY"],
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+export type Env = z.infer<typeof envSchema>;
+
+let cached: Env | null = null;
+
+function formatEnvErrors(fieldErrors: Record<string, string[] | undefined>): string {
+  const lines = Object.entries(fieldErrors)
+    .filter(([, msgs]) => msgs && msgs.length > 0)
+    .map(([key, msgs]) => `  - ${key}: ${(msgs ?? []).join("; ")}`);
+  return lines.join("\n");
+}
+
+export function getEnv(): Env {
+  if (cached) return cached;
+  const parsed = envSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const formatted = formatEnvErrors(parsed.error.flatten().fieldErrors);
+    const msg = [
+      "❌ Variáveis de ambiente inválidas:",
+      formatted,
+      "",
+      "Confira o arquivo .env (e .env.example para referência).",
+      "Em produção (Vercel), confira as Project Environment Variables.",
+    ].join("\n");
+    console.error(msg);
+    throw new Error("Invalid environment variables");
+  }
+  cached = parsed.data;
+  return cached;
+}
+
+/**
+ * Validação leve no startup do servidor — chamado em `instrumentation.ts`.
+ * Lê só o necessário para autenticação Supabase + banco; não trava o boot por
+ * variáveis opcionais (apenas alerta).
+ */
+export function assertCriticalEnv(): void {
+  const required = [
+    "DATABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  ] as const;
+  const missing = required.filter((k) => !process.env[k]?.trim());
+  if (missing.length > 0) {
+    console.error(
+      `❌ Variáveis críticas ausentes: ${missing.join(", ")}.\n` +
+        `Crie/preencha o arquivo .env antes de iniciar o servidor.`,
+    );
+    return;
+  }
+
+  const warnings: string[] = [];
+  if (!process.env["DIRECT_URL"]?.trim()) {
+    warnings.push(
+      "⚠️  DIRECT_URL não definido — Prisma migrate/seed pode falhar no Supabase. Defina o pooler em modo session (porta 5432).",
+    );
+  }
+  if (!process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim()) {
+    warnings.push(
+      "⚠️  SUPABASE_SERVICE_ROLE_KEY não definido — uploads/downloads via Storage admin ficarão indisponíveis.",
+    );
+  }
+  if (warnings.length > 0) {
+    console.warn(warnings.join("\n"));
+  }
+}
+
+/** Safe for client-only vars – server routes should use getEnv() */
+export const publicEnvSchema = z.object({
+  NEXT_PUBLIC_APP_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string(),
+});
+
+/**
+ * Subconjunto de env exclusivo para clientes Supabase server-side (admin/storage).
+ * Permite carregar admin client sem precisar que TODAS as envs (IA, Qdrant, Redis, etc.)
+ * estejam preenchidas — útil para rotas isoladas e scripts.
+ */
+const supabaseEnvSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(""),
+  STORAGE_BUCKET_DOCUMENTS: z.string().default("documents"),
+});
+export type SupabaseEnv = z.infer<typeof supabaseEnvSchema>;
+
+let cachedSupabase: SupabaseEnv | null = null;
+export function getSupabaseEnv(): SupabaseEnv {
+  if (cachedSupabase) return cachedSupabase;
+  const parsed = supabaseEnvSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const formatted = formatEnvErrors(parsed.error.flatten().fieldErrors);
+    console.error(`❌ Variáveis Supabase inválidas:\n${formatted}`);
+    throw new Error("Invalid Supabase environment variables");
+  }
+  cachedSupabase = parsed.data;
+  return cachedSupabase;
+}
