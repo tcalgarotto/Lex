@@ -205,11 +205,11 @@ Tudo que **NÃO depende de credencial externa** está pronto:
 
 ## 16. URL online
 
-Após deploy: `https://lex.suapdominio.com.br` (substituir pelo domínio escolhido).
+Após deploy: `https://lex-navy.vercel.app` (substituir pelo domínio escolhido).
 
 ## 17. Como criar usuário teste
 
-1. Acesse `https://lex.suapdominio.com.br/register`
+1. Acesse `https://lex-navy.vercel.app/register`
 2. Preencha email + senha
 3. Confirme email recebido
 

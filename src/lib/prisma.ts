@@ -1,3 +1,10 @@
+// IMPORTANTE: o import abaixo precisa vir ANTES do `import { PrismaClient }`.
+// Ele aplica como side-effect o fallback DATABASE_URL ← POSTGRES_PRISMA_URL e
+// DIRECT_URL ← POSTGRES_URL_NON_POOLING, garantindo que o Prisma engine
+// encontre as envs corretas mesmo quando o projeto roda em Vercel com a
+// Supabase Integration ativa (que provisiona POSTGRES_*).
+import "./env-normalize";
+
 import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };

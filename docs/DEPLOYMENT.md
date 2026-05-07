@@ -33,16 +33,16 @@ Caminho oficial para colocar o Lex 100% online, sem nada local.
 ## 2. Setup Supabase
 
 ### 2.1 Auth → URL Configuration
-- **Site URL:** `https://lex.suapdominio.com.br`
+- **Site URL:** `https://lex-navy.vercel.app`
 - **Redirect URLs** (adicione todas):
   ```
-  https://lex.suapdominio.com.br/auth/callback
-  https://lex.suapdominio.com.br/**
+  https://lex-navy.vercel.app/auth/callback
+  https://lex-navy.vercel.app/**
   https://*.vercel.app/**
-  https://lex.suapdominio.com.br/forgot-password
-  https://lex.suapdominio.com.br/reset-password
-  https://lex.suapdominio.com.br/invite/**
-  https://lex.suapdominio.com.br/onboarding/**
+  https://lex-navy.vercel.app/forgot-password
+  https://lex-navy.vercel.app/reset-password
+  https://lex-navy.vercel.app/invite/**
+  https://lex-navy.vercel.app/onboarding/**
   http://localhost:3000/auth/callback
   http://localhost:3000/**
   ```
@@ -73,18 +73,37 @@ Caminho oficial para colocar o Lex 100% online, sem nada local.
 - Output: deixe padrão.
 
 ### 3.2 Environment Variables
+
+> **⚠️ Três regras que evitam 90% dos incidentes pós-deploy:**
+>
+> 1. **Escopo correto.** Cada variável tem checkboxes "Production / Preview /
+>    Development". Para o site de produção funcionar, marque **Production**.
+>    Variável marcada só em Preview **não chega** ao deploy de produção. O
+>    sintoma clássico: `/api/ready` devolve `{ ready: true }` mas
+>    `/api/health` devolve `down` com
+>    `Environment variable not found: DATABASE_URL` — porque `/api/ready` não
+>    toca env, mas `/api/health` (e qualquer Server Component que use Prisma)
+>    sim.
+> 2. **Redeploy é obrigatório.** Editar uma env var **não atualiza** o
+>    deployment ativo. Vá em Deployments → … → **Redeploy** ou faça um novo
+>    `git push`. Sem isso, a Vercel continua servindo o build antigo, sem a
+>    var nova.
+> 3. **Formato exato.** O Prisma e o ioredis exigem URLs específicas — veja
+>    abaixo.
+
 Cole as variáveis de `.env.production.example` em **Production** e
 `.env.preview.example` em **Preview**.
 
-Variáveis críticas obrigatórias para subir saudável:
+#### Variáveis críticas obrigatórias
+
 ```
 NEXT_PUBLIC_APP_URL
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
-DATABASE_URL
-DIRECT_URL
-REDIS_URL
+DATABASE_URL                    ← Prisma runtime (Server Components quebram sem)
+DIRECT_URL                      ← Prisma migrate deploy
+REDIS_URL                       ← rediss:// (TLS), NÃO https://
 QDRANT_URL
 QDRANT_API_KEY
 INNGEST_EVENT_KEY
@@ -94,7 +113,48 @@ DEEPINFRA_API_KEY
 RESEND_API_KEY
 ```
 
-Valide com `npm run vercel:check` (executa `scripts/deploy-check.ts`).
+#### Formato exato (Supabase Postgres)
+
+Pegue em **Supabase → Project Settings → Database → Connection string**.
+Copie **as duas** modalidades, são URLs diferentes:
+
+```bash
+# DATABASE_URL — runtime: pooler TRANSACTION (porta 6543)
+DATABASE_URL=postgresql://postgres.<ref>:<PWD>@aws-1-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+
+# DIRECT_URL — migrations: pooler SESSION (porta 5432)
+DIRECT_URL=postgresql://postgres.<ref>:<PWD>@aws-1-<region>.pooler.supabase.com:5432/postgres
+```
+
+Por que é assim:
+- A Vercel é serverless ⇒ cada lambda abre nova conexão. Sem PgBouncer
+  (`pgbouncer=true&connection_limit=1`), o Postgres do Supabase estoura limite
+  rapidamente.
+- `prisma migrate deploy` precisa de **session mode** (porta 5432) para
+  emitir DDL — pooler transaction em DDL falha.
+
+#### Formato exato (Upstash Redis)
+
+```bash
+# CORRETO — TLS (rediss://)
+REDIS_URL=rediss://default:<password>@<host>.upstash.io:6379
+
+# ERRADO — REST API (https://) — ioredis não fala REST
+# REDIS_URL=https://<host>.upstash.io
+```
+
+Pegue em **Upstash → Connect → TLS**, não em "REST API". Sintoma se errar:
+`/api/health` mostra `redis.error: redis ping falhou` mesmo com a var setada.
+
+#### Validação automática
+
+```bash
+npm run vercel:check                # checa formato e bate em /api/ready + /api/health
+```
+
+Esse script (`scripts/deploy-check.ts`) é o que você roda *depois* do
+Redeploy para confirmar que cada variável saiu do "Settings" e chegou no
+deployment ativo.
 
 ### 3.3 Migrations no build
 Adicione o build command:
@@ -137,7 +197,7 @@ Veja `docs/QDRANT_CLOUD_SETUP.md`.
 2. Copie `INNGEST_EVENT_KEY` e `INNGEST_SIGNING_KEY` para a Vercel.
 3. Após o primeiro deploy, registre o endpoint:
    ```
-   https://lex.suapdominio.com.br/api/inngest
+   https://lex-navy.vercel.app/api/inngest
    ```
 4. Inngest Cloud descobre as funções automaticamente.
 
@@ -193,7 +253,7 @@ Resumo: o Lex já usa Inngest para todos os jobs sub-diários. Vercel cron fica 
 
 | | Preview | Production |
 |---|---|---|
-| URL | `https://<branch>-<hash>.vercel.app` | `https://lex.suapdominio.com.br` |
+| URL | `https://<branch>-<hash>.vercel.app` | `https://lex-navy.vercel.app` |
 | Supabase | Mesmo projeto | Mesmo projeto |
 | Redis | Mesmo cluster (namespace `lex:preview`) | namespace `lex:prod` |
 | Inngest | App `lex-preview` | App `lex-production` |
@@ -206,8 +266,8 @@ Resumo: o Lex já usa Inngest para todos os jobs sub-diários. Vercel cron fica 
 
 ```bash
 # Smoke (do laptop)
-curl -fsS https://lex.suapdominio.com.br/api/ready | jq .
-curl -fsS https://lex.suapdominio.com.br/api/health | jq .
+curl -fsS https://lex-navy.vercel.app/api/ready | jq .
+curl -fsS https://lex-navy.vercel.app/api/health | jq .
 ```
 
 Esperado:
@@ -234,6 +294,91 @@ vercel promote <deployment-url>
 ```
 
 Ou pelo dashboard: Project → Deployments → "..." → Promote to Production.
+
+---
+
+## 9.1 Troubleshooting — Dashboard quebra em produção
+
+### Sintoma: estou logado, mas `/dashboard` mostra "Algo saiu do esperado"
+
+`/api/ready` retorna 200, mas `/api/health` retorna `down` com algum dos:
+
+| `/api/health` mostra | Causa | Correção |
+|---|---|---|
+| `db.error: Environment variable not found: DATABASE_URL` | DATABASE_URL ausente em Production (talvez só em Preview, ou faltando Redeploy) | Vercel → Settings → Env Vars → adicione `DATABASE_URL` em **Production** com formato pooler 6543 → Deployments → **Redeploy** |
+| `db.error: Can't reach database server` | URL inválida, senha rotacionada, ou IP da Vercel bloqueado | Confirmar pooler endpoint + senha atual no Supabase |
+| `db.error: PrismaClientInitializationError` | Prisma engine não inicializou (geralmente falta `DATABASE_URL` ou inválido) | Idem acima |
+| `redis.error: REDIS_URL ausente` | Var não setada e `REDIS_REQUIRED=true` (default em prod) | Setar URL `rediss://...`, OU para o primeiro teste setar `REDIS_REQUIRED=false` |
+| `redis.error: redis ping falhou` | URL setada mas inválida — comum se usar `https://` REST em vez de `rediss://` TLS | Trocar para endpoint TLS do Upstash |
+| `supabase.error: ausentes` | `NEXT_PUBLIC_SUPABASE_URL` ou `ANON_KEY` faltando | Adicionar em Production e Redeploy |
+
+O `error.tsx` do Lex já detecta `Environment variable not found` /
+`PrismaClientInitializationError` e mostra um aviso "Configuração de produção
+incompleta" com link direto para `/api/health` — em vez do genérico "Algo
+saiu do esperado".
+
+### Bypass temporário do Redis (primeiro teste com advogado)
+
+Se o Upstash ainda não está provisionado e você só quer mostrar o app para
+um advogado, pode rodar **sem** Redis em produção:
+
+```bash
+# Em Vercel → Settings → Environment Variables (Production):
+REDIS_REQUIRED=false
+# (deixe REDIS_URL em branco)
+```
+
+Depois Redeploy. `/api/health` vai marcar `redis: degraded` (`required:
+false`), mas o status geral fica `degraded` — o app continua 100% funcional.
+Reverta para `REDIS_REQUIRED=true` quando o Upstash estiver pronto.
+
+### Checklist após cada mudança de env var
+
+1. Variável marcada **Production** (e Preview se aplicável)?
+2. Após salvar, fui em **Deployments → Redeploy** (sem cache se em dúvida)?
+3. `curl https://<dominio>/api/health | jq` mostra `status: ok` ou
+   `degraded` (mas com `db.ok=true`)?
+4. `/dashboard` carrega sem o aviso de "Configuração de produção
+   incompleta"?
+
+---
+
+## 9.2 Workflow solo-dev — merge rápido sem review obrigatório
+
+Se você é o único maintainer e não quer ficar autorizando review/merge a
+cada PR, o caminho oficial é usar o **GitHub CLI**:
+
+```bash
+# Ver o estado do PR
+gh pr view 3
+gh pr checks 3
+
+# Mergear assim que os checks passarem (squash + delete branch)
+gh pr merge 3 --squash --delete-branch
+```
+
+Auto-merge: a Vercel/GitHub também suportam auto-merge. Habilite **uma vez**:
+
+```bash
+gh pr merge 3 --squash --delete-branch --auto
+```
+
+Isso enfileira o merge para **assim que os checks ficarem verdes**. Se algum
+check falhar, o auto-merge fica bloqueado e você corrige normalmente.
+
+### Se um ruleset bloquear o merge
+
+Settings → Rules → Rulesets → escolha o ruleset que protege `main`:
+
+- Para **push direto** (sem PR): desative *Require pull request before merging*.
+- Para **manter PR mas merge sem review**:
+  - desative *Require approvals* (deixe em 0).
+  - mantenha *Require status checks to pass before merging* — isso garante CI verde.
+- Para **auto-merge**: ative *Allow auto-merge* em Settings → General.
+
+> Em projetos solo-dev, manter o PR + checks obrigatórios + 0 aprovações é
+> o sweet spot: você ainda tem o histórico de PRs (audit), CI bloqueia
+> regressão, e não fica esperando review fantasma.
 
 ---
 

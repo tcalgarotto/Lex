@@ -11,14 +11,45 @@ Guia operacional completo. Cada categoria explica:
 
 ---
 
+## ⚠️ Regras de ouro na Vercel
+
+Estas três regras evitam 90% dos incidentes pós-deploy:
+
+1. **Escopo correto.** Toda variável usada em runtime de produção precisa estar
+   marcada como **Production** em Vercel → Settings → Environment Variables.
+   Variável só em **Preview** **não vaza** para Production. Sintoma típico:
+   `/api/ready` retorna `{ ready: true }` mas `/api/health` retorna `down` com
+   `Environment variable not found: DATABASE_URL`.
+2. **Redeploy obrigatório.** Editar/adicionar uma env var **não atualiza** o
+   deployment ativo. É preciso ir em Deployments → … → **Redeploy** (sem
+   "Use existing build cache" se houver dúvida) ou fazer um novo `git push`.
+3. **Formato exato.** O Prisma e o ioredis exigem URLs específicas:
+   - `DATABASE_URL` deve ser **pooler transaction** (porta 6543) com
+     `?pgbouncer=true&connection_limit=1`. URL direta na 5432 estoura limite
+     de conexões.
+   - `REDIS_URL` deve ser `rediss://` (TLS) — **não** a URL REST `https://...`
+     da Upstash. ioredis fala protocolo nativo, não REST.
+
+### Sintoma → causa raiz
+
+| Sintoma | Causa provável | Ação |
+|---|---|---|
+| Login funciona, dashboard quebra com "Algo saiu do esperado" | DATABASE_URL ausente em Production | Adicionar var, marcar Production, Redeploy |
+| `/api/health` → `db.error: Environment variable not found: DATABASE_URL` | Var só em Preview ou faltando Redeploy | Idem |
+| `/api/health` → `redis.error: redis ping falhou` (e REDIS_URL existe) | Usando URL REST `https://...` em vez de `rediss://` | Trocar para endpoint TLS |
+| `/api/health` → `redis.error: REDIS_URL ausente` em produção | Var não setada e `REDIS_REQUIRED=true` | Setar URL, ou para o primeiro teste setar `REDIS_REQUIRED=false` |
+| Build falha com `prisma migrate` erro de SSL | DIRECT_URL apontando para pooler 6543 | Trocar para 5432 (session) |
+
+---
+
 ## A. App
 
-| Var | Status | Onde pegar | Default seguro |
-|---|---|---|---|
-| `NODE_ENV` | P | Vercel define automaticamente em prod | `production` |
-| `NEXT_PUBLIC_APP_URL` | P | URL canônica de produção | `https://lex.suapdominio.com.br` |
-| `LOG_LEVEL` | R | — | `info` |
-| `PRISMA_QUERY_LOGS` | R | — | `false` |
+| Var                   | Status | Onde pegar                            | Default seguro                   |
+|-----------------------|--------|---------------------------------------|----------------------------------|
+| `NODE_ENV`            | P      | Vercel define automaticamente em prod | `production`                     |
+| `NEXT_PUBLIC_APP_URL` | P      | URL canônica de produção              | `https://lex-navy.vercel.app` |
+| `LOG_LEVEL`           | R      | —                                     | `info`                           |
+| `PRISMA_QUERY_LOGS`   | R      | —                                     | `false`                          |
 
 **Sem `NEXT_PUBLIC_APP_URL` correto**: links em emails/convites quebram, OAuth callback falha.
 
@@ -28,14 +59,39 @@ Guia operacional completo. Cada categoria explica:
 
 Console: https://supabase.com/dashboard
 
-| Var | Status | Onde pegar |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | P | Project Settings → API → Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | P | Project Settings → API → anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | P | Project Settings → API → service_role (manter secreto) |
-| `DATABASE_URL` | P | Project Settings → Database → Connection string → URI (modo Transaction, porta 6543) |
-| `DIRECT_URL` | P | Mesma fonte, modo Session (porta 5432) — só usado por `prisma migrate deploy` |
-| `STORAGE_BUCKET_DOCUMENTS` | P | Storage → criar bucket `documents` (privado) |
+| Var                             | Status | Onde pegar                                                                           |
+|---------------------------------|--------|--------------------------------------------------------------------------------------|
+| `NEXT_PUBLIC_SUPABASE_URL`      | P      | Project Settings → API → Project URL                                                 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | P      | Project Settings → API → anon key                                                    |
+| `SUPABASE_SERVICE_ROLE_KEY`     | P      | Project Settings → API → service_role (manter secreto)                               |
+| `DATABASE_URL`                  | P      | Project Settings → Database → Connection string → URI (modo **Transaction**, porta **6543**) |
+| `DIRECT_URL`                    | P      | Mesma fonte, modo **Session** (porta **5432**) — só usado por `prisma migrate deploy`        |
+| `STORAGE_BUCKET_DOCUMENTS`      | P      | Storage → criar bucket `documents` (privado)                                         |
+
+### Formato exato em produção
+
+```bash
+# DATABASE_URL — usado em RUNTIME (Server Components, API routes)
+# Precisa ser pooler TRANSACTION (porta 6543) com pgbouncer=true
+DATABASE_URL=postgresql://postgres.<project-ref>:<PWD>@aws-1-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
+
+# DIRECT_URL — usado APENAS por prisma migrate deploy
+# Precisa ser pooler SESSION (porta 5432) ou direct connection
+DIRECT_URL=postgresql://postgres.<project-ref>:<PWD>@aws-1-<region>.pooler.supabase.com:5432/postgres
+```
+
+> Pegue ambas em **Supabase → Project Settings → Database → Connection string**:
+> - "Transaction" pooler → vai em `DATABASE_URL`
+> - "Session" pooler → vai em `DIRECT_URL`
+>
+> Aspas/escape **não** são necessários, mas se for colar manualmente em Vercel,
+> preserve `&` literal (não `&amp;`).
+
+**Sem `DATABASE_URL` em runtime → o Prisma joga
+`PrismaClientInitializationError: Environment variable not found: DATABASE_URL`
+e qualquer Server Component que toque o banco quebra com "Algo saiu do
+esperado". O `error.tsx` do Lex já detecta isso e mostra a hint correta para
+o admin.**
 
 **Migrations:** rode `npm run db:migrate:deploy` em CI ou via Vercel Build Command.
 
@@ -47,26 +103,55 @@ Console: https://supabase.com/dashboard
 
 | Var | Status | Onde pegar |
 |---|---|---|
-| `REDIS_URL` | P | Upstash → Database → Endpoints → TLS rediss:// |
+| `REDIS_URL` | P | Upstash → Database → **Endpoints → TLS** (`rediss://`) |
 | `REDIS_REQUIRED` | P | `true` em produção (faz `/api/health` retornar 503 quando Redis cai) |
 | `REDIS_NAMESPACE` | R | `lex:prod` (separa preview/prod no mesmo cluster) |
+
+### Formato exato em produção
+
+```bash
+# CORRETO — protocolo Redis nativo via TLS (porta 6379 ou 6380)
+REDIS_URL=rediss://default:<password>@<host>.upstash.io:6379
+
+# ERRADO — endpoint REST da Upstash (HTTP)
+# REDIS_URL=https://<host>.upstash.io   ← ioredis NÃO fala REST
+```
+
+> Na console do Upstash, a aba "Connect" mostra duas URLs:
+> - **TLS** (`rediss://`) → use esta
+> - **REST API** (`https://`) → **não** funciona com `ioredis` (esta é para
+>   `@upstash/redis`, biblioteca diferente). Sintoma se usar a errada:
+>   `redis ping falhou` ou `Connection is closed.`
 
 **Sem Redis em produção**: rate-limit fica fail-open (não recomendado em prod), retrieval cache cai para LRU in-memory (cada lambda tem o seu — perde dedup cross-instance).
 
 Dev local pode operar **sem `REDIS_URL`**: `getRedis()` devolve `null` e tudo cai para fail-open silencioso (sem spam de ECONNREFUSED).
 
+### Primeiro teste sem Redis configurado
+
+Se você ainda não provisionou Upstash mas precisa subir um deploy para um
+advogado testar, defina temporariamente em Production:
+
+```bash
+REDIS_REQUIRED=false
+```
+
+(deixe `REDIS_URL` em branco). O `/api/health` vai marcar `redis: degraded`
+mas o app continua funcional. Reverta para `REDIS_REQUIRED=true` quando o
+Redis estiver pronto.
+
 ---
 
 ## D. Qdrant Cloud
 
-| Var | Status | Onde pegar |
-|---|---|---|
-| `QDRANT_URL` | P | Qdrant Cloud → Cluster → Endpoint |
-| `QDRANT_API_KEY` | P | Qdrant Cloud → API Keys |
-| `QDRANT_COLLECTION` | R | default `lex_main` (legacy) |
-| `QDRANT_COLLECTION_CORPUS_NORMS` | R | default `lex_corpus_norms` |
+| Var                                      | Status | Onde pegar                    |
+|------------------------------------------|-----|----------------------------------|
+| `QDRANT_URL`                             | P | Qdrant Cloud → Cluster → Endpoint  |
+| `QDRANT_API_KEY`                         | P | Qdrant Cloud → API Keys            |
+| `QDRANT_COLLECTION`                      | R | default `lex_main` (legacy)        |
+| `QDRANT_COLLECTION_CORPUS_NORMS`         | R | default `lex_corpus_norms`         |
 | `QDRANT_COLLECTION_CORPUS_JURISPRUDENCE` | R | default `lex_corpus_jurisprudence` |
-| `QDRANT_REQUIRED` | R | `true` em prod |
+| `QDRANT_REQUIRED`                        | R | `true` em prod                     |
 
 Setup das collections:
 ```bash
@@ -87,7 +172,7 @@ Console: https://app.inngest.com
 | `INNGEST_SIGNING_KEY` | P | App → Settings → Signing Key |
 | `INNGEST_APP_ID` | P | nome do app (`lex-production`) |
 
-Endpoint: `POST https://lex.suapdominio.com.br/api/inngest` (a Inngest descobre via deploy hook ou `inngest sync`).
+Endpoint: `POST https://lex-navy.vercel.app/api/inngest` (a Inngest descobre via deploy hook ou `inngest sync`).
 
 **Sem Inngest**: jobs assíncronos (corpus sync, document ingestion, alerts sync) ficam offline. UI continua funcionando — só não há background processing.
 
@@ -122,8 +207,8 @@ https://<project-ref>.supabase.co/auth/v1/callback
 
 E nas Redirect URLs do Supabase, adicione:
 ```
-https://lex.suapdominio.com.br/auth/callback
-https://lex.suapdominio.com.br/**
+https://lex-navy.vercel.app/auth/callback
+https://lex-navy.vercel.app/**
 https://*-<vercel-team>.vercel.app/**
 ```
 
@@ -189,6 +274,6 @@ npm run deploy:check
 NEXT_PUBLIC_APP_URL=... DATABASE_URL=... npm run vercel:check
 
 # Production após deploy
-curl -fsS https://lex.suapdominio.com.br/api/ready | jq .
-curl -fsS https://lex.suapdominio.com.br/api/health | jq .
+curl -fsS https://lex-navy.vercel.app/api/ready | jq .
+curl -fsS https://lex-navy.vercel.app/api/health | jq .
 ```

@@ -44,7 +44,7 @@ O Lex tem as seguintes funções Inngest (em `src/lib/inngest/`):
 6. **Antes de sincronizar, garantir que `/api/inngest` esteja acessível** (veja
    próxima seção). Sem isso o Inngest mostra "No syncs found".
 7. Inngest Console → Apps → `lex-production` → **Sync**.
-   - URL: `https://lex.suapdominio.com.br/api/inngest`
+   - URL: `https://lex-navy.vercel.app/api/inngest`
 8. Inngest descobre todas as funções automaticamente.
 
 ---
@@ -158,7 +158,7 @@ Cada função tem:
 
 ```bash
 # Disparar evento
-curl -X POST https://lex.suapdominio.com.br/api/inngest \
+curl -X POST https://lex-navy.vercel.app/api/inngest \
   -H "content-type: application/json" \
   -H "x-inngest-event-key: $INNGEST_EVENT_KEY" \
   -d '{"name":"lex/corpus.sync.requested","data":{"workspaceId":"<id>"}}'

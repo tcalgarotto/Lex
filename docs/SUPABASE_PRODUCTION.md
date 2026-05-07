@@ -4,18 +4,18 @@
 
 **Site URL:**
 ```
-https://lex.suapdominio.com.br
+https://lex-navy.vercel.app
 ```
 
 **Redirect URLs** (cole exatamente):
 ```
-https://lex.suapdominio.com.br/auth/callback
-https://lex.suapdominio.com.br/**
+https://lex-navy.vercel.app/auth/callback
+https://lex-navy.vercel.app/**
 https://*.vercel.app/**
-https://lex.suapdominio.com.br/forgot-password
-https://lex.suapdominio.com.br/reset-password
-https://lex.suapdominio.com.br/invite/**
-https://lex.suapdominio.com.br/onboarding/**
+https://lex-navy.vercel.app/forgot-password
+https://lex-navy.vercel.app/reset-password
+https://lex-navy.vercel.app/invite/**
+https://lex-navy.vercel.app/onboarding/**
 http://localhost:3000/auth/callback
 http://localhost:3000/**
 ```
