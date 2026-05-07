@@ -51,7 +51,7 @@ import('./src/lib/redis.ts').then(async (r) => {
 "
 
 # Produção
-curl https://lex.suapdominio.com.br/api/health | jq '.checks.redis'
+curl https://lex-navy.vercel.app/api/health | jq '.checks.redis'
 # Esperado: { "ok": true, "required": true, "latencyMs": <50ms> }
 ```
 

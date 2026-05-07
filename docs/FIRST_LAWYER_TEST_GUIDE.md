@@ -18,14 +18,14 @@ Antes de enviar a URL:
 - [ ] `/api/health` retorna `status=ok` ou `status=degraded` (com flags claras).
 - [ ] Workspace demo criado: `npm run seed:demo-legal` em staging.
 - [ ] Convidar o advogado pelo painel do Lex (`/settings/team`).
-- [ ] Compartilhar o link `https://lex.suapdominio.com.br/test-guide`.
+- [ ] Compartilhar o link `https://lex-navy.vercel.app/test-guide`.
 
 ---
 
 ## 2. Roteiro sugerido para o advogado
 
 ### Passo 1: criar conta
-- Abra `https://lex.suapdominio.com.br`.
+- Abra `https://lex-navy.vercel.app`.
 - Clique em "Entrar" → "Criar conta" ou aceite o convite recebido por email.
 - Confirme o email.
 

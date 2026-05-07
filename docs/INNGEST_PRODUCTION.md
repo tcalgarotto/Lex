@@ -25,7 +25,7 @@ O Lex tem as seguintes funções Inngest (em `src/lib/inngest/`):
    - `INNGEST_APP_ID=lex-production`
 5. Após o primeiro deploy, registre o endpoint:
    - Inngest Console → Apps → `lex-production` → "Sync"
-   - URL: `https://lex.suapdominio.com.br/api/inngest`
+   - URL: `https://lex-navy.vercel.app/api/inngest`
 6. Inngest descobrirá todas as funções automaticamente.
 
 ## Configuração padrão
@@ -45,7 +45,7 @@ Cada função tem:
 
 ```bash
 # Disparar evento
-curl -X POST https://lex.suapdominio.com.br/api/inngest \
+curl -X POST https://lex-navy.vercel.app/api/inngest \
   -H "content-type: application/json" \
   -H "x-inngest-event-key: $INNGEST_EVENT_KEY" \
   -d '{"name":"lex/corpus.sync.requested","data":{"workspaceId":"<id>"}}'

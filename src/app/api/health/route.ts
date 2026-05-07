@@ -23,6 +23,7 @@
  */
 
 import { NextResponse } from "next/server";
+import "@/lib/env-normalize"; // aplica POSTGRES_PRISMA_URL → DATABASE_URL antes de checar
 import { prisma } from "@/lib/prisma";
 import { getRedis, isRedisAvailable, isRedisRequired } from "@/lib/redis";
 
@@ -79,7 +80,11 @@ function hintForError(component: string, message: string): string {
 
   if (component === "db") {
     if (m.includes("environment variable not found: database_url") || m.includes("database_url")) {
-      return "DATABASE_URL ausente neste deployment. Adicione em Vercel → Settings → Environment Variables (escopo Production) e clique em Redeploy.";
+      const hasPostgresPrisma = Boolean(process.env["POSTGRES_PRISMA_URL"]?.trim());
+      if (hasPostgresPrisma) {
+        return "POSTGRES_PRISMA_URL existe (Vercel Supabase Integration), mas DATABASE_URL não. Copie o valor de POSTGRES_PRISMA_URL para DATABASE_URL em Vercel → Environment Variables (Production) e Redeploy.";
+      }
+      return "DATABASE_URL ausente neste deployment. Adicione em Vercel → Settings → Environment Variables (escopo Production) e clique em Redeploy. Use o pooler transaction do Supabase (porta 6543, pgbouncer=true).";
     }
     if (m.includes("can't reach database server") || m.includes("connect econnrefused")) {
       return "Postgres inacessível. Confirme que DATABASE_URL aponta para Supabase pooler (porta 6543, pgbouncer=true&connection_limit=1) e que IP da Vercel não está bloqueado.";

@@ -99,7 +99,7 @@ function buildAdminHint(msg: string): string {
     lower.includes("environment variable not found: database_url") ||
     (lower.includes("database_url") && !lower.includes("can't reach"))
   ) {
-    return "DATABASE_URL não está definido neste deployment. Adicione em Vercel → Settings → Environment Variables (escopo Production), use o pooler do Supabase (porta 6543, pgbouncer=true&connection_limit=1) e clique em Redeploy.";
+    return "DATABASE_URL não está definido neste deployment. Se o projeto usa a Vercel Supabase Integration, copie o valor de POSTGRES_PRISMA_URL para DATABASE_URL (e POSTGRES_URL_NON_POOLING para DIRECT_URL). Senão, use o pooler do Supabase (porta 6543, pgbouncer=true&connection_limit=1). Após editar, faça Redeploy sem cache.";
   }
   if (lower.includes("can't reach database server") || lower.includes("connect econnrefused")) {
     return "Postgres inacessível. Verifique se DATABASE_URL aponta para o Supabase pooler e se a senha não foi rotacionada.";
