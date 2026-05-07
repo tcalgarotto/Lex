@@ -16,10 +16,11 @@ test.describe("health endpoints", () => {
 
   test("GET /api/health -> JSON com checks por componente", async ({ request }) => {
     const res = await request.get("/api/health");
-    // Pode ser 200 (ok) ou 503 (degraded) — ambos são válidos.
+    // 200 = ok | degraded; 503 = down (algum check `required` falhou — ex.: DB
+    // ausente em CI E2E). Os três são respostas estruturadas válidas.
     expect([200, 503]).toContain(res.status());
     const body = await res.json();
-    expect(["ok", "degraded"]).toContain(body.status);
+    expect(["ok", "degraded", "down"]).toContain(body.status);
     expect(body.checks).toBeDefined();
     for (const k of ["db", "redis", "qdrant", "supabase"]) {
       expect(body.checks[k]).toBeDefined();

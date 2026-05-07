@@ -14,18 +14,22 @@ export default async function InvitePage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const inv = await prisma.invitation.findUnique({
-    where: { token },
-    include: { workspace: { select: { name: true, slug: true } } },
-  });
 
+  // 1) Auth FIRST — sem sessão, devolve para /login?next=/invite/<token>.
+  //    Crítico: precisa rodar antes de qualquer query Prisma para que a página
+  //    funcione mesmo em ambientes com DB indisponível (ex.: CI E2E sem
+  //    Postgres real).
   const user = await getAuthUser();
-
-  // Se não está logado, manda pra login com next= para voltar aqui
   if (!user) {
     const next = encodeURIComponent(`/invite/${token}`);
     redirect(`/login?next=${next}`);
   }
+
+  // 2) Só agora consulta o convite.
+  const inv = await prisma.invitation.findUnique({
+    where: { token },
+    include: { workspace: { select: { name: true, slug: true } } },
+  });
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.15),transparent_50%)] px-4">
