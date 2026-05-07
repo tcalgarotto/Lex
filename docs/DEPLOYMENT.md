@@ -33,16 +33,16 @@ Caminho oficial para colocar o Lex 100% online, sem nada local.
 ## 2. Setup Supabase
 
 ### 2.1 Auth → URL Configuration
-- **Site URL:** `https://lex.suapdominio.com.br`
+- **Site URL:** `https://lex-navy.vercel.app`
 - **Redirect URLs** (adicione todas):
   ```
-  https://lex.suapdominio.com.br/auth/callback
-  https://lex.suapdominio.com.br/**
+  https://lex-navy.vercel.app/auth/callback
+  https://lex-navy.vercel.app/**
   https://*.vercel.app/**
-  https://lex.suapdominio.com.br/forgot-password
-  https://lex.suapdominio.com.br/reset-password
-  https://lex.suapdominio.com.br/invite/**
-  https://lex.suapdominio.com.br/onboarding/**
+  https://lex-navy.vercel.app/forgot-password
+  https://lex-navy.vercel.app/reset-password
+  https://lex-navy.vercel.app/invite/**
+  https://lex-navy.vercel.app/onboarding/**
   http://localhost:3000/auth/callback
   http://localhost:3000/**
   ```
@@ -197,7 +197,7 @@ Veja `docs/QDRANT_CLOUD_SETUP.md`.
 2. Copie `INNGEST_EVENT_KEY` e `INNGEST_SIGNING_KEY` para a Vercel.
 3. Após o primeiro deploy, registre o endpoint:
    ```
-   https://lex.suapdominio.com.br/api/inngest
+   https://lex-navy.vercel.app/api/inngest
    ```
 4. Inngest Cloud descobre as funções automaticamente.
 
@@ -253,7 +253,7 @@ Resumo: o Lex já usa Inngest para todos os jobs sub-diários. Vercel cron fica 
 
 | | Preview | Production |
 |---|---|---|
-| URL | `https://<branch>-<hash>.vercel.app` | `https://lex.suapdominio.com.br` |
+| URL | `https://<branch>-<hash>.vercel.app` | `https://lex-navy.vercel.app` |
 | Supabase | Mesmo projeto | Mesmo projeto |
 | Redis | Mesmo cluster (namespace `lex:preview`) | namespace `lex:prod` |
 | Inngest | App `lex-preview` | App `lex-production` |
@@ -266,8 +266,8 @@ Resumo: o Lex já usa Inngest para todos os jobs sub-diários. Vercel cron fica 
 
 ```bash
 # Smoke (do laptop)
-curl -fsS https://lex.suapdominio.com.br/api/ready | jq .
-curl -fsS https://lex.suapdominio.com.br/api/health | jq .
+curl -fsS https://lex-navy.vercel.app/api/ready | jq .
+curl -fsS https://lex-navy.vercel.app/api/health | jq .
 ```
 
 Esperado:
@@ -340,6 +340,45 @@ Reverta para `REDIS_REQUIRED=true` quando o Upstash estiver pronto.
    `degraded` (mas com `db.ok=true`)?
 4. `/dashboard` carrega sem o aviso de "Configuração de produção
    incompleta"?
+
+---
+
+## 9.2 Workflow solo-dev — merge rápido sem review obrigatório
+
+Se você é o único maintainer e não quer ficar autorizando review/merge a
+cada PR, o caminho oficial é usar o **GitHub CLI**:
+
+```bash
+# Ver o estado do PR
+gh pr view 3
+gh pr checks 3
+
+# Mergear assim que os checks passarem (squash + delete branch)
+gh pr merge 3 --squash --delete-branch
+```
+
+Auto-merge: a Vercel/GitHub também suportam auto-merge. Habilite **uma vez**:
+
+```bash
+gh pr merge 3 --squash --delete-branch --auto
+```
+
+Isso enfileira o merge para **assim que os checks ficarem verdes**. Se algum
+check falhar, o auto-merge fica bloqueado e você corrige normalmente.
+
+### Se um ruleset bloquear o merge
+
+Settings → Rules → Rulesets → escolha o ruleset que protege `main`:
+
+- Para **push direto** (sem PR): desative *Require pull request before merging*.
+- Para **manter PR mas merge sem review**:
+  - desative *Require approvals* (deixe em 0).
+  - mantenha *Require status checks to pass before merging* — isso garante CI verde.
+- Para **auto-merge**: ative *Allow auto-merge* em Settings → General.
+
+> Em projetos solo-dev, manter o PR + checks obrigatórios + 0 aprovações é
+> o sweet spot: você ainda tem o histórico de PRs (audit), CI bloqueia
+> regressão, e não fica esperando review fantasma.
 
 ---
 

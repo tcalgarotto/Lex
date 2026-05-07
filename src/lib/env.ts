@@ -139,18 +139,35 @@ export function assertCriticalEnv(): void {
   ] as const;
   const missing = required.filter((k) => !process.env[k]?.trim());
   if (missing.length > 0) {
+    const hints: string[] = [];
+    if (
+      missing.includes("DATABASE_URL") &&
+      process.env["POSTGRES_PRISMA_URL"]?.trim()
+    ) {
+      hints.push(
+        "💡 POSTGRES_PRISMA_URL detectado — defina DATABASE_URL com o mesmo valor (ou deixe que `env-normalize` faça via fallback automático).",
+      );
+    }
     console.error(
       `❌ Variáveis críticas ausentes: ${missing.join(", ")}.\n` +
-        `Crie/preencha o arquivo .env antes de iniciar o servidor.`,
+        (hints.length > 0 ? `${hints.join("\n")}\n` : "") +
+        `Em produção (Vercel): Settings → Environment Variables (escopo Production) → Redeploy.\n` +
+        `Em dev: crie/preencha o arquivo .env.`,
     );
     return;
   }
 
   const warnings: string[] = [];
   if (!process.env["DIRECT_URL"]?.trim()) {
-    warnings.push(
-      "⚠️  DIRECT_URL não definido — Prisma migrate/seed pode falhar no Supabase. Defina o pooler em modo session (porta 5432).",
-    );
+    if (process.env["POSTGRES_URL_NON_POOLING"]?.trim()) {
+      warnings.push(
+        "⚠️  DIRECT_URL não definido — defina com o mesmo valor de POSTGRES_URL_NON_POOLING (ou deixe `env-normalize` aplicar fallback no boot).",
+      );
+    } else {
+      warnings.push(
+        "⚠️  DIRECT_URL não definido — Prisma migrate/seed pode falhar no Supabase. Defina o pooler em modo session (porta 5432).",
+      );
+    }
   }
   if (!process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim()) {
     warnings.push(

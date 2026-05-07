@@ -47,7 +47,7 @@ Estas três regras evitam 90% dos incidentes pós-deploy:
 | Var                   | Status | Onde pegar                            | Default seguro                   |
 |-----------------------|--------|---------------------------------------|----------------------------------|
 | `NODE_ENV`            | P      | Vercel define automaticamente em prod | `production`                     |
-| `NEXT_PUBLIC_APP_URL` | P      | URL canônica de produção              | `https://lex.suapdominio.com.br` |
+| `NEXT_PUBLIC_APP_URL` | P      | URL canônica de produção              | `https://lex-navy.vercel.app` |
 | `LOG_LEVEL`           | R      | —                                     | `info`                           |
 | `PRISMA_QUERY_LOGS`   | R      | —                                     | `false`                          |
 
@@ -172,7 +172,7 @@ Console: https://app.inngest.com
 | `INNGEST_SIGNING_KEY` | P | App → Settings → Signing Key |
 | `INNGEST_APP_ID` | P | nome do app (`lex-production`) |
 
-Endpoint: `POST https://lex.suapdominio.com.br/api/inngest` (a Inngest descobre via deploy hook ou `inngest sync`).
+Endpoint: `POST https://lex-navy.vercel.app/api/inngest` (a Inngest descobre via deploy hook ou `inngest sync`).
 
 **Sem Inngest**: jobs assíncronos (corpus sync, document ingestion, alerts sync) ficam offline. UI continua funcionando — só não há background processing.
 
@@ -207,8 +207,8 @@ https://<project-ref>.supabase.co/auth/v1/callback
 
 E nas Redirect URLs do Supabase, adicione:
 ```
-https://lex.suapdominio.com.br/auth/callback
-https://lex.suapdominio.com.br/**
+https://lex-navy.vercel.app/auth/callback
+https://lex-navy.vercel.app/**
 https://*-<vercel-team>.vercel.app/**
 ```
 
@@ -274,6 +274,6 @@ npm run deploy:check
 NEXT_PUBLIC_APP_URL=... DATABASE_URL=... npm run vercel:check
 
 # Production após deploy
-curl -fsS https://lex.suapdominio.com.br/api/ready | jq .
-curl -fsS https://lex.suapdominio.com.br/api/health | jq .
+curl -fsS https://lex-navy.vercel.app/api/ready | jq .
+curl -fsS https://lex-navy.vercel.app/api/health | jq .
 ```
