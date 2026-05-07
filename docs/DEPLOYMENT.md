@@ -145,6 +145,50 @@ Veja `docs/INNGEST_PRODUCTION.md`.
 
 ---
 
+## 6.1 Vercel Hobby vs Pro — limites de cron
+
+A Vercel impõe limites de cron por plano:
+
+| Plano | Frequência mínima de cron |
+|---|---|
+| **Hobby** (free) | **1× por dia** apenas |
+| **Pro** | até **1× por minuto** |
+
+> Cron expressions como `*/5 * * * *`, `0 * * * *` (hourly) ou `*/30 * * * *`
+> **falham o deploy** no plano Hobby com:
+> `Hobby accounts are limited to daily cron jobs.`
+
+### Como o Lex lida com isso
+
+- **`vercel.json` não declara `crons` por padrão** — para garantir compatibilidade Hobby.
+- **Para o primeiro teste com advogado, cron NÃO é necessário**:
+  - Health pode ser checado manualmente: `curl https://<dominio>/api/health`.
+  - Ou via script: `NEXT_PUBLIC_APP_URL=https://<dominio> npm run deploy:check`.
+  - Ou monitoring externo gratuito (UptimeRobot, BetterStack) batendo em `/api/health` — **fora da Vercel**, sem limite de plano.
+
+### Quando habilitar cron diário (Hobby)
+
+Quando precisar de jobs agendados (ex.: corpus sync), declare no `vercel.json`:
+
+```json
+"crons": [
+  { "path": "/api/cron/corpus-sync", "schedule": "0 9 * * *" }
+]
+```
+
+`0 9 * * *` = diariamente às 09:00 UTC. Único formato aceito no Hobby.
+
+### Quando precisar de cron sub-diário
+
+Caminhos sem upgrade para Pro:
+1. **Inngest Cloud cron** — Inngest tem schedule próprio (sem dependência da Vercel) e o free tier aceita schedules de minutos. Use isto para `alerts:sync`, `integrations:sync`, etc. — já é o caminho oficial do Lex (`docs/INNGEST_PRODUCTION.md`).
+2. **GitHub Actions com `schedule:`** — workflow batendo em `https://<dominio>/api/...` a cada N minutos.
+3. **UptimeRobot Free** — 5 minutos.
+
+Resumo: o Lex já usa Inngest para todos os jobs sub-diários. Vercel cron fica reservado apenas para tarefas diárias muito ocasionais — e o `vercel.json` atual não precisa dele.
+
+---
+
 ## 7. Diferença Preview vs Production
 
 | | Preview | Production |

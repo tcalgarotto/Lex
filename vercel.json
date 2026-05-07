@@ -9,12 +9,6 @@
       "master": true
     }
   },
-  "crons": [
-    {
-      "path": "/api/health",
-      "schedule": "*/5 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
