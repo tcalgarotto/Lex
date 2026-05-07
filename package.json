@@ -37,7 +37,8 @@
     "dev:full": "npm run infra:up && npm run dev",
     "deploy:check": "tsx --env-file=.env scripts/deploy-check.ts",
     "production:check": "tsx --env-file=.env.production scripts/deploy-check.ts",
-    "vercel:check": "tsx scripts/deploy-check.ts"
+    "vercel:check": "tsx scripts/deploy-check.ts",
+    "inngest:check": "tsx scripts/inngest-check.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.12",
