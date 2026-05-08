@@ -19,7 +19,7 @@
     "ingest:corpus": "tsx --env-file=.env seed/ingest-corpus.ts",
     "corpus:sync": "tsx --env-file=.env scripts/corpus-sync.ts",
     "corpus:seed": "tsx --env-file=.env scripts/corpus-seed.ts",
-    "corpus:seed:fixture": "tsx --env-file=.env scripts/corpus-seed.ts -- --provider=FIXTURE --inline",
+    "corpus:seed:fixture": "tsx --env-file=.env scripts/corpus-seed.ts -- --provider=FIXTURE",
     "corpus:seed:lexml": "tsx --env-file=.env scripts/corpus-seed.ts -- --provider=LEXML",
     "corpus:seed:lexml:dry": "tsx --env-file=.env scripts/corpus-seed.ts -- --provider=LEXML --dry-run",
     "corpus:seed:stf": "tsx --env-file=.env scripts/corpus-seed.ts -- --provider=STF",
