@@ -125,6 +125,82 @@ describe("parseConstitutionMarkdown", () => {
   });
 });
 
+describe("parseConstitutionMarkdown — formato h4 (#### Art. Nº)", () => {
+  const CF_H4 = `# Constituição da República Federativa do Brasil
+
+## Título I: Dos Princípios Fundamentais
+
+#### Art. 1º A República Federativa do Brasil constitui-se em Estado democrático.
+
+  I - a soberania;
+
+  II - a cidadania;
+
+#### Art. 10. É assegurada a participação dos trabalhadores.
+
+## Título III: Da Organização do Estado
+
+### Capítulo VII: Da Administração Pública
+
+#### Seção I: Disposições Gerais
+
+#### Art. 37. A administração pública obedecerá aos princípios.
+
+#### Art. 29-A. O total da despesa.
+
+## Ato das Disposições Constitucionais Transitórias
+
+#### Art. 1º O Presidente da República prestará compromisso.
+`;
+  const parsed = parseConstitutionMarkdown(CF_H4);
+
+  it("parser de h4 captura o mesmo número de artigos", () => {
+    expect(parsed.articles.length).toBe(5);
+    expect(parsed.cfStats.articlesMain).toBe(4);
+    expect(parsed.cfStats.articlesAdct).toBe(1);
+  });
+
+  it("parser de h4 captura sufixo -A", () => {
+    const a29 = parsed.articles.find((a) => a.number === "29-A");
+    expect(a29?.ref).toBe("Art. 29-A");
+  });
+
+  it("parser de h4 distingue Art. (h4) de Seção (h4)", () => {
+    const a37 = parsed.articles.find((a) => a.number === "37");
+    expect(a37).toBeDefined();
+    expect(a37?.fullPath).toContain("Seção I");
+    expect(a37?.fullPath).toContain("Capítulo VII");
+  });
+
+  it("parser de h4 não deixa 'Seção' virar artigo", () => {
+    const refs = parsed.articles.map((a) => a.ref);
+    expect(refs.every((r) => r.startsWith("Art. "))).toBe(true);
+  });
+
+  it("regressão: caput iniciado por letra maiúscula NÃO vira sufixo", () => {
+    const md = `# CF
+## Título I
+#### Art. 1º A República Federativa.
+#### Art. 2º São Poderes.
+#### Art. 3º Constituem objetivos.
+#### Art. 29-A. O total da despesa.
+`;
+    const out = parseConstitutionMarkdown(md);
+    const numbers = out.articles.map((a) => a.number);
+    // Antes do fix, "1-A", "2-S", "3-C" surgiam como falsos sufixos.
+    expect(numbers).toEqual(["1", "2", "3", "29-A"]);
+    expect(out.articles.find((a) => a.number === "29-A")?.suffix).toBe("A");
+    expect(out.articles.find((a) => a.number === "1")?.suffix).toBeUndefined();
+  });
+
+  it("aceita variação com espaço ao redor do hífen (estilo Planalto)", () => {
+    const md = `# CF\n## Título\n#### Art. 313 -A. Hipótese de prisão preventiva.\n`;
+    const out = parseConstitutionMarkdown(md);
+    expect(out.articles[0]?.number).toBe("313-A");
+    expect(out.articles[0]?.suffix).toBe("A");
+  });
+});
+
 describe("parseConstitutionMarkdown — robustez", () => {
   it("não explode com markdown vazio", () => {
     const out = parseConstitutionMarkdown("");

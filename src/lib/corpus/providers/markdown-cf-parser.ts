@@ -33,20 +33,41 @@ const TITULO_RE = /^## (Título\s+[IVXLCDM\d]+\s*[:\-—]?\s*.+)$/i;
 const ADCT_RE = /^## (Ato das Disposi[çc][õo]es Constitucionais Transit[óo]rias.*)$/i;
 const PREAMBLE_HEADING_RE = /^##\s*(Pre[âa]mbulo|Disposi[çc][õo]es Preliminares).*$/i;
 const CAPITULO_RE = /^### (Cap[íi]tulo\s+[IVXLCDM\d]+\s*[:\-—]?\s*.+)$/i;
-const SECAO_RE = /^#### (Se[çc][ãa]o\s+[IVXLCDM\d]+\s*[:\-—]?\s*.+)$/i;
-const SUBSECAO_RE = /^#####\s+(Subse[çc][ãa]o\s+[IVXLCDM\d]+\s*[:\-—]?\s*.+)$/i;
+const SECAO_RE = /^#{4,5} (Se[çc][ãa]o\s+[IVXLCDM\d]+\s*[:\-—]?\s*.+)$/i;
+const SUBSECAO_RE = /^#{4,6}\s+(Subse[çc][ãa]o\s+[IVXLCDM\d]+\s*[:\-—]?\s*.+)$/i;
 
-/** Marca de início de artigo: `**Art. N**` ou `**Art. N.**` ou `**Art. Nº**`. */
+/**
+ * Marca de início de artigo. Aceita dois formatos comumente encontrados em
+ * markdowns oficiais:
+ *
+ *   1. Bold inline:  `**Art. 1º** A República...`
+ *   2. Heading h4:   `#### Art. 1º A República...`   ← formato preferido
+ *
+ * Sufixo (`-A`, `-B`, …) exige HÍFEN explícito (com ou sem espaços ao redor),
+ * caso contrário a letra inicial do caput vira falso-positivo. Exemplos:
+ *
+ *   `**Art. 1º** A República...`          → suffix=undefined (correto)
+ *   `**Art. 29-A** O total...`            → suffix=A
+ *   `**Art. 313 -A.** Caso...` (Planalto) → suffix=A
+ *
+ * Grupos: 1=número (com pontos de milhar opcionais), 2=sufixo, 3=resto.
+ */
 const ARTICLE_HEADER_RE =
-  /^\s*\*\*Art\.\s*(\d+(?:\.\d{3})*)(?:[º°ªo])?(?:[-\s]*([A-Z]))?\.?\*\*\s*(.*)$/u;
+  /^\s*(?:\*\*|#{2,6}\s+)Art\.\s*(\d+(?:\.\d{3})*)(?:[º°ªo])?(?:\s*-\s*([A-Z]))?\.?(?:\*\*)?\s*(.*)$/u;
 
 /** § Nº ou § N. ou § Parágrafo único. */
 const PARAGRAPH_HEADER_RE =
   /^\s*\*\*\s*(?:§\s*\d+(?:[º°ªo])?\.?|Par[áa]grafo\s+[ÚUú]nico\.?)\s*\*\*\s*(.*)$/iu;
 /** I - / II - / III - texto. Aceita até 6 chars de indentação. */
 const INCISO_LINE_RE = /^\s{0,6}([IVXLCDM]+)\s*[\-–—]\s+(.+)$/u;
-/** Alíneas: "a) texto", "_a)_ texto", "  a) texto". Marcadas com underscores no MD oficial. */
-const ALINEA_LINE_RE = /^\s{0,8}_?([a-z])_?\)\s+(.+)$/u;
+/**
+ * Alíneas: aceita as variações usadas em markdowns oficiais:
+ *   `  a) texto`           (sem ênfase)
+ *   `  _a_) texto`         (italic em volta da letra)
+ *   `  _a)_ texto`         (italic em volta da letra-e-parêntese — formato CF)
+ *   `  a)_ texto`          (italic só depois)
+ */
+const ALINEA_LINE_RE = /^\s{0,8}_?([a-z])_?\)_?\s+(.+)$/u;
 /** Empty/whitespace-only line. */
 const BLANK_RE = /^\s*$/u;
 
