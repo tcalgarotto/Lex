@@ -239,14 +239,123 @@ Alternativas: SES (`AWS_*`), SMTP genérico, ou Supabase Auth SMTP nativo.
 
 ---
 
-## J. Provedores jurídicos
+## J. Provedores jurídicos (corpus RAG)
 
-| Var | Status | Onde pegar |
+> Detalhes completos de pipeline e como popular: ver §J.4 abaixo + `docs/QDRANT_CLOUD_SETUP.md`.
+
+### J.1 Variáveis
+
+| Var | Status | Onde pegar / o que faz |
 |---|---|---|
-| `DATAJUD_API_KEY` | R | CNJ DataJud público |
-| `DATAJUD_ALIAS` | R | sigla do tribunal alvo |
-| `STF_PROVIDER_MODE` | R | `live` em prod, `fixture` em dev |
-| `STJ_PROVIDER_MODE` | R | `live` em prod, `fixture` em dev |
+| `DATAJUD_API_KEY`   | R (apenas se for usar DataJud) | https://datajud-wiki.cnj.jus.br/api-publica/acesso → preencha o formulário do CNJ → key gratuita por email em poucos minutos |
+| `DATAJUD_ALIAS`     | R (acompanha `DATAJUD_API_KEY`) | sigla do índice ES no DataJud — ex.: `api_publica_tjsp`, `api_publica_stj`, `api_publica_trf3`. Lista oficial: https://datajud-wiki.cnj.jus.br/api-publica/endpoints |
+| `STF_PROVIDER_MODE` | R | `live` em prod (provider real do portal STF), `fixture` em dev |
+| `STJ_PROVIDER_MODE` | R | `live` em prod (provider real STJ), `fixture` em dev |
+
+> **STF/STJ/LexML/Fixture não exigem chave** — são portais públicos. As variáveis `*_PROVIDER_MODE` apenas alternam entre o provider real (`live`) e o embutido (`fixture`).
+
+### J.2 Mapa: o que cada provider alimenta no RAG
+
+| Provider | Chave? | Cobre | Vai para a collection |
+|---|---|---|---|
+| `FIXTURE` | não — embutido em `src/lib/corpus/providers/fixture.ts` | CDC, CC, CPC, CF/88 (preâmbulo + arts), 1 súmula demo | depende do `kind` de cada item |
+| `LEXML`   | não — `https://www.lexml.gov.br/busca/SRU` | **toda** legislação federal/estadual/municipal oficial brasileira (vade mecum completo) | `lex_corpus_norms` |
+| `STF`     | não — scraping público | súmulas + súmulas vinculantes do STF | `lex_corpus_jurisprudence` |
+| `STJ`     | não — `https://scon.stj.jus.br` | acórdãos e súmulas STJ | `lex_corpus_jurisprudence` |
+| `DATAJUD` | **sim — `DATAJUD_API_KEY` (CNJ)** | movimentações processuais de TJs, TRFs, TRTs, TST, TSE, STJ, STF | `lex_corpus_jurisprudence` |
+
+### J.3 Roteamento collection ↔ provider é automático
+
+Não decida manualmente. O `kind` de cada `LegalNorm` decide a collection:
+
+```
+ORDINARY_LAW, COMPLEMENTARY_LAW, DECREE,
+CONSTITUTIONAL_AMENDMENT, MEDIDA_PROVISORIA, ...     →  lex_corpus_norms
+JURISPRUDENCE_STF, JURISPRUDENCE_STJ, JURISPRUDENCE_TST,
+SUMULA_*, REPETITIVE_THEME, JURISPRUDENCE_OTHER     →  lex_corpus_jurisprudence
+```
+
+Implementação: `src/lib/corpus/qdrant-collections.ts` → `collectionForKind(kind)`.
+
+### J.4 Como popular o corpus (passo-a-passo)
+
+**Pré-requisito:** `DEEPINFRA_API_KEY` setada (gera os vetores BGE-M3 1024-d).
+
+**1. Criar collections (uma vez):**
+
+```bash
+QDRANT_URL=https://<seu>.qdrant.io \
+QDRANT_API_KEY=<sua> \
+npm run qdrant:init
+```
+
+Cria `lex_main`, `lex_corpus_norms`, `lex_corpus_jurisprudence` + payload indexes. Idempotente.
+
+**2. Bootstrap rápido com fixture (recomendado para o primeiro teste com advogado):**
+
+```bash
+DATABASE_URL=<pooler 6543> DIRECT_URL=<pooler 5432> \
+QDRANT_URL=<seu> QDRANT_API_KEY=<sua> \
+DEEPINFRA_API_KEY=<sua> \
+npm run corpus:sync -- --provider=FIXTURE --inline
+```
+
+Popula CDC, Código Civil, CPC, CF/88 e 1 súmula em ~30s. Sem Inngest, sem chaves de provedor.
+
+**3. Vade mecum oficial via LexML (legislação federal):**
+
+```bash
+# Leis ordinárias
+npm run corpus:sync -- --provider=LEXML --kind=ORDINARY_LAW --max-pages=20 --inline
+# Constituição + emendas
+npm run corpus:sync -- --provider=LEXML --kind=CONSTITUTIONAL_AMENDMENT --max-pages=5 --inline
+# Decretos
+npm run corpus:sync -- --provider=LEXML --kind=DECREE --max-pages=10 --inline
+```
+
+Cada página = 50 normas. Watermark incremental — sync subsequente só pega novas.
+
+**4. Jurisprudência:**
+
+```bash
+npm run corpus:sync -- --provider=STF --inline                    # súmulas STF
+npm run corpus:sync -- --provider=STJ --max-pages=5 --inline      # acórdãos STJ
+DATAJUD_API_KEY=<sua> DATAJUD_ALIAS=api_publica_tjsp \
+  npm run corpus:sync -- --provider=DATAJUD --max-pages=10 --inline
+```
+
+**5. Em produção (recorrente, via Inngest):**
+
+Sem `--inline` = dispatch para Inngest Cloud, que roda async com retries, throttle e watermark:
+
+```bash
+npm run corpus:sync -- --provider=LEXML --kind=ORDINARY_LAW --max-pages=20
+```
+
+Inngest Cloud agenda corpus-sync diário sozinho — não exige cron da Vercel.
+
+### J.5 Especialidades (direito do consumidor, tributário, etc.)
+
+Não há entidade separada. O Lex deriva especialidade de:
+
+1. `LegalNorm.tags` — array de strings (ex.: `["consumidor", "responsabilidade civil"]`).
+   Vem automático dos metadados oficiais (LexML preenche via DC.subject).
+2. `LegalNorm.kind` — categoria estrutural.
+
+O classificador de intenção (`src/lib/retrieval/legal/intent.ts`) detecta a área da pergunta do advogado e filtra retrieval por `tags`/`kind`. **Funciona sem você marcar nada manualmente**, desde que o corpus tenha sido ingerido.
+
+### J.6 Verificação
+
+```bash
+# Pontos no Qdrant
+curl -H "api-key: $QDRANT_API_KEY" \
+  "$QDRANT_URL/collections/lex_corpus_norms" | jq '.result.points_count'
+curl -H "api-key: $QDRANT_API_KEY" \
+  "$QDRANT_URL/collections/lex_corpus_jurisprudence" | jq '.result.points_count'
+
+# Normas no Postgres
+npx prisma studio   # tabelas: LegalNorm, LegalNormVersion, LegalChunk, LegalCitation
+```
 
 ---
 

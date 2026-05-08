@@ -26,6 +26,7 @@ import { NextResponse } from "next/server";
 import "@/lib/env-normalize"; // aplica POSTGRES_PRISMA_URL → DATABASE_URL antes de checar
 import { prisma } from "@/lib/prisma";
 import { getRedis, isRedisAvailable, isRedisRequired } from "@/lib/redis";
+import { snapshotProviderStatuses } from "@/lib/corpus/providers/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -232,6 +233,16 @@ export async function GET() {
     Object.values(checks).find((c) => !c.ok)?.hint ??
     "";
 
+  // Provedores jurídicos não bloqueiam health (são informativos): apresentam
+  // visibilidade do registro e ajudam o admin a saber se DataJud aguarda chave,
+  // ou se LexML/STF/STJ estão disabled. Não conta para `criticalDown`.
+  let providers: ReturnType<typeof snapshotProviderStatuses> | undefined;
+  try {
+    providers = snapshotProviderStatuses();
+  } catch {
+    providers = undefined;
+  }
+
   return NextResponse.json(
     {
       status,
@@ -241,6 +252,7 @@ export async function GET() {
         QDRANT_REQUIRED: qdrantRequired,
         NODE_ENV: process.env["NODE_ENV"] ?? "development",
       },
+      ...(providers ? { providers } : {}),
       ...(primaryHint ? { hint: primaryHint } : {}),
       timestamp: new Date().toISOString(),
     },

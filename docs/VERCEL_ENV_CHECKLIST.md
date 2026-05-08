@@ -98,15 +98,48 @@ EMAIL_FROM=lex@<dominio-verificado>
 SENTRY_DSN=<...>
 NEXT_PUBLIC_SENTRY_DSN=<...>
 
-# Provedores jurídicos
-DATAJUD_API_KEY=<...>
+# Provedores jurídicos públicos (corpus RAG)
+# LexML/STF/STJ são gratuitos, sem chave. DataJud exige chave (CNJ).
+LEXML_BASE_URL=https://www.lexml.gov.br/busca/SRU
+LEXML_PROVIDER_MODE=live
+LEXML_RATE_LIMIT_PER_MINUTE=20
+LEXML_DEFAULT_PAGE_SIZE=50
+LEXML_MAX_PAGES_PER_SYNC=20
+
+STF_BASE_URL=https://portal.stf.jus.br
 STF_PROVIDER_MODE=live
+STF_RATE_LIMIT_PER_MINUTE=10
+
+STJ_BASE_URL=https://scon.stj.jus.br
 STJ_PROVIDER_MODE=live
+STJ_RATE_LIMIT_PER_MINUTE=10
+
+# DataJud — sem chave, deixe disabled (não quebra build/health)
+DATAJUD_BASE_URL=https://api-publica.datajud.cnj.jus.br
+DATAJUD_API_KEY=                # solicite em https://datajud-wiki.cnj.jus.br/api-publica/acesso
+DATAJUD_ALIAS=api_publica_tjsp
+DATAJUD_PROVIDER_MODE=disabled  # quando tiver chave: live + ENABLE_DATAJUD=true
+DATAJUD_RATE_LIMIT_PER_MINUTE=30
+DATAJUD_DEFAULT_PAGE_SIZE=100
+DATAJUD_MAX_PAGES_PER_SYNC=10
 
 # Feature flags
+ENABLE_CORPUS_SYNC=true
+ENABLE_LEGAL_RETRIEVAL=true
+ENABLE_CORPUS_GRAPH=true
+ENABLE_LEXML_PROVIDER=true
+ENABLE_STF_PROVIDER=true
+ENABLE_STJ_PROVIDER=true
+ENABLE_DATAJUD=false                              # vire true após DATAJUD_API_KEY
+ENABLE_CAMARA_PROVIDER=false                      # stub
+ENABLE_SENADO_PROVIDER=false                      # stub
 ENABLE_INTEGRATIONS_MOCKS=false
 ENABLE_E2E_TEST_HELPERS=false                     # NUNCA habilitar em prod
 ```
+
+> Detalhes do papel de cada provider: `docs/LEGAL_PROVIDERS.md`.
+> Como popular o corpus: `docs/CORPUS_SEEDING.md`.
+> Setup do DataJud: `docs/DATAJUD_SETUP.md`.
 
 ---
 

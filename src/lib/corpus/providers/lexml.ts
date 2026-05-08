@@ -23,6 +23,8 @@ import {
   classifyKindFromUrn,
   parseUrnLex,
 } from "@/lib/corpus/urn";
+import { getLogger } from "@/lib/logger";
+import { acquireProviderSlot } from "./rate-limit";
 import type {
   CorpusCandidate,
   CorpusPayload,
@@ -33,6 +35,7 @@ import type {
 
 const SRU_BASE = "https://www.lexml.gov.br/busca/SRU";
 const DEFAULT_PAGE_SIZE = 50;
+const log = getLogger("lex.corpus.lexml");
 
 export class LexmlError extends Error {
   constructor(
@@ -46,18 +49,26 @@ export class LexmlError extends Error {
 }
 
 /** Constrói query CQL para SRU baseada nos filtros. */
-function buildCqlQuery(filters: ListFilters): string {
+export function buildCqlQuery(filters: ListFilters & { freeText?: string }): string {
   const clauses: string[] = [];
+
+  if (filters.freeText) {
+    clauses.push(`(${escapeCql(filters.freeText)})`);
+  }
 
   // Heurística: mapeia nosso `NormKind` em fragmentos de URN-LEX para filtrar.
   if (filters.kind) {
     const fragment = kindToUrnFragment(filters.kind);
     if (fragment) clauses.push(`urn=urn:lex:br:federal:${fragment}`);
-  } else {
+  } else if (!filters.freeText) {
     clauses.push("urn=urn:lex:br:federal:lei");
   }
 
   return clauses.length > 0 ? clauses.join(" AND ") : "tipoDocumento=lei";
+}
+
+function escapeCql(s: string): string {
+  return s.replace(/["()]/g, " ").trim();
 }
 
 function kindToUrnFragment(kind: NormKind): string | null {
@@ -158,6 +169,12 @@ export type LexmlOptions = {
   fetchImpl?: typeof fetch;
   /** Timeout por request. */
   timeoutMs?: number;
+  /** Tentativas máximas para erros retryable (5xx, 429). Default 3. */
+  maxRetries?: number;
+  /** Janela base de backoff em ms entre tentativas. Default 600ms. */
+  backoffBaseMs?: number;
+  /** Token-bucket por minuto. Default lê de env. */
+  ratePerMinute?: number;
 };
 
 export class LexmlCorpusProvider implements CorpusProviderClient {
@@ -165,20 +182,29 @@ export class LexmlCorpusProvider implements CorpusProviderClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
+  private readonly maxRetries: number;
+  private readonly backoffBaseMs: number;
+  private readonly ratePerMinute: number;
+  private readonly freeText?: string;
 
-  constructor(options: LexmlOptions = {}) {
+  constructor(options: LexmlOptions & { freeText?: string } = {}) {
     this.baseUrl = options.baseUrl ?? SRU_BASE;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.maxRetries = options.maxRetries ?? 3;
+    this.backoffBaseMs = options.backoffBaseMs ?? 600;
+    this.ratePerMinute = options.ratePerMinute ?? 20;
+    if (options.freeText) this.freeText = options.freeText;
   }
 
-  async list(filters: ListFilters): Promise<ListPage> {
+  async list(filters: ListFilters & { freeText?: string }): Promise<ListPage> {
     const startRecord = filters.cursor ? Math.max(1, parseInt(filters.cursor, 10) || 1) : 1;
     const pageSize = filters.pageSize ?? DEFAULT_PAGE_SIZE;
+    const freeText = filters.freeText ?? this.freeText;
     const params = new URLSearchParams({
       operation: "searchRetrieve",
       version: "1.1",
-      query: buildCqlQuery(filters),
+      query: buildCqlQuery({ ...filters, ...(freeText ? { freeText } : {}) }),
       maximumRecords: String(pageSize),
       startRecord: String(startRecord),
     });
@@ -245,46 +271,83 @@ export class LexmlCorpusProvider implements CorpusProviderClient {
   }
 
   private async fetchXml(url: string): Promise<string> {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
-    try {
-      const res = await this.fetchImpl(url, {
-        signal: ctrl.signal,
-        headers: { Accept: "application/xml" },
-      });
-      if (!res.ok) {
-        throw new LexmlError(
-          `LexML respondeu ${res.status} em ${url}`,
-          res.status,
-          res.status >= 500 || res.status === 429,
-        );
-      }
-      return await res.text();
-    } finally {
-      clearTimeout(timer);
-    }
+    return this.fetchWithRetry(url, "application/xml");
   }
 
   private async fetchHtml(url: string): Promise<string> {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
-    try {
-      const res = await this.fetchImpl(url, {
-        signal: ctrl.signal,
-        headers: { Accept: "text/html,application/xhtml+xml" },
+    return this.fetchWithRetry(url, "text/html,application/xhtml+xml");
+  }
+
+  /**
+   * Fetch com:
+   *  - rate-limit cooperativo (token bucket por minuto)
+   *  - timeout via AbortController
+   *  - retry com backoff exponencial em 5xx / 429 / network error
+   */
+  private async fetchWithRetry(url: string, accept: string): Promise<string> {
+    let attempt = 0;
+    let lastErr: unknown;
+    while (attempt <= this.maxRetries) {
+      const slot = await acquireProviderSlot({
+        scope: "lexml",
+        ratePerMinute: this.ratePerMinute,
       });
-      if (!res.ok) {
-        throw new LexmlError(
-          `Fonte respondeu ${res.status} em ${url}`,
-          res.status,
-          res.status >= 500 || res.status === 429,
+      if (!slot.allowed) {
+        log.warnOnce(
+          "rate-limit-fallback",
+          `rate-limit estourou; prosseguindo com cuidado (scope=${slot.scope})`,
         );
       }
-      return await res.text();
-    } finally {
-      clearTimeout(timer);
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+      try {
+        const res = await this.fetchImpl(url, {
+          signal: ctrl.signal,
+          headers: {
+            Accept: accept,
+            "User-Agent": "lex-corpus-sync/1.0 (+https://lex-navy.vercel.app)",
+          },
+        });
+        if (!res.ok) {
+          const retryable = res.status >= 500 || res.status === 429;
+          if (retryable && attempt < this.maxRetries) {
+            attempt += 1;
+            const backoff = this.backoffBaseMs * Math.pow(2, attempt - 1);
+            await new Promise((r) => setTimeout(r, backoff));
+            continue;
+          }
+          throw new LexmlError(
+            `LexML respondeu ${res.status} em ${url}`,
+            res.status,
+            retryable,
+          );
+        }
+        return await res.text();
+      } catch (err) {
+        const isAbort = (err as Error)?.name === "AbortError";
+        if ((isAbort || isNetworkError(err)) && attempt < this.maxRetries) {
+          attempt += 1;
+          const backoff = this.backoffBaseMs * Math.pow(2, attempt - 1);
+          lastErr = err;
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        throw err instanceof LexmlError
+          ? err
+          : new LexmlError(`LexML fetch falhou: ${(err as Error).message}`, undefined, true);
+      } finally {
+        clearTimeout(timer);
+      }
     }
+    throw lastErr instanceof Error
+      ? lastErr
+      : new LexmlError(`LexML excedeu tentativas: ${url}`, undefined, false);
   }
+}
+
+function isNetworkError(err: unknown): boolean {
+  const m = (err as { message?: string })?.message ?? "";
+  return /ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|network/i.test(m);
 }
 
 /** Strip leve de HTML pra texto bruto. */

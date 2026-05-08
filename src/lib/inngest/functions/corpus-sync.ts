@@ -7,10 +7,13 @@
  */
 
 import { NonRetriableError } from "inngest";
-import { CorpusProvider, IngestionJobStatus, NormKind } from "@prisma/client";
+import { IngestionJobStatus, NormKind } from "@prisma/client";
 import { inngest } from "@/lib/inngest/client";
-import { fixtureProvider } from "@/lib/corpus/providers/fixture";
-import { lexmlProvider } from "@/lib/corpus/providers/lexml";
+import {
+  getProviderEntry,
+  resolveProvider,
+} from "@/lib/corpus/providers/registry";
+import type { CorpusProvider } from "@prisma/client";
 import type { CorpusProviderClient } from "@/lib/corpus/providers/types";
 import {
   finishIngestionJob,
@@ -20,14 +23,22 @@ import {
 } from "@/lib/corpus/repository";
 
 function pickProvider(p: CorpusProvider): CorpusProviderClient {
-  switch (p) {
-    case CorpusProvider.LEXML:
-      return lexmlProvider();
-    case CorpusProvider.FIXTURE:
-      return fixtureProvider();
-    default:
-      throw new NonRetriableError(`Provider não suportado neste worker: ${p}`);
+  const entry = getProviderEntry(p);
+  if (!entry) {
+    throw new NonRetriableError(`Provider não suportado neste worker: ${p}`);
   }
+  const status = entry.status();
+  if (status.status === "disabled") {
+    throw new NonRetriableError(
+      `Provider ${p} está disabled (env). ${status.hint ?? ""}`,
+    );
+  }
+  if (status.status === "not_configured") {
+    throw new NonRetriableError(
+      `Provider ${p} não configurado: ${status.detail ?? ""} ${status.hint ?? ""}`,
+    );
+  }
+  return resolveProvider(p);
 }
 
 export const corpusSync = inngest.createFunction(

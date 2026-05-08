@@ -17,6 +17,7 @@
 
 import { CorpusProvider, NormKind } from "@prisma/client";
 import { buildCanonicalUrn } from "@/lib/corpus/urn";
+import { acquireProviderSlot } from "./rate-limit";
 import type {
   CorpusCandidate,
   CorpusPayload,
@@ -40,6 +41,10 @@ export type StjFetchOpts = {
   maxIds?: number;
   /** Implementação de extração — injetável p/ testes ou plugins HTML reais. */
   extractor?: StjExtractor;
+  /** Token-bucket por minuto. Default 10 (rate-limit conservador). */
+  ratePerMinute?: number;
+  /** Timeout HTTP por request. Default 20s. */
+  timeoutMs?: number;
 };
 
 export type StjExtractor = (html: string) => { ementa?: string; rawText?: string } | null;
@@ -49,11 +54,15 @@ export class StjCorpusProvider implements CorpusProviderClient {
   private readonly fetchImpl: typeof fetch;
   private readonly maxIds: number;
   private readonly extractor: StjExtractor;
+  private readonly ratePerMinute: number;
+  private readonly timeoutMs: number;
 
   constructor(opts: StjFetchOpts = {}) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.maxIds = opts.maxIds ?? 60;
     this.extractor = opts.extractor ?? defaultStjExtractor;
+    this.ratePerMinute = opts.ratePerMinute ?? 10;
+    this.timeoutMs = opts.timeoutMs ?? 20_000;
   }
 
   async list(filters: ListFilters): Promise<ListPage> {
@@ -107,13 +116,19 @@ export class StjCorpusProvider implements CorpusProviderClient {
   }
 
   private async getHtml(url: string): Promise<string> {
+    await acquireProviderSlot({ scope: "stj", ratePerMinute: this.ratePerMinute });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     let res: Response;
     try {
       res = await this.fetchImpl(url, {
-        headers: { "User-Agent": "lex-corpus-sync/1.0" },
+        headers: { "User-Agent": "lex-corpus-sync/1.0 (+https://lex-navy.vercel.app)" },
+        signal: ctrl.signal,
       });
     } catch (err) {
       throw new StjError(`STJ fetch falhou: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
     }
     if (!res.ok) throw new StjError(`STJ respondeu ${res.status}`, res.status);
     return res.text();

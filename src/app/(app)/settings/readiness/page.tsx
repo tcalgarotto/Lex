@@ -4,6 +4,7 @@ import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { getRedis } from "@/lib/redis";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
+import { snapshotProviderStatuses } from "@/lib/corpus/providers/registry";
 
 type Status = "OK" | "Pendente" | "Erro";
 
@@ -64,6 +65,29 @@ export default async function ReadinessPage() {
     qdrantStatus = { status: "Erro", detail: e instanceof Error ? e.message : "Erro" };
   }
 
+  let providerStatuses: ReturnType<typeof snapshotProviderStatuses> = [];
+  try {
+    providerStatuses = snapshotProviderStatuses();
+  } catch {
+    providerStatuses = [];
+  }
+
+  function providerRow(p: (typeof providerStatuses)[number]) {
+    const status: Status =
+      p.status === "ok"
+        ? "OK"
+        : p.status === "disabled" || p.status === "not_configured"
+          ? "Pendente"
+          : "Erro";
+    const detailParts = [
+      `mode=${p.mode}`,
+      p.detail,
+      p.hint,
+      p.rateLimitPerMinute ? `RL ${p.rateLimitPerMinute}/min` : null,
+    ].filter(Boolean);
+    return row(p.label, status, detailParts.join(" · "));
+  }
+
   return (
     <AppShell title="Prontidão do ambiente">
       <div className="space-y-6">
@@ -80,6 +104,22 @@ export default async function ReadinessPage() {
             )}
             {row("Redis conectado", redisStatus.status, redisStatus.detail)}
             {row("Qdrant conectado", qdrantStatus.status, qdrantStatus.detail)}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-zinc-900/40">
+          <CardHeader>
+            <CardTitle className="text-base">Provedores jurídicos (corpus RAG)</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Status do registry. DataJud aparece como <span className="font-mono">not_configured</span> até receber chave do CNJ.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {providerStatuses.length === 0 ? (
+              <p className="text-muted-foreground">Registry indisponível.</p>
+            ) : (
+              providerStatuses.map((p) => providerRow(p))
+            )}
           </CardContent>
         </Card>
       </div>

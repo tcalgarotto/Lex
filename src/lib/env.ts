@@ -50,6 +50,68 @@ const envSchema = z
     STORAGE_BUCKET_DOCUMENTS: z.string().default("documents"),
     OCR_PROVIDER: z.enum(["tesseract", "mistral"]).default("tesseract"),
     MISTRAL_API_KEY: z.string().optional(),
+
+    // ----------------------------------------------------------------
+    // Provedores jurídicos públicos (corpus RAG).
+    //
+    // Modos suportados por provider:
+    //   - `live`      → usa fonte real (HTTP) com rate-limit/timeout
+    //   - `fixture`   → usa dataset embutido (zero rede)
+    //   - `disabled`  → provider não pode ser invocado
+    //
+    // DataJud é especial: requer `DATAJUD_API_KEY`. Sem chave, fica em
+    // estado `not_configured` (visível em /api/admin/corpus-stats e logs)
+    // e qualquer chamada falha com NonRetriableError.
+    // ----------------------------------------------------------------
+    LEXML_BASE_URL: z.string().url().default("https://www.lexml.gov.br/busca/SRU"),
+    LEXML_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
+    LEXML_DEFAULT_PAGE_SIZE: z.coerce.number().int().min(1).max(200).default(50),
+    LEXML_MAX_PAGES_PER_SYNC: z.coerce.number().int().min(1).max(200).default(20),
+    LEXML_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(20),
+
+    STF_BASE_URL: z.string().url().default("https://portal.stf.jus.br"),
+    STF_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
+    STF_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(10),
+
+    STJ_BASE_URL: z.string().url().default("https://scon.stj.jus.br"),
+    STJ_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
+    STJ_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(10),
+
+    DATAJUD_BASE_URL: z
+      .string()
+      .url()
+      .default("https://api-publica.datajud.cnj.jus.br"),
+    DATAJUD_API_KEY: z.string().optional().default(""),
+    DATAJUD_ALIAS: z.string().optional().default(""),
+    DATAJUD_PROVIDER_MODE: z
+      .enum(["live", "fixture", "disabled"])
+      .default("disabled"),
+    DATAJUD_DEFAULT_PAGE_SIZE: z.coerce.number().int().min(1).max(500).default(100),
+    DATAJUD_MAX_PAGES_PER_SYNC: z.coerce.number().int().min(1).max(100).default(10),
+    DATAJUD_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(30),
+
+    CAMARA_BASE_URL: z
+      .string()
+      .url()
+      .default("https://dadosabertos.camara.leg.br/api/v2"),
+    CAMARA_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("disabled"),
+
+    SENADO_BASE_URL: z
+      .string()
+      .url()
+      .default("https://legis.senado.leg.br/dadosabertos"),
+    SENADO_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("disabled"),
+
+    // Feature flags de retrieval/ingestion.
+    ENABLE_CORPUS_SYNC: z.coerce.boolean().default(true),
+    ENABLE_LEGAL_RETRIEVAL: z.coerce.boolean().default(true),
+    ENABLE_CORPUS_GRAPH: z.coerce.boolean().default(true),
+    ENABLE_LEXML_PROVIDER: z.coerce.boolean().default(true),
+    ENABLE_STF_PROVIDER: z.coerce.boolean().default(true),
+    ENABLE_STJ_PROVIDER: z.coerce.boolean().default(true),
+    ENABLE_DATAJUD: z.coerce.boolean().default(false),
+    ENABLE_CAMARA_PROVIDER: z.coerce.boolean().default(false),
+    ENABLE_SENADO_PROVIDER: z.coerce.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     // Em produção exigimos a chave do provider configurado; em dev apenas avisamos.
