@@ -41,6 +41,13 @@ const CAPUT_FIX = /\bcaput\b/gi;
  *  - colapsa whitespace excessivo (mantém 1 linha em branco máximo)
  *  - canonicaliza símbolos jurídicos
  *  - canonicaliza "Art. 5º" / "Parágrafo único" / "caput"
+ *
+ * Convenção brasileira de numeração de artigos:
+ *   - Art. 1º .. Art. 9º  → ordinal (com º)
+ *   - Art. 10  .. Art. N  → cardinal puro (sem º)
+ * Vide ABNT NBR 6022, Lei Complementar 95/1998 ("Disposições gerais sobre
+ * elaboração e redação das leis"). O Planalto e o LexML emitem ambas as
+ * formas — aqui canonicalizamos para a oficial.
  */
 export function normalizeLegalText(input: string): string {
   let s = input.normalize("NFC");
@@ -63,8 +70,12 @@ export function normalizeLegalText(input: string): string {
   // No máximo 2 quebras consecutivas (= 1 linha em branco)
   s = s.replace(/\n{3,}/g, "\n\n");
 
-  // Canonicaliza referências a artigos/parágrafos/caput
-  s = s.replace(ARTICLE_FIX, (_match, num: string) => `Art. ${num}º`);
+  // Canonicaliza referências a artigos/parágrafos/caput.
+  // Ordinal (º) é mandatório em 1..9 e proibido em ≥10 (LC 95/1998).
+  s = s.replace(ARTICLE_FIX, (_match, num: string) => {
+    const n = Number.parseInt(num, 10);
+    return n >= 1 && n <= 9 ? `Art. ${num}º` : `Art. ${num}`;
+  });
   s = s.replace(PARAGRAPH_FIX, "Parágrafo único");
   s = s.replace(SOLE_PARAGRAPH, "Parágrafo único");
   s = s.replace(CAPUT_FIX, "caput");

@@ -28,6 +28,7 @@ import { recomputeStyle } from "@/lib/inngest/functions/update-style";
 import { summarizeProcessMemory } from "@/lib/inngest/functions/update-memory";
 import { corpusSync } from "@/lib/inngest/functions/corpus-sync";
 import { corpusIngestNorm } from "@/lib/inngest/functions/corpus-ingest-norm";
+import { ingestConstitution } from "@/lib/inngest/functions/ingest-constitution";
 import { getLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -44,6 +45,7 @@ const handlers = serve({
     summarizeProcessMemory,
     corpusSync,
     corpusIngestNorm,
+    ingestConstitution,
   ],
 });
 

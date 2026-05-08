@@ -97,3 +97,19 @@ export type CorpusIngestNormEvent = {
     urn: string;
   };
 };
+
+/**
+ * Worker dedicado à ingestão da Constituição Federal a partir do markdown
+ * curado em `codigos de leis/CONSTITUICAO.md`.
+ *
+ * `markdownPath` é opcional (default = arquivo padrão do repo).
+ * `skipEmbed` permite separar o passo Postgres do passo Qdrant em
+ * ambientes onde o embeddings provider está sob throttle.
+ */
+export type CorpusIngestCfEvent = {
+  name: "lex/corpus.ingest-cf";
+  data: {
+    markdownPath?: string;
+    skipEmbed?: boolean;
+  };
+};
