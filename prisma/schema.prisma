@@ -335,22 +335,6 @@ model StyleProfile {
   @@index([workspaceId])
 }
 
-model LegalSource {
-  id           String     @id @default(cuid())
-  layer        LegalLayer
-  code         String
-  title        String?
-  articleRef   String?
-  tribunal     String?
-  year         Int?
-  body         String     @db.Text
-  metadataJson Json?
-  createdAt    DateTime   @default(now())
-
-  @@index([layer])
-  @@index([code])
-}
-
 model JobRun {
   id           String       @id @default(cuid())
   workspaceId  String?

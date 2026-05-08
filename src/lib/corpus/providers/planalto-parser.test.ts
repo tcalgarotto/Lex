@@ -23,8 +23,8 @@ describe("parsePlanaltoLawHtml — Lei Maria da Penha (snippet)", () => {
   });
 
   it("artigos têm number canônico (string)", () => {
-    expect(parsed.articles[0].number).toBe("1");
-    expect(parsed.articles[0].numberInt).toBe(1);
+    expect(parsed.articles[0]?.number).toBe("1");
+    expect(parsed.articles[0]?.numberInt).toBe(1);
   });
 
   it("Art. 1º contém referência ao § 8º do art. 226 da Constituição", () => {
@@ -96,8 +96,8 @@ describe("parsePlanaltoLawHtml — robustez", () => {
       </body></html>`;
     const parsed = parsePlanaltoLawHtml(html);
     expect(parsed.articles.length).toBe(2);
-    expect(parsed.articles[0].text).toMatch(/lei de teste/);
-    expect(parsed.articles[0].text).not.toMatch(/<a /);
+    expect(parsed.articles[0]?.text).toMatch(/lei de teste/);
+    expect(parsed.articles[0]?.text).not.toMatch(/<a /);
   });
 
   it("captura artigos com ponto de milhar (Art. 1.000, Art. 2.046-A)", () => {
@@ -143,9 +143,9 @@ describe("parsePlanaltoLawHtml — robustez", () => {
       </body></html>`;
     const parsed = parsePlanaltoLawHtml(html);
     expect(parsed.articles.length).toBe(1);
-    expect(parsed.articles[0].number).toBe("11");
+    expect(parsed.articles[0]?.number).toBe("11");
     // Os 3 incisos devem entrar como paragraphs do art 11.
-    expect(parsed.articles[0].paragraphs.length).toBeGreaterThanOrEqual(3);
+    expect(parsed.articles[0]?.paragraphs.length).toBeGreaterThanOrEqual(3);
   });
 
   it("detecta artigo revogado", () => {
@@ -154,7 +154,7 @@ describe("parsePlanaltoLawHtml — robustez", () => {
         <p><a name="art50"></a>Art. 50. (Revogado pela Lei nº 12.345, de 2020).</p>
       </body></html>`;
     const parsed = parsePlanaltoLawHtml(html);
-    expect(parsed.articles[0].isRevoked).toBe(true);
+    expect(parsed.articles[0]?.isRevoked).toBe(true);
   });
 
   it("dedupica artigos repetidos (Planalto às vezes duplica copy-paste)", () => {

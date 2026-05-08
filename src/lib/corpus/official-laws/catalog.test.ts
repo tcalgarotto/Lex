@@ -46,9 +46,9 @@ describe("OFFICIAL_LAWS catalog", () => {
   it("Lei Maria da Penha está presente", () => {
     const lmp = OFFICIAL_LAWS_BY_KEY["LMP"];
     expect(lmp).toBeDefined();
-    expect(lmp.identifier).toBe("Lei 11.340/2006");
-    expect(lmp.aliases).toContain("lei maria da penha");
-    expect(lmp.aliases).toContain("medida protetiva");
+    expect(lmp?.identifier).toBe("Lei 11.340/2006");
+    expect(lmp?.aliases).toContain("lei maria da penha");
+    expect(lmp?.aliases).toContain("medida protetiva");
   });
 
   it("CPC, CDC, CC, CLT, CP, CPP estão presentes", () => {
@@ -59,9 +59,10 @@ describe("OFFICIAL_LAWS catalog", () => {
 
   it("CF/1988 tem prioridade máxima", () => {
     const cf = OFFICIAL_LAWS_BY_KEY["CF1988"];
+    expect(cf).toBeDefined();
     const others = OFFICIAL_LAWS.filter((l) => l.key !== "CF1988");
     for (const l of others) {
-      expect(cf.priority).toBeGreaterThanOrEqual(l.priority);
+      expect(cf!.priority).toBeGreaterThanOrEqual(l.priority);
     }
   });
 

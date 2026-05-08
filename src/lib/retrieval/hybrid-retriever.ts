@@ -1,7 +1,5 @@
 import type { LegalLayer } from "@prisma/client";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { legalSourceProductionRawSql } from "@/lib/corpus/source-visibility";
 import { GLOBAL_WORKSPACE_ID } from "@/lib/constants";
 import { embedQuery } from "@/lib/ai/embeddings";
 import { expandQuery } from "@/lib/ai/llm";
@@ -125,28 +123,15 @@ export async function retrieveContext(params: {
     LIMIT 8
   `;
 
-  // LegalSource é a tabela legacy. Em produção filtramos DEMO/FIXTURE/etc.
-  // via helper canônico em `lib/corpus/source-visibility.ts`. Selecionamos
-  // APENAS as colunas usadas (sem ementa) para evitar overfetch.
-  const isProd = process.env["NODE_ENV"] === "production";
-  const legalRows = isProd
-    ? await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>(Prisma.sql`
-        SELECT id, body, code FROM "LegalSource"
-        WHERE (body ILIKE ${pattern} OR code ILIKE ${pattern})
-          AND ${legalSourceProductionRawSql()}
-        LIMIT 12
-      `)
-    : await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>`
-        SELECT id, body, code FROM "LegalSource"
-        WHERE body ILIKE ${pattern} OR code ILIKE ${pattern}
-        LIMIT 12
-      `;
-
+  // NOTA: a tabela legacy `LegalSource` foi removida no reset canônico do
+  // RAG. Retrieval jurídico (legislação/jurisprudência) passa exclusivamente
+  // por `retrieveLegalContext` (`src/lib/retrieval/legal/index.ts`). Este
+  // engine `retrieveContext` cobre apenas dados de WORKSPACE: processos,
+  // chunks de documentos do usuário, peças e vetores em `lex_main`.
   const lexLists: Array<Array<{ id: string }>> = [
     processRows.map((r) => ({ id: `lex:proc:${r.id}` })),
     chunkRows.map((r) => ({ id: `lex:chunk:${r.id}` })),
     pieceRows.map((r) => ({ id: `lex:piece:${r.id}` })),
-    legalRows.map((r) => ({ id: `lex:legal:${r.id}` })),
   ];
 
   const vecList = vecRanked.map((v) => ({ id: v.id }));
@@ -254,23 +239,6 @@ export async function retrieveContext(params: {
           sourceLabel: piece.title,
           score: null,
           meta: { pieceId: piece.id },
-        },
-      });
-    } else if (mid.startsWith("lex:legal:")) {
-      const id = mid.replace("lex:legal:", "");
-      const src = await prisma.legalSource.findFirst({ where: { id } });
-      if (!src) continue;
-      docsForRerank.push({
-        id: mid,
-        text: src.body.slice(0, 4000),
-        chunk: {
-          id: mid,
-          text: src.body.slice(0, 4000),
-          layer: src.layer,
-          sourceType: sourceTypeFromLayer(src.layer),
-          sourceLabel: `${src.code} ${src.articleRef ?? ""}`.trim(),
-          score: null,
-          meta: { code: src.code, tribunal: src.tribunal ?? undefined },
         },
       });
     }

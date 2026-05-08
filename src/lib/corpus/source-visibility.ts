@@ -7,11 +7,15 @@
  *
  * Toda página/rota que lista corpus jurídico OFICIAL deve usar este módulo
  * em vez de filtrar de forma ad-hoc — assim a regra é uma só.
+ *
+ * Arquitetura canônica: o corpus vive em `LegalNorm` / `LegalNormVersion` /
+ * `LegalChunk`. A tabela legacy `LegalSource` foi removida no reset
+ * canônico (branch `corpus/canonical-rebuild`).
  */
 
 import { CorpusProvider, Prisma } from "@prisma/client";
 
-/** Padrão case-insensitive para texto poluído (code, title, identifier). */
+/** Padrão case-insensitive para texto poluído (identifier, title). */
 export const DEMO_PATTERNS = [
   "DEMO",
   "FIXTURE",
@@ -47,7 +51,7 @@ export const DEMO_TAGS = ["demo", "fixture", "test", "teste", "placeholder"] as 
  * Use em mapeamentos depois do fetch (quando você já tem o objeto na mão).
  *
  * Para filtrar antes do fetch (no nível do Prisma), use os builders
- * `legalSourceProductionWhere()` / `legalNormProductionWhere()`.
+ * `legalNormProductionWhere()` / `legalChunkProductionWhere()`.
  */
 export function isProductionVisibleSource(input: {
   code?: string | null;
@@ -71,39 +75,13 @@ export function isProductionVisibleSource(input: {
 }
 
 /**
- * Builder de `Prisma.LegalSourceWhereInput` que esconde DEMO/FIXTURE em
- * produção. `LegalSource` é a tabela legacy (não tem `sourceProvider` nem
- * `tags`); a regra é puramente sobre `code` e `title`.
+ * Builder de `Prisma.LegalNormWhereInput` que esconde corpus FIXTURE
+ * (e qualquer LegalNorm com identifier/title contendo DEMO/FIXTURE) em
+ * produção. Aplicar a `prisma.legalNorm.findMany` quando listar corpus.
  *
  * Detalhe Prisma: `mode: "insensitive"` não funciona dentro de
  * `{ field: { not: { contains } } }`. Tem que ser `NOT: { field: { contains, mode } }`
  * no nível superior do filter.
- */
-export function legalSourceProductionWhere(): Prisma.LegalSourceWhereInput {
-  return {
-    AND: ALL_DEMO_TOKENS.map<Prisma.LegalSourceWhereInput>((token) => ({
-      NOT: { code: { contains: token, mode: "insensitive" } },
-    })),
-  };
-}
-
-/**
- * Versão raw-SQL do filtro acima — para uso em `prisma.$queryRaw`.
- * Retorna fragmento SQL que pode ser interpolado com `Prisma.sql`.
- *
- * Exemplo:
- *   prisma.$queryRaw`SELECT * FROM "LegalSource" WHERE code ILIKE ${q}
- *                    AND ${legalSourceProductionRawSql()}`
- */
-export function legalSourceProductionRawSql(): Prisma.Sql {
-  const clauses = ALL_DEMO_TOKENS.map((token) => Prisma.sql`code NOT ILIKE ${"%" + token + "%"}`);
-  return Prisma.join(clauses, " AND ");
-}
-
-/**
- * Builder de `Prisma.LegalNormWhereInput` que esconde corpus FIXTURE
- * (e qualquer LegalNorm com identifier/title contendo DEMO/FIXTURE) em
- * produção. Aplicar a `prisma.legalNorm.findMany` quando listar corpus.
  */
 export function legalNormProductionWhere(): Prisma.LegalNormWhereInput {
   return {

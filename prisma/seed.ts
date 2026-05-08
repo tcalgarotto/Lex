@@ -1,23 +1,10 @@
 import {
-  LegalLayer,
   MembershipRole,
   MemoryKind,
   PrismaClient,
 } from "@prisma/client";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 
 const prisma = new PrismaClient();
-
-type CorpusJsonRow = {
-  layer: string;
-  code: string;
-  title?: string;
-  articleRef?: string;
-  tribunal?: string;
-  year?: number;
-  body: string;
-};
 
 async function main() {
   const email = process.env["SEED_USER_EMAIL"] ?? "dev@lex.local";
@@ -133,25 +120,8 @@ async function main() {
     },
   });
 
-  const legPath = path.join(process.cwd(), "seed/data/legislation.json");
-  const jurPath = path.join(process.cwd(), "seed/data/jurisprudencia-demo.json");
-  const legItems = JSON.parse(readFileSync(legPath, "utf-8")) as CorpusJsonRow[];
-  const jurItems = JSON.parse(readFileSync(jurPath, "utf-8")) as CorpusJsonRow[];
-
-  await prisma.legalSource.createMany({
-    data: [...legItems, ...jurItems].map((j) => ({
-      layer:
-        j.layer === "jurisprudence" ? LegalLayer.jurisprudence : LegalLayer.legislation,
-      code: j.code,
-      title: j.title,
-      articleRef: j.articleRef,
-      tribunal: j.tribunal,
-      year: j.year,
-      body: j.body,
-    })),
-  });
-
   console.log("Seed OK — workspace:", workspace.slug, "process:", legalProcess.number);
+  console.log("Para popular corpus jurídico, rode `npm run corpus:seed:official-laws`.");
 }
 
 main()

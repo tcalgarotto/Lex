@@ -3,18 +3,19 @@
  *
  * Estratégia:
  *  1. Resultados internos do workspace: processos, peças, documentos.
- *  2. Corpus jurídico oficial: prioriza `LegalChunk` (corpus mínimo
- *     verificado) sobre o `LegalSource` legado.
- *  3. Vetorial (Qdrant `lex_main`) só como fallback, com filtros
- *     anti-poluição (sem DEMO/FIXTURE, mínimo de tamanho, etc.).
+ *  2. Corpus jurídico oficial: `LegalChunk` (canônico, populado pelos
+ *     providers Planalto/LexML/STF/STJ).
+ *  3. Vetorial (Qdrant `lex_main`) só como reforço para documentos do
+ *     usuário, com filtros anti-poluição.
  *
- * Em produção, escondemos qualquer chunk vindo de `FIXTURE` ou com
- * `code`/`sourceCode` contendo `DEMO`/`FIXTURE`/`STF-RE-DEMO`. Isso
- * descontamina a busca enquanto o corpus oficial não está completo.
+ * Em produção, `legalChunkProductionWhere()` esconde chunks de
+ * `sourceProvider=FIXTURE` ou normas com `identifier`/`title` contendo
+ * `DEMO`/`FIXTURE`. A tabela legacy `LegalSource` foi removida no reset
+ * canônico (branch `corpus/canonical-rebuild`).
  */
 
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { GLOBAL_WORKSPACE_ID } from "@/lib/constants";
@@ -24,7 +25,6 @@ import {
   DEMO_TOKEN_REGEX,
   isProductionVisibleSource,
   legalChunkProductionWhere,
-  legalSourceProductionWhere,
   shouldBypassDemoVisibility,
 } from "@/lib/corpus/source-visibility";
 import type { SearchHit } from "@/types/search";
@@ -62,99 +62,73 @@ export async function GET(req: Request) {
 
   const hits: SearchHit[] = [];
 
-  // Quick win: 5 queries independentes rodam em paralelo.
-  // `select` explícito em todas para evitar overfetch (especialmente
-  // em LegalPiece.contentJson e LegalChunk.text/norm).
+  // 4 queries independentes em paralelo, com `select` explícito pra evitar
+  // overfetch (especialmente em LegalPiece.contentJson e LegalChunk.text).
   const legalChunkWhere: Prisma.LegalChunkWhereInput = {
     text: { contains: q, mode: "insensitive" as const },
     ...(bypassDemo ? {} : legalChunkProductionWhere()),
   };
 
-  const [processes, pieces, docs, officialChunksOrErr, legalLegacy] =
-    await Promise.all([
-      prisma.process.findMany({
-        where: {
-          workspaceId,
-          OR: [
-            { title: { contains: q, mode: "insensitive" } },
-            { number: { contains: q, mode: "insensitive" } },
-          ],
-        },
+  const [processes, pieces, docs, officialChunksOrErr] = await Promise.all([
+    prisma.process.findMany({
+      where: {
+        workspaceId,
+        OR: [
+          { title: { contains: q, mode: "insensitive" } },
+          { number: { contains: q, mode: "insensitive" } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        number: true,
+        updatedAt: true,
+      },
+      take: limit,
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.legalPiece.findMany({
+      where: { workspaceId, title: { contains: q, mode: "insensitive" } },
+      select: { id: true, title: true, kind: true },
+      take: limit,
+    }),
+    prisma.document.findMany({
+      where: { workspaceId, originalName: { contains: q, mode: "insensitive" } },
+      select: {
+        id: true,
+        originalName: true,
+        status: true,
+        processId: true,
+      },
+      take: limit,
+    }),
+    // Corpus jurídico oficial (LegalChunk). Resolve com try-catch em vez de
+    // allSettled pra não derrubar a busca se a query falhar.
+    prisma.legalChunk
+      .findMany({
+        where: legalChunkWhere,
         select: {
           id: true,
-          title: true,
-          number: true,
-          updatedAt: true,
-        },
-        take: limit,
-        orderBy: { updatedAt: "desc" },
-      }),
-      prisma.legalPiece.findMany({
-        where: { workspaceId, title: { contains: q, mode: "insensitive" } },
-        select: { id: true, title: true, kind: true },
-        take: limit,
-      }),
-      prisma.document.findMany({
-        where: { workspaceId, originalName: { contains: q, mode: "insensitive" } },
-        select: {
-          id: true,
-          originalName: true,
-          status: true,
-          processId: true,
-        },
-        take: limit,
-      }),
-      // Corpus jurídico oficial (LegalChunk). Resolve com Promise allSettled
-      // pra não derrubar a busca se a query falhar.
-      prisma.legalChunk
-        .findMany({
-          where: legalChunkWhere,
-          select: {
-            id: true,
-            text: true,
-            articleRef: true,
-            fullPath: true,
-            norm: {
-              select: {
-                id: true,
-                urn: true,
-                title: true,
-                identifier: true,
-                sourceUrl: true,
-                sourceProvider: true,
-                tribunal: true,
-              },
+          text: true,
+          articleRef: true,
+          fullPath: true,
+          norm: {
+            select: {
+              id: true,
+              urn: true,
+              title: true,
+              identifier: true,
+              sourceUrl: true,
+              sourceProvider: true,
+              tribunal: true,
+              kind: true,
             },
           },
-          take: limit,
-        })
-        .catch((e) => e as Error),
-      // LegalSource legacy — descontaminado via helper canônico.
-      (() => {
-        const queryWhere: Prisma.LegalSourceWhereInput = {
-          OR: [
-            { code: { contains: q, mode: "insensitive" } },
-            { body: { contains: q, mode: "insensitive" } },
-          ],
-        };
-        const legalWhere: Prisma.LegalSourceWhereInput = bypassDemo
-          ? queryWhere
-          : { AND: [queryWhere, legalSourceProductionWhere()] };
-        return prisma.legalSource.findMany({
-          where: legalWhere,
-          select: {
-            id: true,
-            code: true,
-            title: true,
-            body: true,
-            articleRef: true,
-            tribunal: true,
-            layer: true,
-          },
-          take: limit,
-        });
-      })(),
-    ]);
+        },
+        take: limit,
+      })
+      .catch((e) => e as Error),
+  ]);
 
   for (const p of processes) {
     hits.push({
@@ -209,7 +183,7 @@ export async function GET(req: Request) {
       const head = `${c.norm.identifier ?? c.norm.title}${article ? ` — ${article}` : ""}`;
       hits.push({
         id: c.id,
-        type: "lei",
+        type: c.norm.kind?.toString().startsWith("JURISPRUDENCE") || c.norm.kind?.toString().startsWith("SUMULA") ? "jurisprudência" : "lei",
         title: head,
         subtitle: c.norm.title,
         excerpt: c.text.slice(0, 600),
@@ -220,33 +194,13 @@ export async function GET(req: Request) {
         normUrn: c.norm.urn,
         provider: c.norm.sourceProvider,
         score: undefined,
-        href: undefined,
+        href: `/biblioteca?id=${c.norm.id}`,
       });
     }
   }
 
-  // LegalSource (legado) — defesa em profundidade: mesmo após o filtro
-  // Prisma, validamos com o helper canônico antes de renderizar.
-  for (const l of legalLegacy) {
-    if (
-      !bypassDemo &&
-      !isProductionVisibleSource({ code: l.code, title: l.title })
-    ) {
-      continue;
-    }
-    if (!bypassDemo && isPollutedCode(l.code)) continue;
-    if (!bypassDemo && isPollutedText(l.body)) continue;
-    hits.push({
-      id: l.id,
-      type: l.layer === "legislation" ? "legislação" : "jurisprudência",
-      title: `${l.code} ${l.articleRef ?? ""}`.trim(),
-      subtitle: l.tribunal ?? undefined,
-      excerpt: l.body?.slice(0, 600),
-      href: `/biblioteca?id=${l.id}`,
-    });
-  }
-
-  // Vetorial (lex_main) — só como reforço, com filtros anti-poluição.
+  // Vetorial (lex_main) — só pra documentos de usuário, com filtros
+  // anti-poluição. Corpus jurídico nunca passa por aqui no caminho canônico.
   try {
     const vec = await embedQuery(q);
     const store = getQdrantVectorStore();

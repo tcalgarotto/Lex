@@ -5,8 +5,6 @@ import {
   isProductionVisibleSource,
   legalChunkProductionWhere,
   legalNormProductionWhere,
-  legalSourceProductionRawSql,
-  legalSourceProductionWhere,
   shouldBypassDemoVisibility,
 } from "./source-visibility";
 
@@ -88,24 +86,6 @@ describe("DEMO_TOKEN_REGEX", () => {
   });
 });
 
-describe("legalSourceProductionWhere", () => {
-  it("retorna AND com NOT { code: { contains, mode } } para todos os tokens", () => {
-    const where = legalSourceProductionWhere();
-    expect(where.AND).toBeDefined();
-    expect(Array.isArray(where.AND)).toBe(true);
-    const arr = where.AND as Array<{ NOT: { code: { contains: string; mode: string } } }>;
-    const tokens = arr.map((c) => c.NOT.code.contains);
-    expect(tokens).toContain("DEMO");
-    expect(tokens).toContain("FIXTURE");
-    expect(tokens).toContain("STF-RE-DEMO");
-    expect(tokens).toContain("STJ-RESP-DEMO");
-    expect(tokens).toContain("STJ-AGR-DEMO");
-    for (const c of arr) {
-      expect(c.NOT.code.mode).toBe("insensitive");
-    }
-  });
-});
-
 describe("legalNormProductionWhere", () => {
   it("encadeia filtro de FIXTURE + identifier/title sem DEMO", () => {
     const where = legalNormProductionWhere();
@@ -113,8 +93,8 @@ describe("legalNormProductionWhere", () => {
     const arr = where.AND as Array<Record<string, unknown>>;
     const hasFixtureBlock = arr.some(
       (c) =>
-        c.sourceProvider !== undefined &&
-        JSON.stringify(c.sourceProvider).includes("FIXTURE"),
+        c["sourceProvider"] !== undefined &&
+        JSON.stringify(c["sourceProvider"]).includes("FIXTURE"),
     );
     expect(hasFixtureBlock).toBe(true);
   });
@@ -124,15 +104,6 @@ describe("legalChunkProductionWhere", () => {
   it("delega ao filtro de LegalNorm via relação `norm`", () => {
     const where = legalChunkProductionWhere();
     expect(where.norm).toBeDefined();
-  });
-});
-
-describe("legalSourceProductionRawSql", () => {
-  it("monta fragmento Prisma.sql sem expor valores diretamente", () => {
-    const fragment = legalSourceProductionRawSql();
-    // Prisma.sql produz uma instância de Sql com `strings` e `values`.
-    expect(typeof (fragment as unknown as { strings?: unknown }).strings).toBe("object");
-    expect(Array.isArray((fragment as unknown as { values?: unknown }).values)).toBe(true);
   });
 });
 

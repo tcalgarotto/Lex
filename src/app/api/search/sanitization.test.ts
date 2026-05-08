@@ -30,8 +30,13 @@ describe("/api/search anti-pollution filters", () => {
     expect(ROUTE_SRC).toMatch(/legalChunkProductionWhere\(/);
   });
 
-  it("filtra LegalSource via legalSourceProductionWhere()", () => {
-    expect(ROUTE_SRC).toMatch(/legalSourceProductionWhere\(/);
+  it("não importa mais a tabela legacy LegalSource (corpus canônico)", () => {
+    // Apenas usos reais (Prisma model, raw SQL, helper). Comentários ainda
+    // podem mencionar `LegalSource` ao explicar o reset canônico.
+    expect(ROUTE_SRC).not.toMatch(/prisma\.legalSource\b/);
+    expect(ROUTE_SRC).not.toMatch(/legalSourceProductionWhere\(/);
+    expect(ROUTE_SRC).not.toMatch(/legalSourceProductionRawSql\(/);
+    expect(ROUTE_SRC).not.toMatch(/from\s+["']LegalSource["']/);
   });
 
   it("valida cada hit com isProductionVisibleSource antes de renderizar", () => {
