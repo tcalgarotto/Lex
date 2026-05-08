@@ -155,7 +155,21 @@ export async function upsertCorpusPayload(
     const validFrom =
       candidate.effectiveAt ?? candidate.publishedAt ?? new Date();
 
-    // Encerra a versão anterior (se houver) na data de validFrom desta nova.
+    // Edge case: já existe versão com (normId, validFrom) mas contentHash
+    // diferente. Caso típico: substituição de FIXTURE/legado por texto
+    // verificado (MANUAL). O constraint @@unique([normId, validFrom]) impede
+    // o create. Política: deletar a versão colidente (cascade limpa
+    // LegalChunk; embeddings pipeline cuida do Qdrant na próxima passada).
+    const colliding = await tx.legalNormVersion.findUnique({
+      where: { normId_validFrom: { normId, validFrom } },
+      select: { id: true, contentHash: true },
+    });
+    if (colliding && colliding.contentHash !== contentHash) {
+      await tx.legalNormVersion.delete({ where: { id: colliding.id } });
+    }
+
+    // Encerra a versão anterior (se houver e não foi deletada acima) na data
+    // de validFrom desta nova.
     if (existing) {
       await tx.legalNormVersion.updateMany({
         where: { normId, validTo: null },
