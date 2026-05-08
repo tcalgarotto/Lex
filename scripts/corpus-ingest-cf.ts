@@ -5,7 +5,7 @@
  *
  * Modo direto:
  *   - Lê o markdown curado em `codigos de leis/CONSTITUICAO.md`.
- *   - Parseia (`parseConstitutionMarkdown`).
+ *   - Parseia (`parseConstitutionSemantic`).
  *   - Persiste via `upsertCorpusPayload` (Postgres canonical).
  *   - Embeda + indexa via `embedAndUpsertNormVersion` (Qdrant
  *     `lex_corpus_norms`).
@@ -25,16 +25,10 @@
  */
 
 import "../src/lib/env-normalize";
-import { CorpusProvider } from "@prisma/client";
 import { prisma } from "../src/lib/prisma";
 import { inngest } from "../src/lib/inngest/client";
-import {
-  buildCfCorpusPayload,
-  CF_URN,
-  loadParsedConstitution,
-} from "../src/lib/corpus/providers/markdown-cf";
-import { upsertCorpusPayload, resolvePendingCitationsTo } from "../src/lib/corpus/repository";
-import { embedAndUpsertNormVersion } from "../src/lib/corpus/embeddings-pipeline";
+import { loadParsedConstitution } from "../src/lib/corpus/providers/markdown-cf";
+import { ingestConstitutionDirect } from "../src/lib/inngest/functions/ingest-constitution";
 
 type Flags = {
   viaInngest: boolean;
@@ -111,35 +105,39 @@ async function runDirect(flags: Flags): Promise<void> {
 
   const t0 = Date.now();
   const { md, parsed } = await loadParsedConstitution(flags.markdownPath);
-  console.log(`Parsed em ${Date.now() - t0}ms — articlesMain=${parsed.cfStats.articlesMain} articlesAdct=${parsed.cfStats.articlesAdct} paragraphs=${parsed.cfStats.paragraphs}`);
+  console.log(
+    `Parsed em ${Date.now() - t0}ms — articlesMain=${parsed.stats.articlesMain} articlesAdct=${parsed.stats.articlesAdct} incisos=${parsed.stats.incisos} paragrafos=${parsed.stats.paragrafos} alineas=${parsed.stats.alineas}`,
+  );
 
   if (flags.dryRun) {
     console.log("→ Dry-run. Nada persistido.");
     return;
   }
 
-  const payload = buildCfCorpusPayload(parsed, md);
-  console.log(`Payload: rawText=${(payload.rawText.length / 1024).toFixed(1)}KB`);
+  console.log(`MD: ${(md.length / 1024).toFixed(1)}KB`);
 
   const t1 = Date.now();
-  const result = await upsertCorpusPayload(payload, { provider: CorpusProvider.MANUAL });
-  console.log(
-    `upsertCorpusPayload em ${Date.now() - t1}ms — created=${result.created} versioned=${result.versioned} chunks=${result.chunksUpserted} citations=${result.citationsUpserted}`,
-  );
-
-  const t2 = Date.now();
-  const resolved = await resolvePendingCitationsTo(CF_URN);
-  console.log(`resolvePendingCitationsTo em ${Date.now() - t2}ms — resolved=${resolved}`);
-
-  if (!flags.skipEmbed && result.versioned) {
-    const t3 = Date.now();
-    const r = await embedAndUpsertNormVersion({ normVersionId: result.versionId });
+  const out = await ingestConstitutionDirect({
+    markdownPath: flags.markdownPath,
+    skipEmbed: flags.skipEmbed,
+  });
+  for (const seg of [
+    { label: "MAIN", data: out.main, resolved: out.resolved.main },
+    { label: "ADCT", data: out.adct, resolved: out.resolved.adct },
+  ]) {
+    const d = seg.data;
     console.log(
-      `embedAndUpsertNormVersion em ${Date.now() - t3}ms — processed=${r.chunksProcessed} skipped=${r.chunksSkipped} errors=${r.errors}`,
+      `[${seg.label}] urn=${d.urn} chunks=${d.ingest.chunks} citations=${d.ingest.citations} enriched=${d.enrich.updated}/${d.enrich.updated + d.enrich.missing} resolved=${seg.resolved}`,
     );
-  } else if (!result.versioned) {
-    console.log("(versão idêntica à anterior — skip embed)");
+    if (d.embed) {
+      console.log(
+        `   Embeddings — processed=${d.embed.processed} skipped=${d.embed.skipped} errors=${d.embed.errors}`,
+      );
+    } else if (!d.ingest.versioned) {
+      console.log("   (versão idêntica à anterior — skip embed)");
+    }
   }
+  console.log(`Pipeline total em ${Date.now() - t1}ms`);
 
   const after = await readDbCounts();
   const qAfter = await readQdrantPoints();

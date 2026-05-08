@@ -28,7 +28,7 @@ async function main(): Promise<void> {
     console.log("");
     console.log(`Q: ${q}`);
     console.log(
-      `  intent=${res.intent.kind}  confidence=${res.confidence.label} (${res.confidence.score.toFixed(2)})  groundingScore=${res.groundingScore.toFixed(2)}  cached=${res.cached}  latency=${dt}ms`,
+      `  intent=${res.intent.classification}  confidence=${res.confidence.label} (${res.confidence.score.toFixed(2)})  groundingScore=${res.groundingScore.toFixed(2)}  cached=${res.cached}  latency=${dt}ms`,
     );
     if (expect.length) console.log(`  expect: ${expect.join(", ")}`);
     res.chunks.slice(0, 3).forEach((c, i) => {

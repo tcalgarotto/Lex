@@ -167,7 +167,16 @@ export function classifyLegalIntent(rawQuery: string): LegalIntent {
   if (urns.some((u) => u.includes(":federal:"))) {
     preferredJurisdictions.push("FEDERAL");
   }
-  if (tribunals.length > 0) preferredJurisdictions.push("COURT");
+  if (tribunals.length > 0) {
+    preferredJurisdictions.push("COURT");
+    // Sigla de tribunal pode aparecer porque a query é sobre LEGISLAÇÃO que
+    // *menciona* o tribunal (ex.: "órgãos do Poder Judiciário CNJ STJ TST"
+    // → CF Art. 92). Sem o sinal explícito de `prefers_jurisprudence`,
+    // mantemos FEDERAL no conjunto pra permitir retrieval da CF/leis.
+    if (!prefersJurisprudence && !preferredJurisdictions.includes("FEDERAL")) {
+      preferredJurisdictions.push("FEDERAL");
+    }
+  }
 
   return {
     classification,
