@@ -202,6 +202,12 @@ export type RedisPingResult = {
  * devolve detalhes do erro (sem segredo) quando falha.
  *
  * Use em scripts e em /api/health quando precisa explicar POR QUE falhou.
+ *
+ * Importante: o ioredis emite eventos `error` em paralelo às promises. Sem
+ * um listener anexado, o Node trata como `Unhandled error` e polui o stderr.
+ * Anexamos um listener silencioso e guardamos o PRIMEIRO erro — assim a
+ * mensagem reportada é o erro raiz (ex. `ECONNREFUSED 127.0.0.1:6379`) em
+ * vez do erro derivado (`Connection is closed`).
  */
 export async function pingRedis(timeoutMs = 4_000): Promise<RedisPingResult> {
   const url = getRedisUrl();
@@ -221,8 +227,26 @@ export async function pingRedis(timeoutMs = 4_000): Promise<RedisPingResult> {
     maxRetriesPerRequest: 0,
     retryStrategy: () => null,
   });
+
+  let firstError: (NodeJS.ErrnoException & { name?: string; code?: string }) | null = null;
+  // Listener silencioso evita "Unhandled error event" no stderr quando o
+  // socket falha. Guardamos só o primeiro erro para diagnóstico fiel.
+  probe.on("error", (err: Error) => {
+    if (!firstError) {
+      firstError = err as NodeJS.ErrnoException & { name?: string; code?: string };
+    }
+  });
+
   try {
-    await probe.connect();
+    await Promise.race([
+      probe.connect(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`connect timeout ${timeoutMs}ms`)),
+          timeoutMs,
+        ),
+      ),
+    ]);
     const pong = await Promise.race<string>([
       probe.ping(),
       new Promise<never>((_, reject) =>
@@ -235,13 +259,18 @@ export async function pingRedis(timeoutMs = 4_000): Promise<RedisPingResult> {
       pong,
     };
   } catch (err) {
-    const e = err as NodeJS.ErrnoException & { name?: string; code?: string };
+    // Prefere o erro raiz capturado pelo listener (ECONNREFUSED, ETIMEDOUT,
+    // ENOTFOUND, NOAUTH…) ao erro derivado da promise (`Connection is closed`).
+    const root = (firstError ?? err) as NodeJS.ErrnoException & {
+      name?: string;
+      code?: string;
+    };
     return {
       ok: false,
       latencyMs: Date.now() - start,
-      errorName: e?.name ?? "Error",
-      ...(e?.code ? { errorCode: e.code } : {}),
-      errorMessage: redactSecrets(e?.message ?? String(err)),
+      errorName: root?.name ?? "Error",
+      ...(root?.code ? { errorCode: root.code } : {}),
+      errorMessage: redactSecrets(root?.message ?? String(err)),
     };
   } finally {
     try {

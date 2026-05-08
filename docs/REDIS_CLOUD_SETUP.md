@@ -53,13 +53,21 @@ Alternativa: Redis Cloud (Redis Inc.) — também serve, basta `REDIS_URL` TLS.
 Script seguro que valida `REDIS_URL` sem expor senha:
 
 ```bash
-# Local (lê de .env)
+# 1) Local (lê de .env). Se REDIS local não estiver subido, dá ECONNREFUSED — esperado.
 npm run redis:check
 
-# Contra produção (puxa env da Vercel)
-npx vercel env pull .env.production.local
+# 2) Inline (mais simples — testa qualquer URL sem precisar mexer em arquivos):
+REDIS_URL='rediss://default:<password>@<host>.upstash.io:6379' \
+  npx tsx scripts/redis-check.ts
+
+# 3) Contra a env REAL de produção (linka o repo à Vercel uma vez, depois pull):
+npx vercel link                                                    # uma vez
+npx vercel env pull .env.production.local --environment=production
 npx tsx --env-file=.env.production.local scripts/redis-check.ts
 ```
+
+> A primeira vez que rodar `vercel link`, ele pergunta scope (Team) e Project.
+> Depois disso, `vercel env pull` funciona direto.
 
 Saída quando tudo está certo:
 
