@@ -17,12 +17,25 @@ import { LegalNorm, LegalNormVersion, LegalChunk } from "@prisma/client";
 import { embedTexts } from "@/lib/ai/embeddings";
 import { getEnv } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { CORPUS_LAYER_LEGAL, LEGAL_CORPUS_TENANT_ID } from "@/lib/constants";
+import {
+  buildLegalSparseVector,
+  type SparseVector,
+} from "@/lib/retrieval/legal/sparse";
 import {
   collectionForKind,
+  DENSE_VECTOR_NAME,
+  SPARSE_VECTOR_NAME,
   type CorpusVectorPayload,
 } from "./qdrant-collections";
 
-export const GLOBAL_TENANT_WORKSPACE = "__global__";
+/**
+ * Tenant id padrão para corpus jurídico oficial.
+ * @deprecated Use {@link LEGAL_CORPUS_TENANT_ID} de `@/lib/constants`.
+ *             Mantido como alias durante a migration de `__global__` →
+ *             `_global_`.
+ */
+export const GLOBAL_TENANT_WORKSPACE = LEGAL_CORPUS_TENANT_ID;
 
 export type EmbedAndUpsertResult = {
   chunksProcessed: number;
@@ -63,9 +76,23 @@ async function withRetry<T>(
 }
 
 type ChunkWithLineage = LegalChunk & {
-  norm: Pick<LegalNorm, "id" | "urn" | "kind" | "jurisdiction" | "tribunal" | "publishedAt" | "tags">;
+  norm: Pick<
+    LegalNorm,
+    "id" | "urn" | "kind" | "jurisdiction" | "tribunal" | "publishedAt" | "tags" | "title" | "identifier" | "status"
+  >;
   version: Pick<LegalNormVersion, "id" | "validFrom">;
 };
+
+function readMetaString(
+  metadata: unknown,
+  key: string,
+): string | undefined {
+  if (metadata && typeof metadata === "object" && metadata !== null) {
+    const v = (metadata as Record<string, unknown>)[key];
+    if (typeof v === "string" && v.trim().length > 0) return v;
+  }
+  return undefined;
+}
 
 /**
  * Embeda + upserta chunks de UMA versão de norma. Idempotente: chunks que
@@ -93,6 +120,9 @@ export async function embedAndUpsertNormVersion(args: {
           tribunal: true,
           publishedAt: true,
           tags: true,
+          title: true,
+          identifier: true,
+          status: true,
         },
       },
       version: { select: { id: true, validFrom: true } },
@@ -123,7 +153,13 @@ export async function embedAndUpsertNormVersion(args: {
 
     const byCollection = new Map<
       string,
-      Array<{ id: string; vector: number[]; payload: CorpusVectorPayload; chunkId: string }>
+      Array<{
+        id: string;
+        dense: number[];
+        sparse: SparseVector;
+        payload: CorpusVectorPayload;
+        chunkId: string;
+      }>
     >();
 
     for (let j = 0; j < slice.length; j++) {
@@ -131,13 +167,40 @@ export async function embedAndUpsertNormVersion(args: {
       const vec = vectors[j];
       if (!vec) continue;
       const collection = collectionForKind(c.norm.kind);
+      // Hidrata campos do briefing FASE 5 a partir de chunk.metadataJson
+      // (preenchido pela ingest-constitution function ou outro pipeline).
+      const md = c.metadataJson;
+      const codigo = readMetaString(md, "codigo");
+      const tipo = readMetaString(md, "tipo");
+      const tema = readMetaString(md, "tema");
+      const hierarchy = readMetaString(md, "hierarchy") ?? readMetaString(md, "hierarquia");
+      const sourceProvider = readMetaString(md, "sourceProvider");
+      const sourcePath = readMetaString(md, "sourcePath");
+      const segment = readMetaString(md, "segment");
+
+      const sparse = buildLegalSparseVector(c.text, {
+        ...(codigo ? { codigo } : {}),
+        ...(tipo ? { tipo } : {}),
+        ...(tema ? { tema } : {}),
+        ...(hierarchy ? { hierarchy } : {}),
+        ...(c.articleRef ? { articleRef: c.articleRef } : {}),
+        ...(c.paragraphRef ? { paragraphRef: c.paragraphRef } : {}),
+        ...(c.incisoRef ? { incisoRef: c.incisoRef } : {}),
+        ...(c.alineaRef ? { alineaRef: c.alineaRef } : {}),
+      });
+
+      const textPreview = c.text.length > 320 ? `${c.text.slice(0, 317)}...` : c.text;
+      const tokensEstimate = Math.ceil(c.text.length / 4);
+
       const point = {
         id: randomUUID(),
         chunkId: c.id,
-        vector: vec,
+        dense: vec,
+        sparse,
         payload: {
           tenantScope: "global" as const,
-          workspaceId: GLOBAL_TENANT_WORKSPACE,
+          workspaceId: LEGAL_CORPUS_TENANT_ID,
+          layer: CORPUS_LAYER_LEGAL,
           normUrn: c.norm.urn,
           normId: c.norm.id,
           normVersionId: c.version.id,
@@ -146,6 +209,9 @@ export async function embedAndUpsertNormVersion(args: {
           ...(c.norm.tribunal ? { tribunal: c.norm.tribunal } : {}),
           structure: c.structure,
           ...(c.articleRef ? { articleRef: c.articleRef } : {}),
+          ...(c.paragraphRef ? { paragraphRef: c.paragraphRef } : {}),
+          ...(c.incisoRef ? { incisoRef: c.incisoRef } : {}),
+          ...(c.alineaRef ? { alineaRef: c.alineaRef } : {}),
           ...(c.fullPath ? { fullPath: c.fullPath } : {}),
           ...(epoch(c.norm.publishedAt) !== undefined
             ? { publishedAtTs: epoch(c.norm.publishedAt)! }
@@ -153,9 +219,24 @@ export async function embedAndUpsertNormVersion(args: {
           ...(epoch(c.version.validFrom) !== undefined
             ? { validFromTs: epoch(c.version.validFrom)! }
             : {}),
+          ...(c.version.validFrom
+            ? { validFromIso: c.version.validFrom.toISOString().slice(0, 10) }
+            : {}),
           contentHash: c.contentHash,
           tags: c.norm.tags,
           text: c.text,
+          textPreview,
+          tokensEstimate,
+          ...(codigo ? { codigo } : {}),
+          ...(tipo ? { tipo } : {}),
+          ...(tema ? { tema } : {}),
+          ...(hierarchy ? { hierarchy } : {}),
+          ...(sourceProvider ? { sourceProvider } : {}),
+          ...(sourcePath ? { sourcePath } : {}),
+          ...(segment ? { segment } : {}),
+          status: c.norm.status,
+          normTitle: c.norm.title,
+          ...(c.norm.identifier ? { identifier: c.norm.identifier } : {}),
         } satisfies CorpusVectorPayload,
       };
       const arr = byCollection.get(collection) ?? [];
@@ -168,7 +249,14 @@ export async function embedAndUpsertNormVersion(args: {
         await withRetry(() =>
           client.upsert(collection, {
             wait: true,
-            points: points.map((p) => ({ id: p.id, vector: p.vector, payload: p.payload as unknown as Record<string, unknown> })),
+            points: points.map((p) => ({
+              id: p.id,
+              vector: {
+                [DENSE_VECTOR_NAME]: p.dense,
+                [SPARSE_VECTOR_NAME]: { indices: p.sparse.indices, values: p.sparse.values },
+              },
+              payload: p.payload as unknown as Record<string, unknown>,
+            })),
           }),
         );
         await prisma.$transaction(

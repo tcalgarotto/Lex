@@ -122,6 +122,17 @@ const envSchema = z
     ENABLE_CAMARA_PROVIDER: z.coerce.boolean().default(true),
     ENABLE_SENADO_PROVIDER: z.coerce.boolean().default(true),
     ENABLE_PLANALTO_PROVIDER: z.coerce.boolean().default(true),
+    /**
+     * ColBERT/multivector rerank — desabilitado por padrão.
+     *
+     * Quando `true`, requer collection `lex_corpus_norms_colbert` com
+     * `multivector_config.comparator=max_sim` provisionada via pipeline
+     * separado. Veja `docs/COLBERT_LEGAL_RETRIEVAL.md`.
+     *
+     * Flag NÃO ativa retrieval ColBERT por enquanto — apenas reserva o
+     * espaço de configuração. Code path ainda não implementado.
+     */
+    LEGAL_COLBERT_ENABLED: z.coerce.boolean().default(false),
   })
   .superRefine((data, ctx) => {
     // Em produção exigimos a chave do provider configurado; em dev apenas avisamos.

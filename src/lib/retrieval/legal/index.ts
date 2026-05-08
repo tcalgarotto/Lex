@@ -24,6 +24,7 @@ import { recordObservabilityLog } from "@/lib/observability/record";
 import { getLogger } from "@/lib/logger";
 import { searchBm25, bm25ToCandidates } from "./bm25";
 import { searchDense, denseToCandidates } from "./dense";
+import { searchHybridQdrant, hybridToCandidates } from "./hybrid-qdrant";
 import { fuseCandidates, indexLineage } from "./hybrid";
 import { expandViaGraph } from "./graph-expansion";
 import { classifyLegalIntent, type LegalIntent } from "./intent";
@@ -33,7 +34,12 @@ import {
   computeGroundingScore,
   groundingToConfidence,
 } from "./scoring";
-import { buildCacheKey, readCachedResult, writeCachedResult } from "./cache";
+import {
+  buildCacheKey,
+  getCorpusContentHash,
+  readCachedResult,
+  writeCachedResult,
+} from "./cache";
 import type {
   ChunkWithLineage,
   LegalRetrievalFilters,
@@ -59,6 +65,7 @@ const DEFAULTS = {
 /** Timeouts por estágio (ms). Estágios opcionais falham rápido em vez de pendurar a request. */
 const STAGE_TIMEOUT_MS = {
   dense: 4_000,
+  hybrid: 5_000,
   rerank: 3_000,
   graph: 1_500,
 } as const;
@@ -128,7 +135,15 @@ export async function retrieveLegalContext(
   };
 
   const opts = { ...DEFAULTS, ...options };
-  const cacheKey = buildCacheKey({ query: rawQuery, ...(opts.filters ? { filters: opts.filters } : {}), options: opts });
+  // `corpusContentHash` invalida o cache automaticamente quando o corpus
+  // jurídico muda (nova ingest, revogação). Lazy + cached por 60s.
+  const corpusContentHash = opts.useCache ? await getCorpusContentHash() : undefined;
+  const cacheKey = buildCacheKey({
+    query: rawQuery,
+    ...(opts.filters ? { filters: opts.filters } : {}),
+    options: opts,
+    ...(corpusContentHash ? { corpusContentHash } : {}),
+  });
 
   /** Flags determinísticas que viram parte do trace pra UI/audit. */
   const fallbackFlags: Set<string> = new Set();
@@ -137,6 +152,13 @@ export async function retrieveLegalContext(
     const cached = await readCachedResult(cacheKey);
     if (cached) {
       cached.cached = true;
+      // Marca cache hit no trace (preserva backend reportado pelo cache layer).
+      if (cached.trace) {
+        cached.trace.cache = {
+          hit: true,
+          backend: cached.trace.cache?.backend ?? "lru",
+        };
+      }
       return cached;
     }
   }
@@ -148,41 +170,81 @@ export async function retrieveLegalContext(
     ? await stage("rewrite", async () => rewriteLegalQuery(rawQuery, intent))
     : [rawQuery];
 
-  // 1) Dense: por variante (timeout curto; falha cai para BM25 sem travar request).
+  // 1) Hybrid Qdrant (dense + sparse + RRF server-side ou in-code).
+  //    Substitui o loop dense puro. Se a Query API rejeitar (servidor antigo,
+  //    sem sparse), o searchHybridQdrant cai pra dense_only internamente.
+  //    Em último caso (qdrant offline), exception é capturada e flag de
+  //    fallback é registrada para o trace.
   const denseLists: RetrievalCandidate[][] = [];
   const denseLineage: ChunkWithLineage[] = [];
   let denseCount = 0;
+  let hybridNativeUsed = false;
+  let sparseUnavailable = false;
+  let denseMsAcc = 0;
+  let sparseMsAcc = 0;
+  let fusionMsHybrid = 0;
   for (const q of queries.slice(0, 3)) {
     try {
-      const denseRes = await stage(
-        "dense",
+      const hybridRes = await stage(
+        "hybrid",
         () =>
           withTimeout(
-            searchDense({ query: q, limit: 24, filters }),
-            STAGE_TIMEOUT_MS.dense,
-            "dense",
+            searchHybridQdrant({ query: q, limit: 24, intent, filters }),
+            STAGE_TIMEOUT_MS.hybrid,
+            "hybrid",
           ),
         { variant: q.slice(0, 80) },
       );
-      denseCount += denseRes.length;
-      denseLineage.push(...denseRes.map((d) => d.chunk));
-      denseLists.push(denseToCandidates(denseRes));
+      denseCount += hybridRes.results.length;
+      denseLineage.push(...hybridRes.results.map((r) => r.chunk));
+      denseLists.push(hybridToCandidates(hybridRes.results));
+      hybridNativeUsed = hybridNativeUsed || hybridRes.trace.hybridNativeUsed;
+      if (hybridRes.trace.sparseUnavailable) sparseUnavailable = true;
+      denseMsAcc += hybridRes.trace.denseMs;
+      sparseMsAcc += hybridRes.trace.sparseMs;
+      fusionMsHybrid += hybridRes.trace.fusionMs;
     } catch (err) {
       const msg = (err as Error).message;
-      fallbackFlags.add("dense_unavailable");
-      if (/timeout/i.test(msg)) fallbackFlags.add("dense_timeout");
+      fallbackFlags.add("hybrid_unavailable");
+      if (/timeout/i.test(msg)) fallbackFlags.add("hybrid_timeout");
       if (/qdrant|ECONNREFUSED|ENOTFOUND/i.test(msg)) fallbackFlags.add("qdrant_unavailable");
-      log.warnOnce(`dense:${msg.slice(0, 40)}`, `dense indisponível: ${msg}`);
+      log.warnOnce(`hybrid:${msg.slice(0, 40)}`, `hybrid indisponível: ${msg}`);
+      // Última cartada: tenta dense puro (caso hybrid esteja falhando mas
+      // dense funcione — improvável, mas não custa).
+      try {
+        const denseRes = await stage(
+          "dense-after-hybrid-fail",
+          () =>
+            withTimeout(
+              searchDense({ query: q, limit: 24, filters }),
+              STAGE_TIMEOUT_MS.dense,
+              "dense",
+            ),
+          { variant: q.slice(0, 80) },
+        );
+        denseCount += denseRes.length;
+        denseLineage.push(...denseRes.map((d) => d.chunk));
+        denseLists.push(denseToCandidates(denseRes));
+        sparseUnavailable = true;
+      } catch {
+        fallbackFlags.add("dense_unavailable");
+      }
       break;
     }
+  }
+  if (sparseUnavailable) fallbackFlags.add("sparse_unavailable");
+  if (!hybridNativeUsed && denseCount > 0 && !sparseUnavailable) {
+    fallbackFlags.add("hybrid_native_unavailable");
   }
 
   // 2) BM25: por variante
   const bm25Lists: RetrievalCandidate[][] = [];
   const bm25Lineage: ChunkWithLineage[] = [];
   let bm25Count = 0;
+  let ftsMs = 0;
   for (const q of queries.slice(0, 3)) {
     try {
+      const tFts = Date.now();
       const bm25Res = await stage(
         "bm25",
         () =>
@@ -194,6 +256,7 @@ export async function retrieveLegalContext(
           }),
         { variant: q.slice(0, 80) },
       );
+      ftsMs += Date.now() - tFts;
       bm25Count += bm25Res.length;
       bm25Lineage.push(...bm25Res.map((d) => d.chunk));
       bm25Lists.push(bm25ToCandidates(bm25Res));
@@ -202,31 +265,42 @@ export async function retrieveLegalContext(
     }
   }
 
-  // Fallback "soften filters" se zerou.
-  if (denseCount === 0 && bm25Count === 0 && Object.keys(filters).length > 0 && !fallbackFlags.has("dense_unavailable")) {
+  // Fallback "soften filters" se zerou — usa hybrid também (mantém sparse).
+  if (
+    denseCount === 0 &&
+    bm25Count === 0 &&
+    Object.keys(filters).length > 0 &&
+    !fallbackFlags.has("hybrid_unavailable") &&
+    !fallbackFlags.has("dense_unavailable")
+  ) {
     const soft = softenFilters(filters);
     try {
-      const fallback = await stage("dense-fallback", () =>
+      const fallback = await stage("hybrid-fallback", () =>
         withTimeout(
-          searchDense({ query: rawQuery, limit: 24, filters: soft }),
-          STAGE_TIMEOUT_MS.dense,
-          "dense-fallback",
+          searchHybridQdrant({ query: rawQuery, limit: 24, intent, filters: soft }),
+          STAGE_TIMEOUT_MS.hybrid,
+          "hybrid-fallback",
         ),
       );
-      denseCount += fallback.length;
-      denseLineage.push(...fallback.map((d) => d.chunk));
-      denseLists.push(denseToCandidates(fallback));
+      denseCount += fallback.results.length;
+      denseLineage.push(...fallback.results.map((r) => r.chunk));
+      denseLists.push(hybridToCandidates(fallback.results));
+      denseMsAcc += fallback.trace.denseMs;
+      sparseMsAcc += fallback.trace.sparseMs;
+      fusionMsHybrid += fallback.trace.fusionMs;
     } catch (err) {
-      log.warnOnce("dense-fallback", `dense-fallback indisponível: ${(err as Error).message}`);
-      fallbackFlags.add("dense_unavailable");
+      log.warnOnce("hybrid-fallback", `hybrid-fallback indisponível: ${(err as Error).message}`);
+      fallbackFlags.add("hybrid_unavailable");
     }
   }
 
   // 3) Fusão RRF
+  const tFuseFinal = Date.now();
   const fused = await stage(
     "fuse",
     async () => fuseCandidates([...denseLists, ...bm25Lists]),
   );
+  const fusionMsFinal = Date.now() - tFuseFinal;
 
   // 4) Expansão por grafo (opcional)
   let graphAdded: ChunkWithLineage[] = [];
@@ -370,6 +444,13 @@ export async function retrieveLegalContext(
       afterRerank: rerankOrder.length,
       final: finalChunks.length,
     },
+    timings: {
+      denseMs: denseMsAcc,
+      sparseMs: sparseMsAcc,
+      ftsMs,
+      fusionMs: fusionMsHybrid + fusionMsFinal,
+    },
+    cache: { hit: false, backend: null },
     ...(fallbackFlags.size > 0 ? { fallbackFlags: Array.from(fallbackFlags).sort() } : {}),
   };
 

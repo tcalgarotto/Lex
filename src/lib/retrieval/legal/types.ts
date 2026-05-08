@@ -143,10 +143,30 @@ export type LegalRetrievalTrace = {
     final: number;
   };
   /**
+   * Breakdown de latência por estágio (em ms).
+   * - `denseMs`: tempo somado das chamadas Qdrant dense (ou hybrid nativo).
+   * - `sparseMs`: tempo das chamadas sparse (apenas no fallback in-code).
+   * - `ftsMs`: tempo do BM25 Postgres FTS.
+   * - `fusionMs`: tempo total das fusões RRF (in-code Qdrant + final).
+   * - `cacheHit`: true se o resultado veio de cache (Redis/LRU).
+   * - `cacheBackend`: backend que serviu o cache hit (`redis` | `lru` | null).
+   */
+  timings?: {
+    denseMs: number;
+    sparseMs: number;
+    ftsMs: number;
+    fusionMs: number;
+  };
+  cache?: {
+    hit: boolean;
+    backend: "redis" | "lru" | null;
+  };
+  /**
    * Flags de fallback acumuladas durante o pipeline. Vazio quando tudo correu
    * bem; valores possíveis incluem: `dense_unavailable`, `dense_timeout`,
-   * `qdrant_unavailable`, `rerank_skipped`, `graph_skipped`,
-   * `redis_unavailable`, `cache_unavailable`. Útil para auditoria + UI.
+   * `hybrid_unavailable`, `hybrid_timeout`, `hybrid_native_unavailable`,
+   * `sparse_unavailable`, `qdrant_unavailable`, `rerank_skipped`,
+   * `graph_skipped`, `redis_unavailable`, `cache_unavailable`.
    */
   fallbackFlags?: string[];
 };

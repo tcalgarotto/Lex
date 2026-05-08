@@ -15,8 +15,10 @@ import { prisma } from "@/lib/prisma";
 import {
   collectionForKind,
   CORPUS_COLLECTIONS,
+  DENSE_VECTOR_NAME,
   type CorpusCollection,
 } from "@/lib/corpus/qdrant-collections";
+import { buildCorpusNormsFilter } from "./qdrant-corpus-filter";
 import type {
   ChunkWithLineage,
   LegalRetrievalFilters,
@@ -42,38 +44,8 @@ export function pickCollections(filters?: LegalRetrievalFilters): CorpusCollecti
   return Array.from(set);
 }
 
-function buildQdrantFilter(filters: LegalRetrievalFilters | undefined): Record<string, unknown> | undefined {
-  if (!filters) return undefined;
-  const must: Record<string, unknown>[] = [];
-
-  if (filters.kinds?.length) {
-    must.push({ key: "kind", match: { any: filters.kinds.map(String) } });
-  }
-  if (filters.jurisdictions?.length) {
-    must.push({ key: "jurisdiction", match: { any: filters.jurisdictions.map(String) } });
-  }
-  if (filters.tribunals?.length) {
-    must.push({ key: "tribunal", match: { any: filters.tribunals } });
-  }
-  if (filters.articleRefs?.length) {
-    must.push({ key: "articleRef", match: { any: filters.articleRefs } });
-  }
-  if (filters.normUrns?.length) {
-    must.push({ key: "normUrn", match: { any: filters.normUrns } });
-  }
-  if (filters.publishedAfter) {
-    const ts = Math.floor(filters.publishedAfter.getTime() / 1000);
-    must.push({ key: "publishedAtTs", range: { gte: ts } });
-  }
-  if (filters.asOf) {
-    const ts = Math.floor(filters.asOf.getTime() / 1000);
-    // Em Qdrant filtramos validFromTs <= asOf; validTo é tratado em PG (nem
-    // todo chunk no Qdrant carrega validToTs). Esse filtro é só pra reduzir
-    // candidatos antigos demais.
-    must.push({ key: "validFromTs", range: { lte: ts } });
-  }
-  return must.length > 0 ? { must } : undefined;
-}
+/** Re-export — nome histórico usado por callers/tests. */
+export const buildQdrantFilter = buildCorpusNormsFilter;
 
 /**
  * Busca dense nas collections corpus, retornando candidatos com lineage.
@@ -90,7 +62,7 @@ export async function searchDense(args: {
   if (collections.length === 0) return [];
 
   const vector = await embedQuery(args.query);
-  const filter = buildQdrantFilter(args.filters);
+  const filter = buildCorpusNormsFilter(args.filters);
 
   const client = qdrantClient();
   const perCollectionLimit = Math.ceil(args.limit / collections.length) + 8;
@@ -99,19 +71,43 @@ export async function searchDense(args: {
   const hits: QdrantHit[] = [];
 
   for (const collection of collections) {
-    const res = await client.search(collection, {
-      vector,
-      limit: perCollectionLimit,
-      filter: filter as never,
-      with_payload: true,
-    });
-    for (const r of res) {
-      hits.push({
-        id: String(r.id),
-        score: typeof r.score === "number" ? r.score : 0,
-        payload: r.payload as Record<string, unknown> | undefined,
+    const batch: QdrantHit[] = [];
+    try {
+      const res = await client.query(collection, {
+        query: vector as never,
+        using: DENSE_VECTOR_NAME,
+        limit: perCollectionLimit,
+        filter: filter as never,
+        with_payload: true,
       });
+      for (const r of res.points ?? []) {
+        batch.push({
+          id: String(r.id),
+          score: typeof r.score === "number" ? r.score : 0,
+          payload: r.payload as Record<string, unknown> | undefined,
+        });
+      }
+    } catch (err) {
+      const msg = (err as Error)?.message ?? String(err);
+      // Collection legada: vetor único sem nome — `client.search` clássico.
+      if (!/bad request|400|not found|unknown vector/i.test(msg)) {
+        throw err;
+      }
+      const res = await client.search(collection, {
+        vector,
+        limit: perCollectionLimit,
+        filter: filter as never,
+        with_payload: true,
+      });
+      for (const r of res) {
+        batch.push({
+          id: String(r.id),
+          score: typeof r.score === "number" ? r.score : 0,
+          payload: r.payload as Record<string, unknown> | undefined,
+        });
+      }
     }
+    hits.push(...batch);
   }
 
   // Ordena cross-collection e pega os top-N.
@@ -119,12 +115,7 @@ export async function searchDense(args: {
   const top = hits.slice(0, args.limit);
   if (top.length === 0) return [];
 
-  const chunkIds = top
-    .map((h) => h.payload?.["normUrn"]) // sanity check
-    .filter(Boolean);
-  if (chunkIds.length === 0) return [];
-
-  // Resolve lineage com 1 query (UNION via WHERE id IN ...).
+  // Resolve lineage com 1 query (vectorPointId).
   const vectorIds = top.map((h) => h.id);
   const rows = await prisma.legalChunk.findMany({
     where: { vectorPointId: { in: vectorIds } },

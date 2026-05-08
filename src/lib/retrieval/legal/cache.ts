@@ -17,28 +17,72 @@ import { createHash } from "node:crypto";
 import { cacheGet, cacheSet, isRedisAvailable } from "@/lib/redis";
 import { MemoryLRU } from "@/lib/cache/memory-lru";
 import { getLogger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 import type {
   LegalRetrievalFilters,
   LegalRetrievalOptions,
   LegalRetrievalResult,
 } from "./types";
 
-const PREFIX = "lex:retrieval:legal:v2:";
+const PREFIX = "lex:retrieval:legal:v3:";
 const DEFAULT_TTL_SEC = 300;
 const log = getLogger("lex.retrieval.cache");
 
 const memoryLRU = new MemoryLRU<string>(256);
 
-/** Constrói chave estável a partir dos inputs do retrieval. */
+/** Cache de `corpusContentHash` por 60s — evita query Postgres em hot path. */
+let corpusHashCache: { value: string; expiresAt: number } | null = null;
+const CORPUS_HASH_TTL_MS = 60_000;
+
+/**
+ * Calcula um hash estável do corpus jurídico ATIVO (versões `validTo == null`).
+ * Inclui contagem + sha das `contentHash`s — qualquer ingest/update invalida
+ * automaticamente o cache do retrieval.
+ *
+ * Lazy + cached por 60s. Em caso de erro Postgres, retorna `"unknown"`
+ * (cache funciona, só não invalida em mudança).
+ */
+export async function getCorpusContentHash(): Promise<string> {
+  const now = Date.now();
+  if (corpusHashCache && corpusHashCache.expiresAt > now) {
+    return corpusHashCache.value;
+  }
+  try {
+    const versions = await prisma.legalNormVersion.findMany({
+      where: { validTo: null },
+      select: { contentHash: true },
+      orderBy: { contentHash: "asc" },
+    });
+    const concat = versions.map((v) => v.contentHash).join("|");
+    const value = `${versions.length}:${createHash("sha256").update(concat).digest("hex").slice(0, 16)}`;
+    corpusHashCache = { value, expiresAt: now + CORPUS_HASH_TTL_MS };
+    return value;
+  } catch (err) {
+    log.warnOnce("corpus-hash", `corpus content hash falhou: ${(err as Error).message}`);
+    return "unknown";
+  }
+}
+
+/**
+ * Constrói chave estável a partir dos inputs do retrieval.
+ *
+ * **Importante**: a chave inclui um sufixo `corpusContentHash` opcional —
+ * quando passado, o cache é automaticamente invalidado a cada nova ingest
+ * de norma. O caller (orquestrador) deve passar `corpusContentHash` para
+ * garantir que mudanças no corpus não sirvam respostas stale.
+ */
 export function buildCacheKey(args: {
   query: string;
   filters?: LegalRetrievalFilters;
   options?: LegalRetrievalOptions;
+  /** Hash do estado do corpus (ver `getCorpusContentHash`). */
+  corpusContentHash?: string;
 }): string {
   const payload = {
     q: args.query.trim().toLowerCase(),
     f: stableFilters(args.filters),
     o: stableOptions(args.options),
+    c: args.corpusContentHash ?? "any",
   };
   const hash = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
   return `${PREFIX}${hash}`;
@@ -74,21 +118,31 @@ function stableOptions(o?: LegalRetrievalOptions): Record<string, unknown> | nul
 /**
  * Lê do cache. Tenta Redis (se disponível) e cai para LRU.
  * Nunca propaga erro — sempre retorna `null` em qualquer falha.
+ *
+ * Marca `result.trace.cache.backend` com a fonte do hit (`redis` ou `lru`)
+ * para o trace upstream.
  */
 export async function readCachedResult(
   key: string,
 ): Promise<LegalRetrievalResult | null> {
   let raw: string | null = null;
+  let backend: "redis" | "lru" | null = null;
   if (await isRedisAvailable()) {
     raw = await cacheGet(key);
+    if (raw) backend = "redis";
   }
   if (!raw) {
     raw = memoryLRU.get(key);
+    if (raw) backend = "lru";
   }
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as LegalRetrievalResult;
-    return reviveDates(parsed);
+    const revived = reviveDates(parsed);
+    if (revived.trace) {
+      revived.trace.cache = { hit: true, backend };
+    }
+    return revived;
   } catch (err) {
     log.warnOnce("read-parse", `cache parse miss: ${(err as Error).message}`);
     return null;

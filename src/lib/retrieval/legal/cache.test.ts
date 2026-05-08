@@ -42,6 +42,14 @@ describe("buildCacheKey", () => {
   });
 
   it("usa prefixo versionado", () => {
-    expect(buildCacheKey({ query: "x" })).toMatch(/^lex:retrieval:legal:v2:/);
+    expect(buildCacheKey({ query: "x" })).toMatch(/^lex:retrieval:legal:v3:/);
+  });
+
+  it("inclui corpusContentHash na chave (invalida cache em mudança)", () => {
+    const noHash = buildCacheKey({ query: "x" });
+    const hashA = buildCacheKey({ query: "x", corpusContentHash: "514:abc123" });
+    const hashB = buildCacheKey({ query: "x", corpusContentHash: "515:def456" });
+    expect(hashA).not.toBe(hashB);
+    expect(hashA).not.toBe(noHash);
   });
 });
