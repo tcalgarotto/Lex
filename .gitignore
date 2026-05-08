@@ -58,3 +58,6 @@ prisma/*.db-journal
 
 # docker
 /docker/data/
+
+# cache local de HTML do Planalto (corpus seed)
+.cache/

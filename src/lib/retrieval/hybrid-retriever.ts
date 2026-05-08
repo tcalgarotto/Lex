@@ -1,5 +1,7 @@
 import type { LegalLayer } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { legalSourceProductionRawSql } from "@/lib/corpus/source-visibility";
 import { GLOBAL_WORKSPACE_ID } from "@/lib/constants";
 import { embedQuery } from "@/lib/ai/embeddings";
 import { expandQuery } from "@/lib/ai/llm";
@@ -123,19 +125,17 @@ export async function retrieveContext(params: {
     LIMIT 8
   `;
 
-  // LegalSource é a tabela legacy. Em produção filtramos DEMO/FIXTURE
-  // pra impedir poluir o RAG enquanto não migramos tudo para LegalNorm.
-  // Selecionamos APENAS as colunas que a função usa (sem ementa/etc.)
-  // para evitar overfetch em rows grandes.
+  // LegalSource é a tabela legacy. Em produção filtramos DEMO/FIXTURE/etc.
+  // via helper canônico em `lib/corpus/source-visibility.ts`. Selecionamos
+  // APENAS as colunas usadas (sem ementa) para evitar overfetch.
   const isProd = process.env["NODE_ENV"] === "production";
   const legalRows = isProd
-    ? await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>`
+    ? await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>(Prisma.sql`
         SELECT id, body, code FROM "LegalSource"
         WHERE (body ILIKE ${pattern} OR code ILIKE ${pattern})
-          AND code NOT ILIKE '%DEMO%'
-          AND code NOT ILIKE '%FIXTURE%'
+          AND ${legalSourceProductionRawSql()}
         LIMIT 12
-      `
+      `)
     : await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>`
         SELECT id, body, code FROM "LegalSource"
         WHERE body ILIKE ${pattern} OR code ILIKE ${pattern}

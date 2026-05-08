@@ -6,6 +6,10 @@ import path from "node:path";
  * Garantia estrutural de que os filtros anti-poluição estão presentes
  * no endpoint de busca. A intenção é que `STF-RE-DEMO`, `FIXTURE` e
  * chunks muito curtos sejam ocultados em produção.
+ *
+ * A regra de "o que é DEMO/FIXTURE" vive no helper canônico
+ * `src/lib/corpus/source-visibility.ts`. Estes testes garantem que o
+ * route consome o helper (em vez de filtros ad-hoc).
  */
 
 const ROUTE_SRC = fs.readFileSync(
@@ -14,21 +18,28 @@ const ROUTE_SRC = fs.readFileSync(
 );
 
 describe("/api/search anti-pollution filters", () => {
-  it("contém regex que captura DEMO/FIXTURE/EXEMPLO", () => {
-    expect(ROUTE_SRC).toMatch(/DEMO\|FIXTURE\|TEST\(E\)\?\|EXEMPLO/);
+  it("importa o helper canônico de source-visibility", () => {
+    expect(ROUTE_SRC).toMatch(/from\s+["']@\/lib\/corpus\/source-visibility["']/);
   });
 
-  it("contém regex que captura STF-RE-DEMO-N", () => {
-    expect(ROUTE_SRC).toMatch(/STF-RE-DEMO\|RE-DEMO/);
+  it("usa DEMO_TOKEN_REGEX (regex centralizado) em vez de regex inline", () => {
+    expect(ROUTE_SRC).toMatch(/DEMO_TOKEN_REGEX/);
   });
 
-  it("filtra LegalSource demo em produção via where clause", () => {
-    expect(ROUTE_SRC).toMatch(/IS_PROD/);
-    expect(ROUTE_SRC).toMatch(/NOT:\s*\{\s*code:\s*\{\s*contains:\s*"DEMO"/);
+  it("filtra LegalChunk via legalChunkProductionWhere() (relação norm)", () => {
+    expect(ROUTE_SRC).toMatch(/legalChunkProductionWhere\(/);
   });
 
-  it("descarta LegalChunk de FIXTURE quando showAll=false", () => {
-    expect(ROUTE_SRC).toMatch(/sourceProvider:\s*\{\s*not:\s*CorpusProvider\.FIXTURE\s*\}/);
+  it("filtra LegalSource via legalSourceProductionWhere()", () => {
+    expect(ROUTE_SRC).toMatch(/legalSourceProductionWhere\(/);
+  });
+
+  it("valida cada hit com isProductionVisibleSource antes de renderizar", () => {
+    expect(ROUTE_SRC).toMatch(/isProductionVisibleSource\(/);
+  });
+
+  it("usa shouldBypassDemoVisibility para decidir bypass (?all=1, /demo, dev)", () => {
+    expect(ROUTE_SRC).toMatch(/shouldBypassDemoVisibility\(/);
   });
 
   it("define MIN_CHUNK_CHARS para filtrar chunks muito curtos", () => {

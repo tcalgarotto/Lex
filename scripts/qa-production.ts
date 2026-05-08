@@ -26,6 +26,10 @@ import fs from "node:fs/promises";
 import { CorpusProvider } from "@prisma/client";
 import { prisma } from "../src/lib/prisma";
 import { CORPUS_COLLECTIONS } from "../src/lib/corpus/qdrant-collections";
+import {
+  legalNormProductionWhere,
+  legalSourceProductionWhere,
+} from "../src/lib/corpus/source-visibility";
 
 type CheckOutcome = {
   id: string;
@@ -131,7 +135,11 @@ async function checkPrismaCounts(): Promise<CheckOutcome[]> {
       prisma.legalNorm.count(),
       prisma.legalChunk.count(),
       prisma.legalChunk.count({
-        where: { norm: { sourceProvider: CorpusProvider.MANUAL } },
+        where: {
+          norm: {
+            sourceProvider: { in: [CorpusProvider.MANUAL, CorpusProvider.PLANALTO] },
+          },
+        },
       }),
     ]);
 
@@ -158,27 +166,134 @@ async function checkPrismaCounts(): Promise<CheckOutcome[]> {
 
     out.push({
       id: "legal-norms-min",
-      ok: norms >= 6,
-      detail: `LegalNorm=${norms} (mínimo 6)`,
-      ...(norms < 6
-        ? { hint: "Rode `npm run corpus:seed:minimal-legal`." }
+      ok: norms >= 12,
+      detail: `LegalNorm=${norms} (mínimo profissional: 12)`,
+      ...(norms < 12
+        ? { hint: "Rode `npm run corpus:seed:official-laws` (15 leis Planalto)." }
         : {}),
     });
 
     out.push({
       id: "legal-chunks-min",
-      ok: legalChunks >= 20,
-      detail: `LegalChunk=${legalChunks} (mínimo 20). MANUAL=${manualChunks}`,
-      ...(legalChunks < 20
-        ? { hint: "Rode `npm run corpus:seed:minimal-legal`." }
+      ok: legalChunks >= 100,
+      detail: `LegalChunk=${legalChunks} (mínimo profissional: 100). curados=${manualChunks} (MANUAL+PLANALTO)`,
+      ...(legalChunks < 100
+        ? { hint: "Rode `npm run corpus:seed:official-laws` para baixar Planalto." }
         : {}),
     });
+
+    // Códigos críticos: CF, CPC, CDC, CC, LMP, CLT, CP, LGPD, EAOAB.
+    const criticalUrnFragments: Array<{ id: string; urnFragment: string; name: string }> = [
+      { id: "law-cf", urnFragment: "constituicao:1988", name: "CF/1988" },
+      { id: "law-cpc", urnFragment: "13105", name: "CPC (Lei 13.105/2015)" },
+      { id: "law-cdc", urnFragment: "8078", name: "CDC (Lei 8.078/1990)" },
+      { id: "law-cc", urnFragment: "10406", name: "CC (Lei 10.406/2002)" },
+      { id: "law-lmp", urnFragment: "11340", name: "Lei Maria da Penha" },
+      { id: "law-clt", urnFragment: "5452", name: "CLT" },
+      { id: "law-cp", urnFragment: "2848", name: "Código Penal" },
+      { id: "law-lgpd", urnFragment: "13709", name: "LGPD" },
+      { id: "law-eaoab", urnFragment: "8906", name: "Estatuto da Advocacia" },
+    ];
+    for (const target of criticalUrnFragments) {
+      const norm = await prisma.legalNorm.findFirst({
+        where: { urn: { contains: target.urnFragment } },
+        select: { urn: true, sourceProvider: true },
+      });
+      out.push({
+        id: target.id,
+        ok: !!norm,
+        detail: norm
+          ? `${target.name} ✓ (provider=${norm.sourceProvider})`
+          : `${target.name} ✗ AUSENTE`,
+        ...(norm
+          ? {}
+          : { hint: `Rode \`npm run corpus:seed:official-laws -- --only=${target.id.replace("law-", "")}\`.` }),
+      });
+    }
   } catch (e) {
     out.push({
       id: "db",
       ok: false,
       detail: `Prisma falhou: ${(e as Error).message}`,
       hint: "DATABASE_URL apontando para Postgres acessível?",
+    });
+  }
+  return out;
+}
+
+async function checkDemoIsolation(): Promise<CheckOutcome[]> {
+  const out: CheckOutcome[] = [];
+  try {
+    const [
+      totalLegalSource,
+      visibleLegalSource,
+      totalLegalNorm,
+      visibleLegalNorm,
+    ] = await Promise.all([
+      prisma.legalSource.count(),
+      prisma.legalSource.count({ where: legalSourceProductionWhere() }),
+      prisma.legalNorm.count(),
+      prisma.legalNorm.count({ where: legalNormProductionWhere() }),
+    ]);
+    const blockedSources = totalLegalSource - visibleLegalSource;
+    const blockedNorms = totalLegalNorm - visibleLegalNorm;
+
+    // Critério: depois de aplicar o filtro canônico, NÃO pode sobrar
+    // nenhuma fonte com DEMO/FIXTURE no que iria pra UI normal.
+    const stillVisibleDemoSource = await prisma.legalSource.count({
+      where: {
+        AND: [
+          legalSourceProductionWhere(),
+          {
+            OR: [
+              { code: { contains: "DEMO", mode: "insensitive" } },
+              { code: { contains: "FIXTURE", mode: "insensitive" } },
+            ],
+          },
+        ],
+      },
+    });
+    const stillVisibleDemoNorm = await prisma.legalNorm.count({
+      where: {
+        AND: [
+          legalNormProductionWhere(),
+          {
+            OR: [
+              { identifier: { contains: "DEMO", mode: "insensitive" } },
+              { sourceProvider: CorpusProvider.FIXTURE },
+            ],
+          },
+        ],
+      },
+    });
+
+    out.push({
+      id: "demo-isolation-source",
+      ok: stillVisibleDemoSource === 0,
+      detail: `LegalSource: ${visibleLegalSource}/${totalLegalSource} visíveis (${blockedSources} bloqueados)`,
+      ...(stillVisibleDemoSource > 0
+        ? {
+            hint:
+              "Helper source-visibility.legalSourceProductionWhere() não está cobrindo todos os tokens. Adicione padrões em DEMO_PATTERNS/LEGACY_DEMO_CODES.",
+          }
+        : {}),
+    });
+    out.push({
+      id: "demo-isolation-norm",
+      ok: stillVisibleDemoNorm === 0,
+      detail: `LegalNorm: ${visibleLegalNorm}/${totalLegalNorm} visíveis (${blockedNorms} bloqueadas)`,
+      ...(stillVisibleDemoNorm > 0
+        ? {
+            hint:
+              "Helper source-visibility.legalNormProductionWhere() não está bloqueando todas as FIXTURE. Verifique sourceProvider e identifier.",
+          }
+        : {}),
+    });
+  } catch (e) {
+    out.push({
+      id: "demo-isolation",
+      ok: false,
+      detail: `falhou ao consultar DB: ${(e as Error).message}`,
     });
   }
   return out;
@@ -341,6 +456,7 @@ async function main(): Promise<void> {
   items.push(await checkInngestSecurity());
   items.push(await checkBundleSafety());
   items.push(...(await checkPrismaCounts()));
+  items.push(...(await checkDemoIsolation()));
   items.push(await checkQdrantCorpus());
 
   if (!flags.skipHttp) {
