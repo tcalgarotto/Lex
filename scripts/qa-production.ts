@@ -135,7 +135,11 @@ async function checkPrismaCounts(): Promise<CheckOutcome[]> {
       prisma.legalNorm.count(),
       prisma.legalChunk.count(),
       prisma.legalChunk.count({
-        where: { norm: { sourceProvider: CorpusProvider.MANUAL } },
+        where: {
+          norm: {
+            sourceProvider: { in: [CorpusProvider.MANUAL, CorpusProvider.PLANALTO] },
+          },
+        },
       }),
     ]);
 
@@ -172,7 +176,7 @@ async function checkPrismaCounts(): Promise<CheckOutcome[]> {
     out.push({
       id: "legal-chunks-min",
       ok: legalChunks >= 100,
-      detail: `LegalChunk=${legalChunks} (mínimo profissional: 100). MANUAL=${manualChunks}`,
+      detail: `LegalChunk=${legalChunks} (mínimo profissional: 100). curados=${manualChunks} (MANUAL+PLANALTO)`,
       ...(legalChunks < 100
         ? { hint: "Rode `npm run corpus:seed:official-laws` para baixar Planalto." }
         : {}),
