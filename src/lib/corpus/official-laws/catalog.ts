@@ -82,9 +82,9 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 100,
     aliases: ["constituição federal", "cf", "cf/88", "cf 1988", "constituição"],
     domainPacks: ["constitucional"],
-    expectedArticleCount: { min: 200, max: 260 },
+    expectedArticleCount: { min: 280, max: 360 },
     parserNotes:
-      "CF tem âncoras especiais para EC e ADCT. Parser pode subdimensionar artigos do ADCT.",
+      "CF tem âncoras especiais para EC e ADCT. Contagem inclui artigos do ADCT e numerações -A/-B.",
   },
   {
     key: "CC2002",
@@ -99,7 +99,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 95,
     aliases: ["código civil", "cc", "cc/2002", "novo código civil"],
     domainPacks: ["civil", "familia"],
-    expectedArticleCount: { min: 1900, max: 2100 },
+    expectedArticleCount: { min: 2000, max: 2150 },
   },
   {
     key: "CPC2015",
@@ -115,7 +115,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 95,
     aliases: ["cpc", "código de processo civil", "cpc/2015", "novo cpc"],
     domainPacks: ["processual_civil"],
-    expectedArticleCount: { min: 1000, max: 1100 },
+    expectedArticleCount: { min: 1050, max: 1150 },
   },
   {
     key: "CDC",
@@ -146,7 +146,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 90,
     aliases: ["clt", "consolidação das leis do trabalho", "leis trabalhistas"],
     domainPacks: ["trabalhista"],
-    expectedArticleCount: { min: 850, max: 950 },
+    expectedArticleCount: { min: 1100, max: 1300 },
   },
   {
     key: "CP",
@@ -162,7 +162,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 90,
     aliases: ["cp", "código penal"],
     domainPacks: ["penal"],
-    expectedArticleCount: { min: 340, max: 400 },
+    expectedArticleCount: { min: 360, max: 450 },
   },
   {
     key: "CPP",
@@ -177,7 +177,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 90,
     aliases: ["cpp", "código de processo penal"],
     domainPacks: ["processual_penal"],
-    expectedArticleCount: { min: 750, max: 850 },
+    expectedArticleCount: { min: 800, max: 920 },
   },
   {
     key: "LMP",
@@ -215,7 +215,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 90,
     aliases: ["eca", "estatuto da criança", "estatuto do adolescente"],
     domainPacks: ["infancia_juventude", "familia"],
-    expectedArticleCount: { min: 250, max: 290 },
+    expectedArticleCount: { min: 280, max: 340 },
   },
   {
     key: "EI",
@@ -245,7 +245,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 90,
     aliases: ["estatuto da advocacia", "estatuto da oab", "prerrogativas do advogado", "eaoab"],
     domainPacks: ["advocacia"],
-    expectedArticleCount: { min: 80, max: 95 },
+    expectedArticleCount: { min: 85, max: 110 },
   },
   {
     key: "L8213",
@@ -266,7 +266,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
       "aposentadoria",
     ],
     domainPacks: ["previdenciario"],
-    expectedArticleCount: { min: 140, max: 170 },
+    expectedArticleCount: { min: 150, max: 200 },
   },
   {
     key: "LINQ",
@@ -296,7 +296,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 85,
     aliases: ["lgpd", "proteção de dados", "lei 13.709"],
     domainPacks: ["protecao_dados"],
-    expectedArticleCount: { min: 55, max: 70 },
+    expectedArticleCount: { min: 65, max: 100 },
   },
   {
     key: "LRP",
@@ -311,7 +311,7 @@ export const OFFICIAL_LAWS: OfficialLaw[] = [
     priority: 75,
     aliases: ["registros públicos", "lei 6.015", "registro civil", "registro de imóveis"],
     domainPacks: ["registros_publicos", "civil"],
-    expectedArticleCount: { min: 320, max: 400 },
+    expectedArticleCount: { min: 300, max: 400 },
   },
 ];
 

@@ -73,8 +73,16 @@ const INCISO_ANCHOR_RE = /^art\d+[a-z]?([ivxlc]+)$/i;
 const ALINEA_ANCHOR_RE = /^art\d+[a-z]?([ivxlc]+)([a-z])$/i;
 const SECTION_ANCHOR_RE = /^(titulo|capitulo|secao|seção|livro|parte|preambulo|preâmbulo|disposicoes|disposições)/i;
 
-/** Captura "Art. 1º", "Art. 12-A", "Art. 313 -A", "Art. 2 -B". */
-const ARTICLE_TEXT_RE = /^Art\.\s*(\d+)(?:\s*[-–—_]\s*([A-Za-z]))?(?:[º°ªo])?\s*[\.\-–—]?\s*/u;
+/**
+ * Captura "Art. 1º", "Art. 12-A", "Art. 1.000" (com ponto de milhar),
+ * "Art. 2.046-A", "Art. 313 -A", "Art. 2 -B".
+ *
+ * O ponto de milhar é crítico em códigos grandes (CC tem Art. 2.046,
+ * CPC Art. 1.072, CLT Art. 922-A). Sem isso o regex parava no `.` do
+ * milhar e capturava só o primeiro dígito.
+ */
+const ARTICLE_TEXT_RE =
+  /^Art\.\s*(\d{1,3}(?:\.\d{3})+|\d+)(?:\s*[-–—_]\s*([A-Za-z]))?(?:[º°ªo])?\s*[\.\-–—]?\s*/u;
 const PARAGRAPH_TEXT_RE = /^§\s*(\d+|único|unico)?(?:[º°ªo])?\s*[\.\-–—]?\s*/iu;
 /** Inciso clássico: "I -", "II -", "XXIV –". */
 const INCISO_TEXT_RE = /^([IVXLC]{1,4})\s*[\-–—]\s*/u;
@@ -112,8 +120,10 @@ function buildArticleRef(num: string, suffix?: string): string {
 function extractArticleParts(text: string): { num: string; suffix?: string } | null {
   const m = text.match(ARTICLE_TEXT_RE);
   if (!m || !m[1]) return null;
+  // Remove pontos de milhar para a forma canônica ("1.000" → "1000").
+  const num = m[1].replace(/\./g, "");
   const suffix = m[2]?.toUpperCase();
-  return suffix ? { num: m[1], suffix } : { num: m[1] };
+  return suffix ? { num, suffix } : { num };
 }
 
 function detectAnchorType(anchor: string | undefined): Unit["type"] | null {

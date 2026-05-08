@@ -162,21 +162,50 @@ async function checkPrismaCounts(): Promise<CheckOutcome[]> {
 
     out.push({
       id: "legal-norms-min",
-      ok: norms >= 6,
-      detail: `LegalNorm=${norms} (mínimo 6)`,
-      ...(norms < 6
-        ? { hint: "Rode `npm run corpus:seed:minimal-legal`." }
+      ok: norms >= 12,
+      detail: `LegalNorm=${norms} (mínimo profissional: 12)`,
+      ...(norms < 12
+        ? { hint: "Rode `npm run corpus:seed:official-laws` (15 leis Planalto)." }
         : {}),
     });
 
     out.push({
       id: "legal-chunks-min",
-      ok: legalChunks >= 20,
-      detail: `LegalChunk=${legalChunks} (mínimo 20). MANUAL=${manualChunks}`,
-      ...(legalChunks < 20
-        ? { hint: "Rode `npm run corpus:seed:minimal-legal`." }
+      ok: legalChunks >= 100,
+      detail: `LegalChunk=${legalChunks} (mínimo profissional: 100). MANUAL=${manualChunks}`,
+      ...(legalChunks < 100
+        ? { hint: "Rode `npm run corpus:seed:official-laws` para baixar Planalto." }
         : {}),
     });
+
+    // Códigos críticos: CF, CPC, CDC, CC, LMP, CLT, CP, LGPD, EAOAB.
+    const criticalUrnFragments: Array<{ id: string; urnFragment: string; name: string }> = [
+      { id: "law-cf", urnFragment: "constituicao:1988", name: "CF/1988" },
+      { id: "law-cpc", urnFragment: "13105", name: "CPC (Lei 13.105/2015)" },
+      { id: "law-cdc", urnFragment: "8078", name: "CDC (Lei 8.078/1990)" },
+      { id: "law-cc", urnFragment: "10406", name: "CC (Lei 10.406/2002)" },
+      { id: "law-lmp", urnFragment: "11340", name: "Lei Maria da Penha" },
+      { id: "law-clt", urnFragment: "5452", name: "CLT" },
+      { id: "law-cp", urnFragment: "2848", name: "Código Penal" },
+      { id: "law-lgpd", urnFragment: "13709", name: "LGPD" },
+      { id: "law-eaoab", urnFragment: "8906", name: "Estatuto da Advocacia" },
+    ];
+    for (const target of criticalUrnFragments) {
+      const norm = await prisma.legalNorm.findFirst({
+        where: { urn: { contains: target.urnFragment } },
+        select: { urn: true, sourceProvider: true },
+      });
+      out.push({
+        id: target.id,
+        ok: !!norm,
+        detail: norm
+          ? `${target.name} ✓ (provider=${norm.sourceProvider})`
+          : `${target.name} ✗ AUSENTE`,
+        ...(norm
+          ? {}
+          : { hint: `Rode \`npm run corpus:seed:official-laws -- --only=${target.id.replace("law-", "")}\`.` }),
+      });
+    }
   } catch (e) {
     out.push({
       id: "db",

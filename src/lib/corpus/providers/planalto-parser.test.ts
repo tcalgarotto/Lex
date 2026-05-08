@@ -100,6 +100,24 @@ describe("parsePlanaltoLawHtml — robustez", () => {
     expect(parsed.articles[0].text).not.toMatch(/<a /);
   });
 
+  it("captura artigos com ponto de milhar (Art. 1.000, Art. 2.046-A)", () => {
+    const html = `
+      <html><body>
+        <p><a name="art999"></a>Art. 999. Art. 999 simples.</p>
+        <p><a name="art1000"></a>Art. 1.000. A sociedade simples...</p>
+        <p><a name="art1196"></a>Art. 1.196. Considera-se possuidor...</p>
+        <p><a name="art2046"></a>Art. 2.046. Vigora desde 2003.</p>
+        <p><a name="art2046a"></a>Art. 2.046-A. Disposição transitória.</p>
+      </body></html>`;
+    const parsed = parsePlanaltoLawHtml(html);
+    const numbers = parsed.articles.map((a) => a.number);
+    expect(numbers).toContain("999");
+    expect(numbers).toContain("1000");
+    expect(numbers).toContain("1196");
+    expect(numbers).toContain("2046");
+    expect(numbers).toContain("2046-A");
+  });
+
   it("extrai sufixos -A/-B/-C corretamente quando aparecem", () => {
     const html = `
       <html><body>
