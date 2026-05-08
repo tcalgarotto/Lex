@@ -13,6 +13,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:enum-providers": "tsx --env-file=.env scripts/migrate-enum-providers.ts",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "qdrant:init": "tsx --env-file=.env scripts/init-qdrant.ts",

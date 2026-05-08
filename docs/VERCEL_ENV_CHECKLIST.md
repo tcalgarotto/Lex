@@ -48,10 +48,10 @@ depender de ordem de boot.
 
 ```bash
 # A) App
-NEXT_PUBLIC_APP_URL=https://lex-navy.vercel.app   
-NODE_ENV=production                                
-LOG_LEVEL=info
-PRISMA_QUERY_LOGS=false
+NEXT_PUBLIC_APP_URL=https://lex-navy.vercel.app        #
+NODE_ENV=production           #                          
+LOG_LEVEL=info     #
+PRISMA_QUERY_LOGS=false     #
 
 # B) Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
@@ -61,20 +61,20 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...                  # secret server-side
 # B.1) Postgres (Prisma) — formato exato
 DATABASE_URL=postgresql://postgres.<ref>:<PWD>@aws-1-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 DIRECT_URL=postgresql://postgres.<ref>:<PWD>@aws-1-<region>.pooler.supabase.com:5432/postgres
-STORAGE_BUCKET_DOCUMENTS=documents
+STORAGE_BUCKET_DOCUMENTS=documents    #
 
 # C) Redis (Upstash recomendado)
 REDIS_URL=rediss://default:<password>@<host>.upstash.io:6379    # TLS, NÃO https://
-REDIS_REQUIRED=true
-REDIS_NAMESPACE=lex:prod
+REDIS_REQUIRED=true     #
+REDIS_NAMESPACE=lex:prod    #
 
 # D) Qdrant Cloud
 QDRANT_URL=https://<cluster>.<region>.aws.cloud.qdrant.io
 QDRANT_API_KEY=<api-key>
-QDRANT_COLLECTION=lex_main
-QDRANT_COLLECTION_CORPUS_NORMS=lex_corpus_norms
-QDRANT_COLLECTION_CORPUS_JURISPRUDENCE=lex_corpus_jurisprudence
-QDRANT_REQUIRED=true
+QDRANT_COLLECTION=lex_main   #
+QDRANT_COLLECTION_CORPUS_NORMS=lex_corpus_norms    #
+QDRANT_COLLECTION_CORPUS_JURISPRUDENCE=lex_corpus_jurisprudence     #
+QDRANT_REQUIRED=true    #
 
 # E) Inngest Cloud
 INNGEST_EVENT_KEY=<event-key>
@@ -143,7 +143,7 @@ ENABLE_CORPUS_GRAPH=true
 ENABLE_LEXML_PROVIDER=true
 ENABLE_STF_PROVIDER=true
 ENABLE_STJ_PROVIDER=true
-ENABLE_DATAJUD=true              # status fica `not_configured` se faltar API key
+ENABLE_DATAJUD=true              
 ENABLE_CAMARA_PROVIDER=true
 ENABLE_SENADO_PROVIDER=true
 ENABLE_INTEGRATIONS_MOCKS=false
