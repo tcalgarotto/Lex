@@ -123,11 +123,24 @@ export async function retrieveContext(params: {
     LIMIT 8
   `;
 
-  const legalRows = await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>`
-    SELECT id, body, code FROM "LegalSource"
-    WHERE body ILIKE ${pattern} OR code ILIKE ${pattern}
-    LIMIT 12
-  `;
+  // LegalSource é a tabela legacy. Em produção filtramos DEMO/FIXTURE
+  // pra impedir poluir o RAG enquanto não migramos tudo para LegalNorm.
+  // Selecionamos APENAS as colunas que a função usa (sem ementa/etc.)
+  // para evitar overfetch em rows grandes.
+  const isProd = process.env["NODE_ENV"] === "production";
+  const legalRows = isProd
+    ? await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>`
+        SELECT id, body, code FROM "LegalSource"
+        WHERE (body ILIKE ${pattern} OR code ILIKE ${pattern})
+          AND code NOT ILIKE '%DEMO%'
+          AND code NOT ILIKE '%FIXTURE%'
+        LIMIT 12
+      `
+    : await prisma.$queryRaw<Array<{ id: string; body: string; code: string }>>`
+        SELECT id, body, code FROM "LegalSource"
+        WHERE body ILIKE ${pattern} OR code ILIKE ${pattern}
+        LIMIT 12
+      `;
 
   const lexLists: Array<Array<{ id: string }>> = [
     processRows.map((r) => ({ id: `lex:proc:${r.id}` })),

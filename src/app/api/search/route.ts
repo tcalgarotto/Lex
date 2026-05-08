@@ -57,17 +57,106 @@ export async function GET(req: Request) {
 
   const hits: SearchHit[] = [];
 
-  const processes = await prisma.process.findMany({
-    where: {
-      workspaceId,
-      OR: [
-        { title: { contains: q, mode: "insensitive" } },
-        { number: { contains: q, mode: "insensitive" } },
-      ],
-    },
-    take: limit,
-    orderBy: { updatedAt: "desc" },
-  });
+  // Quick win: 5 queries independentes rodam em paralelo.
+  // `select` explícito em todas para evitar overfetch (especialmente
+  // em LegalPiece.contentJson e LegalChunk.text/norm).
+  const legalChunkWhere = {
+    text: { contains: q, mode: "insensitive" as const },
+    ...(showAll
+      ? {}
+      : { norm: { sourceProvider: { not: CorpusProvider.FIXTURE } } }),
+  };
+
+  const [processes, pieces, docs, officialChunksOrErr, legalLegacy] =
+    await Promise.all([
+      prisma.process.findMany({
+        where: {
+          workspaceId,
+          OR: [
+            { title: { contains: q, mode: "insensitive" } },
+            { number: { contains: q, mode: "insensitive" } },
+          ],
+        },
+        select: {
+          id: true,
+          title: true,
+          number: true,
+          updatedAt: true,
+        },
+        take: limit,
+        orderBy: { updatedAt: "desc" },
+      }),
+      prisma.legalPiece.findMany({
+        where: { workspaceId, title: { contains: q, mode: "insensitive" } },
+        select: { id: true, title: true, kind: true },
+        take: limit,
+      }),
+      prisma.document.findMany({
+        where: { workspaceId, originalName: { contains: q, mode: "insensitive" } },
+        select: {
+          id: true,
+          originalName: true,
+          status: true,
+          processId: true,
+        },
+        take: limit,
+      }),
+      // Corpus jurídico oficial (LegalChunk). Resolve com Promise allSettled
+      // pra não derrubar a busca se a query falhar.
+      prisma.legalChunk
+        .findMany({
+          where: legalChunkWhere,
+          select: {
+            id: true,
+            text: true,
+            articleRef: true,
+            fullPath: true,
+            norm: {
+              select: {
+                id: true,
+                urn: true,
+                title: true,
+                identifier: true,
+                sourceUrl: true,
+                sourceProvider: true,
+                tribunal: true,
+              },
+            },
+          },
+          take: limit,
+        })
+        .catch((e) => e as Error),
+      // LegalSource legacy — descontaminado em produção.
+      (() => {
+        const legalWhere: Prisma.LegalSourceWhereInput = {
+          OR: [
+            { code: { contains: q, mode: "insensitive" } },
+            { body: { contains: q, mode: "insensitive" } },
+          ],
+        };
+        if (IS_PROD && !showAll) {
+          legalWhere.AND = [
+            { NOT: { code: { contains: "DEMO" } } },
+            { NOT: { code: { contains: "demo" } } },
+            { NOT: { code: { contains: "FIXTURE" } } },
+            { NOT: { code: { contains: "fixture" } } },
+          ];
+        }
+        return prisma.legalSource.findMany({
+          where: legalWhere,
+          select: {
+            id: true,
+            code: true,
+            body: true,
+            articleRef: true,
+            tribunal: true,
+            layer: true,
+          },
+          take: limit,
+        });
+      })(),
+    ]);
+
   for (const p of processes) {
     hits.push({
       id: p.id,
@@ -78,10 +167,6 @@ export async function GET(req: Request) {
     });
   }
 
-  const pieces = await prisma.legalPiece.findMany({
-    where: { workspaceId, title: { contains: q, mode: "insensitive" } },
-    take: limit,
-  });
   for (const p of pieces) {
     hits.push({
       id: p.id,
@@ -92,10 +177,6 @@ export async function GET(req: Request) {
     });
   }
 
-  const docs = await prisma.document.findMany({
-    where: { workspaceId, originalName: { contains: q, mode: "insensitive" } },
-    take: limit,
-  });
   for (const d of docs) {
     hits.push({
       id: d.id,
@@ -106,33 +187,11 @@ export async function GET(req: Request) {
     });
   }
 
-  // Corpus jurídico oficial (LegalChunk) — preferencial sobre LegalSource.
   let hadOfficialCorpus = false;
-  try {
-    const officialChunks = await prisma.legalChunk.findMany({
-      where: {
-        text: { contains: q, mode: "insensitive" },
-        norm: showAll
-          ? undefined
-          : {
-              sourceProvider: { not: CorpusProvider.FIXTURE },
-            },
-      },
-      include: {
-        norm: {
-          select: {
-            id: true,
-            urn: true,
-            title: true,
-            identifier: true,
-            sourceUrl: true,
-            sourceProvider: true,
-            tribunal: true,
-          },
-        },
-      },
-      take: limit,
-    });
+  if (officialChunksOrErr instanceof Error) {
+    console.warn("[search] corpus oficial falhou:", officialChunksOrErr.message);
+  } else {
+    const officialChunks = officialChunksOrErr;
     hadOfficialCorpus = officialChunks.length > 0;
 
     for (const c of officialChunks) {
@@ -155,31 +214,11 @@ export async function GET(req: Request) {
         href: undefined,
       });
     }
-  } catch (e) {
-    console.warn("[search] corpus oficial falhou:", (e as Error).message);
   }
 
-  // LegalSource (legado) — descontaminado em produção.
-  const legalWhere: Prisma.LegalSourceWhereInput = {
-    OR: [
-      { code: { contains: q, mode: "insensitive" } },
-      { body: { contains: q, mode: "insensitive" } },
-    ],
-  };
-  if (IS_PROD && !showAll) {
-    // Postgres ILIKE — pegamos qualquer caso de DEMO/FIXTURE no `code`.
-    legalWhere.AND = [
-      { NOT: { code: { contains: "DEMO" } } },
-      { NOT: { code: { contains: "demo" } } },
-      { NOT: { code: { contains: "FIXTURE" } } },
-      { NOT: { code: { contains: "fixture" } } },
-    ];
-  }
-  const legal = await prisma.legalSource.findMany({
-    where: legalWhere,
-    take: limit,
-  });
-  for (const l of legal) {
+  // LegalSource (legado) — já filtrado anti-DEMO/FIXTURE no Promise.all
+  // acima. Aqui só transformamos para SearchHit.
+  for (const l of legalLegacy) {
     if (!showAll && isPollutedCode(l.code)) continue;
     if (!showAll && isPollutedText(l.body)) continue;
     hits.push({

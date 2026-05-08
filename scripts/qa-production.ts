@@ -56,6 +56,25 @@ async function readFile(rel: string): Promise<string> {
   return fs.readFile(path.resolve(__dirname, "..", rel), "utf-8");
 }
 
+async function checkInngestSecurity(): Promise<CheckOutcome> {
+  const eventKey = (process.env["INNGEST_EVENT_KEY"] ?? "").trim();
+  const signingKey = (process.env["INNGEST_SIGNING_KEY"] ?? "").trim();
+  const isProd = process.env["NODE_ENV"] === "production";
+  if (isProd && (!eventKey || !signingKey)) {
+    return {
+      id: "inngest-security",
+      ok: false,
+      detail: `INNGEST_EVENT_KEY=${Boolean(eventKey)}  INNGEST_SIGNING_KEY=${Boolean(signingKey)}`,
+      hint: "Configure ambas as chaves em Vercel → Environment Variables (Production) e Redeploy.",
+    };
+  }
+  return {
+    id: "inngest-security",
+    ok: true,
+    detail: isProd ? "ambas as chaves presentes" : "modo dev (chaves opcionais)",
+  };
+}
+
 async function checkBundleSafety(): Promise<CheckOutcome> {
   try {
     const route = await readFile("src/app/api/inngest/route.ts");
@@ -308,6 +327,7 @@ async function main(): Promise<void> {
   const flags = parseFlags(process.argv.slice(2));
 
   const items: CheckOutcome[] = [];
+  items.push(await checkInngestSecurity());
   items.push(await checkBundleSafety());
   items.push(...(await checkPrismaCounts()));
   items.push(await checkQdrantCorpus());

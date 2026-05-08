@@ -39,6 +39,7 @@
     "datajud:dry-run": "tsx --env-file=.env scripts/datajud-check.ts -- --dry-run",
     "documents:audit": "tsx --env-file=.env scripts/documents-audit.ts",
     "qa:production": "tsx --env-file=.env scripts/qa-production.ts",
+    "qa:local": "tsx --env-file=.env scripts/qa-production.ts -- --skip-http",
     "retrieval:smoke": "tsx --env-file=.env scripts/retrieval-smoke.ts",
     "seed:demo-legal": "tsx --env-file=.env seed/seed-demo-legal.ts",
     "smoke:team": "tsx --env-file=.env scripts/smoke-team.ts",
