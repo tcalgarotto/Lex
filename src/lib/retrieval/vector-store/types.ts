@@ -34,5 +34,12 @@ export interface VectorStore {
     layers?: LegalLayer[];
     limit: number;
   }): Promise<VectorSearchHit[]>;
-  deleteByDocumentId(documentId: string): Promise<void>;
+  /**
+   * Deleta TODOS os vetores de um documento pertencente ao workspace
+   * informado. `workspaceId` é OBRIGATÓRIO — sem ele, o filtro não
+   * isola tenant e poderia, em teoria, deletar o vetor de outro
+   * workspace que tivesse o mesmo `documentId` (defesa em profundidade
+   * contra colisão / input malicioso).
+   */
+  deleteByDocumentId(documentId: string, workspaceId: string): Promise<void>;
 }

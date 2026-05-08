@@ -67,7 +67,9 @@ export function CommandMenu() {
           {hits.map((h) => (
             <CommandItem
               key={`${h.type}-${h.id}`}
+              disabled={!h.href}
               onSelect={() => {
+                if (!h.href) return;
                 setOpen(false);
                 router.push(h.href);
               }}

@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Para builds em containers/docker — produz output standalone com server.js mínimo.
   output: "standalone",
+  // Pacotes que devem ficar fora do bundle do Next em rotas server-side.
+  // Eles têm assets/workers/wasm que o tracer não consegue empacotar
+  // corretamente em serverless. Mantê-los como require() em runtime
+  // evita o erro `Cannot find module '/var/task/.../pdf.worker.mjs'`
+  // visto na função /api/inngest.
+  serverExternalPackages: [
+    "unpdf",
+    "pdfjs-dist",
+    "mammoth",
+    "tesseract.js",
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",

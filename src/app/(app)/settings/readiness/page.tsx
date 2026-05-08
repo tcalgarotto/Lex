@@ -57,9 +57,11 @@ export default async function ReadinessPage() {
 
   let qdrantStatus: { status: Status; detail?: string } = { status: "Pendente" };
   try {
-    // Smoke: uma busca vazia deve falhar? Usamos delete-by-documentId inexistente como no-op.
+    // Smoke check: deleta IDs inexistentes (no-op) só pra exercitar a
+    // conexão. Passamos workspaceId fictício porque a interface exige
+    // — o Qdrant não vai casar nada e o delete é seguro.
     const store = getQdrantVectorStore();
-    await store.deleteByDocumentId("__readiness_noop__");
+    await store.deleteByDocumentId("__readiness_noop__", "__readiness_noop__");
     qdrantStatus = { status: "OK", detail: "conexão OK" };
   } catch (e) {
     qdrantStatus = { status: "Erro", detail: e instanceof Error ? e.message : "Erro" };

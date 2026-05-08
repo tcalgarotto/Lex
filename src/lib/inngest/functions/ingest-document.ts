@@ -4,12 +4,42 @@ import { DocumentStatus, LegalLayer } from "@prisma/client";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { downloadDocumentBuffer } from "@/lib/storage";
-import { extractTextFromBuffer } from "@/lib/parsers/extract-text";
 import { chunkLegalText } from "@/lib/parsers/legal-chunker";
 import { embedTexts } from "@/lib/ai/embeddings";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { sha256Hex } from "@/lib/util/content-hash";
+
 const BATCH = 16;
+
+/**
+ * Marca o Document como FAILED com mensagem de usuário e devolve
+ * um `NonRetriableError` para o Inngest parar o pipeline. Sem esse
+ * tratamento, erros como "PDF escaneado sem texto" causariam retries
+ * infinitos.
+ */
+async function failDocument(
+  documentId: string,
+  reason: string,
+  cause?: unknown,
+): Promise<NonRetriableError> {
+  try {
+    await prisma.document.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.FAILED,
+        errorMessage: reason.slice(0, 500),
+        progress: 1,
+      },
+    });
+  } catch (e) {
+    console.error("[ingest-document] failed to persist FAILED status", e);
+  }
+  const err = new NonRetriableError(reason);
+  if (cause !== undefined) {
+    (err as Error & { cause?: unknown }).cause = cause;
+  }
+  return err;
+}
 
 export const ingestDocument = inngest.createFunction(
   { id: "ingest-document", retries: 3 },
@@ -30,14 +60,39 @@ export const ingestDocument = inngest.createFunction(
       }),
     );
 
-    const text = await step.run("extract-text", async () => {
-      const buf = await downloadDocumentBuffer(doc.storagePath);
-      return extractTextFromBuffer({
-        buffer: buf,
-        mimeType: doc.mimeType,
-        fileName: doc.originalName,
+    // IMPORTANTE: lazy import dentro do step. NUNCA importar
+    // `extract-text` no topo deste módulo — ele puxa pdfjs/mammoth/
+    // tesseract para o bundle da rota /api/inngest e quebra a
+    // function no Vercel com `Cannot find module .../pdf.worker.mjs`.
+    let text: string;
+    try {
+      text = await step.run("extract-text", async () => {
+        const { extractTextFromBuffer, ExtractTextError } = await import(
+          "@/lib/parsers/extract-text"
+        );
+        const buf = await downloadDocumentBuffer(doc.storagePath);
+        try {
+          return await extractTextFromBuffer({
+            buffer: buf,
+            mimeType: doc.mimeType,
+            fileName: doc.originalName,
+          });
+        } catch (err) {
+          if (err instanceof ExtractTextError) {
+            // Erros controlados: viram NonRetriableError para o
+            // Inngest interromper o pipeline com mensagem honesta.
+            throw new NonRetriableError(`${err.code}: ${err.userMessage}`);
+          }
+          throw err;
+        }
       });
-    });
+    } catch (err) {
+      const reason =
+        err instanceof Error
+          ? err.message
+          : "Falha ao extrair texto do documento.";
+      throw await failDocument(doc.id, reason, err);
+    }
 
     await step.run("persist-extracted", () =>
       prisma.document.update({
@@ -60,20 +115,18 @@ export const ingestDocument = inngest.createFunction(
     const chunks = chunkLegalText(text, 1600, 180);
 
     if (chunks.length === 0) {
-      await prisma.document.update({
-        where: { id: doc.id },
-        data: {
-          status: DocumentStatus.FAILED,
-          errorMessage: "Nenhum texto extraído do arquivo.",
-        },
-      });
-      return { ok: false, reason: "empty" };
+      throw await failDocument(
+        doc.id,
+        "Nenhum texto chunkável extraído do arquivo (texto muito curto ou ilegível).",
+      );
     }
 
     await step.run("reset-chunks", async () => {
       await prisma.documentChunk.deleteMany({ where: { documentId: doc.id } });
       const store = getQdrantVectorStore();
-      await store.deleteByDocumentId(doc.id);
+      // workspaceId é obrigatório: o filtro Qdrant precisa isolar o tenant
+      // antes de deletar (defesa em profundidade contra colisão de id).
+      await store.deleteByDocumentId(doc.id, doc.workspaceId);
     });
 
     await step.run("status-embedding", () =>
