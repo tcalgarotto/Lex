@@ -104,6 +104,13 @@ const envSchema = z
     SENADO_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
     SENADO_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(30),
 
+    PLANALTO_BASE_URL: z.string().url().default("https://www.planalto.gov.br"),
+    PLANALTO_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
+    /** Rate limit conservador — Planalto é uma página por lei, max 15/sync. */
+    PLANALTO_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(10),
+    /** Timeout em ms para o GET do Planalto. */
+    PLANALTO_TIMEOUT_MS: z.coerce.number().int().min(5000).max(120000).default(30_000),
+
     // Feature flags de retrieval/ingestion (production-grade defaults).
     ENABLE_CORPUS_SYNC: z.coerce.boolean().default(true),
     ENABLE_LEGAL_RETRIEVAL: z.coerce.boolean().default(true),
@@ -114,6 +121,7 @@ const envSchema = z
     ENABLE_DATAJUD: z.coerce.boolean().default(true),
     ENABLE_CAMARA_PROVIDER: z.coerce.boolean().default(true),
     ENABLE_SENADO_PROVIDER: z.coerce.boolean().default(true),
+    ENABLE_PLANALTO_PROVIDER: z.coerce.boolean().default(true),
   })
   .superRefine((data, ctx) => {
     // Em produção exigimos a chave do provider configurado; em dev apenas avisamos.

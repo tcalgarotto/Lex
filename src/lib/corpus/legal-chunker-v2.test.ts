@@ -89,4 +89,41 @@ describe("chunkLegalNorm", () => {
     expect(chunks.every((c) => c.articleRef === "Art. 5º")).toBe(true);
     expect(chunks.every((c) => c.structure === "ARTIGO")).toBe(true);
   });
+
+  it("regressão: NÃO gera dezenas de chunks quase-idênticos quando o resíduo é menor que overlap (bug visto na LMP Art. 12)", () => {
+    // Texto com 15 quebras de linha, ~2200 chars (cenário do Art. 12 LMP).
+    const lines = [
+      "Art. 12. Em todos os casos de violência doméstica, deverá a autoridade policial adotar:",
+      "I - ouvir a ofendida, lavrar boletim e tomar a representação a termo;",
+      "II - colher todas as provas que servirem para o esclarecimento;",
+      "III - remeter, no prazo de 48 horas, expediente apartado ao juiz;",
+      "IV - determinar identificação criminal e juntar folha de antecedentes;",
+      "V - ouvir o agressor e as testemunhas;",
+      "VI - ordenar a identificação do agressor;",
+      "VII - remeter, no prazo legal, os autos do inquérito policial;",
+      "§ 1º O pedido referido no inciso III conterá: I - qualificação; II - nome; III - estado civil; IV - boletim;",
+      "§ 2º A autoridade policial deverá anexar ao documento referido no § 1º o boletim de ocorrência.",
+      "§ 3º Serão admitidos como meios de prova os laudos médicos fornecidos por hospitais e postos de saúde.",
+    ];
+    // Repete cada linha pra simular ~2200 chars.
+    const long = lines
+      .map((l) => l + " " + "x".repeat(120))
+      .join("\n");
+    expect(long.length).toBeGreaterThan(1800);
+    const chunks = chunkLegalNorm(long, { maxChars: 1800, overlap: 180 });
+    // Esperado: ~2-3 chunks pra 2.2KB. Antes do fix: 180+ chunks.
+    expect(chunks.length).toBeLessThan(8);
+    // Todos com mesmo articleRef.
+    const arts = new Set(chunks.map((c) => c.articleRef));
+    expect(arts.size).toBe(1);
+    expect([...arts][0]).toMatch(/^Art\. 12/);
+  });
+
+  it("janela avança pelo menos 50% de maxChars por iteração (proteção contra loops degenerados)", () => {
+    const long = "Art. 99. " + "X".repeat(5000);
+    const chunks = chunkLegalNorm(long, { maxChars: 1000, overlap: 200 });
+    // 5000 chars / passo mínimo 500 = no máximo ~10 chunks. Sem proteção
+    // mínima, o algoritmo gerava centenas.
+    expect(chunks.length).toBeLessThanOrEqual(15);
+  });
 });

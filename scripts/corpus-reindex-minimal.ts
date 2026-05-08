@@ -20,17 +20,21 @@ import { embedAndUpsertNormVersion } from "../src/lib/corpus/embeddings-pipeline
 
 async function main(): Promise<void> {
   const norms = await prisma.legalNorm.findMany({
-    where: { sourceProvider: CorpusProvider.MANUAL },
-    select: { id: true, urn: true, title: true },
+    where: {
+      sourceProvider: { in: [CorpusProvider.MANUAL, CorpusProvider.PLANALTO] },
+    },
+    select: { id: true, urn: true, title: true, sourceProvider: true },
     orderBy: { createdAt: "asc" },
   });
 
   console.log(`═══ CORPUS REINDEX MINIMAL ═══`);
-  console.log(`Normas MANUAL: ${norms.length}`);
+  console.log(`Normas MANUAL/PLANALTO: ${norms.length}`);
   console.log("");
 
   if (norms.length === 0) {
-    console.log("Nenhuma norma MANUAL encontrada. Rode primeiro `npm run corpus:seed:minimal-legal`.");
+    console.log(
+      "Nenhuma norma encontrada. Rode primeiro `npm run corpus:seed:minimal-legal` ou `npm run corpus:seed:official-laws`.",
+    );
     return;
   }
 
@@ -44,7 +48,7 @@ async function main(): Promise<void> {
       orderBy: { validFrom: "desc" },
     });
 
-    console.log(`• ${n.title}  (${versions.length} versão${versions.length === 1 ? "" : "s"})`);
+    console.log(`• [${n.sourceProvider}] ${n.title}  (${versions.length} versão${versions.length === 1 ? "" : "s"})`);
 
     for (const v of versions) {
       try {

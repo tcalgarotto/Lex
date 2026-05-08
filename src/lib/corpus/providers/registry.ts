@@ -20,6 +20,7 @@ import { StjCorpusProvider } from "./stj";
 import { DatajudCorpusProvider } from "./datajud";
 import { CamaraCorpusProvider } from "./camara";
 import { SenadoCorpusProvider } from "./senado";
+import { PlanaltoCorpusProvider } from "./planalto";
 
 export type CorpusProviderStatusCode =
   | "ok"
@@ -400,6 +401,58 @@ const SENADO_ENTRY: CorpusProviderEntry = {
   },
 };
 
+const PLANALTO_ENTRY: CorpusProviderEntry = {
+  id: CorpusProvider.PLANALTO,
+  label: "Planalto (legislação federal — texto oficial)",
+  priority: 110,
+  requiresApiKey: false,
+  envKeys: [
+    "PLANALTO_BASE_URL",
+    "PLANALTO_PROVIDER_MODE",
+    "PLANALTO_RATE_LIMIT_PER_MINUTE",
+    "PLANALTO_TIMEOUT_MS",
+    "ENABLE_PLANALTO_PROVIDER",
+  ],
+  sourceKind: "norms",
+  status(): CorpusProviderStatus {
+    const env = getEnv();
+    const enabled = bool(env.ENABLE_PLANALTO_PROVIDER);
+    if (!enabled || env.PLANALTO_PROVIDER_MODE === "disabled") {
+      return {
+        id: CorpusProvider.PLANALTO,
+        label: this.label,
+        status: "disabled",
+        mode: "disabled",
+        requiresApiKey: false,
+        envKeys: this.envKeys,
+        baseUrl: env.PLANALTO_BASE_URL,
+        rateLimitPerMinute: env.PLANALTO_RATE_LIMIT_PER_MINUTE,
+        hint: "Defina ENABLE_PLANALTO_PROVIDER=true e PLANALTO_PROVIDER_MODE=live.",
+      };
+    }
+    return {
+      id: CorpusProvider.PLANALTO,
+      label: this.label,
+      status: "ok",
+      mode: env.PLANALTO_PROVIDER_MODE,
+      requiresApiKey: false,
+      envKeys: this.envKeys,
+      baseUrl: env.PLANALTO_BASE_URL,
+      rateLimitPerMinute: env.PLANALTO_RATE_LIMIT_PER_MINUTE,
+    };
+  },
+  factory() {
+    const env = getEnv();
+    if (!bool(env.ENABLE_PLANALTO_PROVIDER) || env.PLANALTO_PROVIDER_MODE === "disabled") {
+      throw new Error("Planalto provider está disabled");
+    }
+    if (env.PLANALTO_PROVIDER_MODE === "fixture") return fixtureProvider();
+    return new PlanaltoCorpusProvider({
+      timeoutMs: env.PLANALTO_TIMEOUT_MS,
+    });
+  },
+};
+
 const REGISTRY: Record<CorpusProvider, CorpusProviderEntry | undefined> = {
   FIXTURE: FIXTURE_ENTRY,
   LEXML: LEXML_ENTRY,
@@ -408,8 +461,8 @@ const REGISTRY: Record<CorpusProvider, CorpusProviderEntry | undefined> = {
   DATAJUD: DATAJUD_ENTRY,
   CAMARA: CAMARA_ENTRY,
   SENADO: SENADO_ENTRY,
+  PLANALTO: PLANALTO_ENTRY,
   TST: undefined,
-  PLANALTO: undefined,
   MANUAL: undefined,
 };
 

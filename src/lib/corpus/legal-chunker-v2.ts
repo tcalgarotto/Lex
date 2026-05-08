@@ -126,10 +126,18 @@ function fullPathFromCrumbs(crumbs: Crumb[]): string | undefined {
   return parts.join(" › ");
 }
 
-/** Quebra texto longo respeitando parágrafos. */
+/** Quebra texto longo respeitando parágrafos.
+ *
+ * Garantia de progresso: o ponteiro avança pelo menos `minStep` chars por
+ * iteração. Sem esse piso, quando o último resíduo do texto é menor que
+ * `overlap`, o loop ficava avançando 1 char por iteração e gerava centenas
+ * de chunks quase-idênticos (bug observado em Art. 12 da LMP, 2175 chars,
+ * 15 newlines internas).
+ */
 function windowSplit(text: string, maxChars: number, overlap: number): string[] {
   if (text.length <= maxChars) return [text];
   const out: string[] = [];
+  const minStep = Math.max(1, Math.floor(maxChars * 0.5));
   let i = 0;
   while (i < text.length) {
     const end = Math.min(text.length, i + maxChars);
@@ -143,7 +151,8 @@ function windowSplit(text: string, maxChars: number, overlap: number): string[] 
       }
     }
     out.push(slice.trim());
-    i += Math.max(1, slice.length - overlap);
+    if (end >= text.length) break;
+    i += Math.max(minStep, slice.length - overlap);
   }
   return out;
 }
