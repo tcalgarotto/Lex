@@ -48,10 +48,10 @@ depender de ordem de boot.
 
 ```bash
 # A) App
-NEXT_PUBLIC_APP_URL=https://lex-navy.vercel.app   # SEM trailing slash
-NODE_ENV=production                                # Vercel já define
-LOG_LEVEL=info
-PRISMA_QUERY_LOGS=false
+NEXT_PUBLIC_APP_URL=https://lex-navy.vercel.app        #
+NODE_ENV=production           #                          
+LOG_LEVEL=info     #
+PRISMA_QUERY_LOGS=false     #
 
 # B) Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
@@ -61,20 +61,20 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...                  # secret server-side
 # B.1) Postgres (Prisma) — formato exato
 DATABASE_URL=postgresql://postgres.<ref>:<PWD>@aws-1-<region>.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1
 DIRECT_URL=postgresql://postgres.<ref>:<PWD>@aws-1-<region>.pooler.supabase.com:5432/postgres
-STORAGE_BUCKET_DOCUMENTS=documents
+STORAGE_BUCKET_DOCUMENTS=documents    #
 
 # C) Redis (Upstash recomendado)
 REDIS_URL=rediss://default:<password>@<host>.upstash.io:6379    # TLS, NÃO https://
-REDIS_REQUIRED=true
-REDIS_NAMESPACE=lex:prod
+REDIS_REQUIRED=true     #
+REDIS_NAMESPACE=lex:prod    #
 
 # D) Qdrant Cloud
 QDRANT_URL=https://<cluster>.<region>.aws.cloud.qdrant.io
 QDRANT_API_KEY=<api-key>
-QDRANT_COLLECTION=lex_main
-QDRANT_COLLECTION_CORPUS_NORMS=lex_corpus_norms
-QDRANT_COLLECTION_CORPUS_JURISPRUDENCE=lex_corpus_jurisprudence
-QDRANT_REQUIRED=true
+QDRANT_COLLECTION=lex_main   #
+QDRANT_COLLECTION_CORPUS_NORMS=lex_corpus_norms    #
+QDRANT_COLLECTION_CORPUS_JURISPRUDENCE=lex_corpus_jurisprudence     #
+QDRANT_REQUIRED=true    #
 
 # E) Inngest Cloud
 INNGEST_EVENT_KEY=<event-key>
@@ -98,15 +98,61 @@ EMAIL_FROM=lex@<dominio-verificado>
 SENTRY_DSN=<...>
 NEXT_PUBLIC_SENTRY_DSN=<...>
 
-# Provedores jurídicos
-DATAJUD_API_KEY=<...>
-STF_PROVIDER_MODE=live
-STJ_PROVIDER_MODE=live
+# Provedores jurídicos públicos (corpus RAG)
+# LexML/STF/STJ são gratuitos, sem chave. DataJud exige chave (CNJ).
+LEXML_BASE_URL=https://www.lexml.gov.br/busca/SRU
+LEXML_PROVIDER_MODE=live
+LEXML_RATE_LIMIT_PER_MINUTE=20
+LEXML_DEFAULT_PAGE_SIZE=50
+LEXML_MAX_PAGES_PER_SYNC=20
 
-# Feature flags
+STF_BASE_URL=https://portal.stf.jus.br
+STF_PROVIDER_MODE=live
+STF_RATE_LIMIT_PER_MINUTE=10
+
+STJ_BASE_URL=https://scon.stj.jus.br
+STJ_PROVIDER_MODE=live
+STJ_RATE_LIMIT_PER_MINUTE=10
+
+# DataJud — REQUIRED: DATAJUD_API_KEY. Solicite a chave em
+# https://datajud-wiki.cnj.jus.br/api-publica/acesso
+# 91 aliases disponíveis em src/lib/corpus/providers/datajud-aliases.ts
+# (4 superiores + 27 TJs + 6 TRFs + 24 TRTs + 27 TREs + 3 TJMs).
+DATAJUD_BASE_URL=https://api-publica.datajud.cnj.jus.br
+DATAJUD_API_KEY=                # ← preencher
+DATAJUD_ALIAS=api_publica_tjsp  # alias inicial (use scripts para multi-alias)
+DATAJUD_PROVIDER_MODE=live
+DATAJUD_RATE_LIMIT_PER_MINUTE=30
+DATAJUD_DEFAULT_PAGE_SIZE=100
+DATAJUD_MAX_PAGES_PER_SYNC=10
+
+# Câmara dos Deputados — REST/JSON público, sem chave
+CAMARA_BASE_URL=https://dadosabertos.camara.leg.br/api/v2
+CAMARA_PROVIDER_MODE=live
+CAMARA_RATE_LIMIT_PER_MINUTE=30
+
+# Senado Federal — REST/JSON público, sem chave
+SENADO_BASE_URL=https://legis.senado.leg.br/dadosabertos
+SENADO_PROVIDER_MODE=live
+SENADO_RATE_LIMIT_PER_MINUTE=30
+
+# Feature flags — produção: TUDO habilitado
+ENABLE_CORPUS_SYNC=true
+ENABLE_LEGAL_RETRIEVAL=true
+ENABLE_CORPUS_GRAPH=true
+ENABLE_LEXML_PROVIDER=true
+ENABLE_STF_PROVIDER=true
+ENABLE_STJ_PROVIDER=true
+ENABLE_DATAJUD=true              
+ENABLE_CAMARA_PROVIDER=true
+ENABLE_SENADO_PROVIDER=true
 ENABLE_INTEGRATIONS_MOCKS=false
-ENABLE_E2E_TEST_HELPERS=false                     # NUNCA habilitar em prod
+ENABLE_E2E_TEST_HELPERS=false    # NUNCA habilitar em prod
 ```
+
+> Detalhes do papel de cada provider: `docs/LEGAL_PROVIDERS.md`.
+> Como popular o corpus: `docs/CORPUS_SEEDING.md`.
+> Setup do DataJud: `docs/DATAJUD_SETUP.md`.
 
 ---
 

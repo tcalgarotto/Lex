@@ -18,6 +18,7 @@
 
 import { CorpusProvider, NormKind } from "@prisma/client";
 import { buildCanonicalUrn } from "@/lib/corpus/urn";
+import { acquireProviderSlot } from "./rate-limit";
 import type {
   CorpusCandidate,
   CorpusPayload,
@@ -39,6 +40,10 @@ export type DatajudOpts = {
   apiKey?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  /** Token-bucket por minuto (default 30). */
+  ratePerMinute?: number;
+  /** Timeout HTTP por request. Default 30s. */
+  timeoutMs?: number;
 };
 
 const DEFAULT_BASE = "https://api-publica.datajud.cnj.jus.br";
@@ -49,17 +54,24 @@ export class DatajudCorpusProvider implements CorpusProviderClient {
   private readonly apiKey: string | undefined;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly ratePerMinute: number;
+  private readonly timeoutMs: number;
 
   constructor(opts: DatajudOpts) {
     this.alias = opts.alias;
     this.apiKey = opts.apiKey;
     this.baseUrl = opts.baseUrl ?? DEFAULT_BASE;
     this.fetchImpl = opts.fetchImpl ?? fetch;
+    this.ratePerMinute = opts.ratePerMinute ?? 30;
+    this.timeoutMs = opts.timeoutMs ?? 30_000;
   }
 
   async list(filters: ListFilters): Promise<ListPage> {
-    const size = Math.max(1, Math.min(50, filters.pageSize ?? 20));
-    const query = buildDatajudListQuery({ ...(filters.cursor !== undefined ? { cursor: filters.cursor } : {}), size });
+    const size = Math.max(1, Math.min(100, filters.pageSize ?? 20));
+    const query = buildDatajudListQuery({
+      ...(filters.cursor !== undefined ? { cursor: filters.cursor } : {}),
+      size,
+    });
     const res = await this.search(query);
 
     const candidates: CorpusCandidate[] = (res.hits?.hits ?? [])
@@ -97,28 +109,101 @@ export class DatajudCorpusProvider implements CorpusProviderClient {
     if (!this.apiKey) {
       throw new DatajudError("DATAJUD_API_KEY não configurada", 401);
     }
+    await acquireProviderSlot({ scope: "datajud", ratePerMinute: this.ratePerMinute });
     const url = `${this.baseUrl}/${this.alias}/_search`;
-    const res = await this.fetchImpl(url, {
-      method: "POST",
-      headers: {
-        Authorization: `APIKey ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      throw new DatajudError(`Datajud respondeu ${res.status}`, res.status);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+    try {
+      const res = await this.fetchImpl(url, {
+        method: "POST",
+        headers: {
+          Authorization: `APIKey ${this.apiKey}`,
+          "Content-Type": "application/json",
+          "User-Agent": "lex-corpus-sync/1.0 (+https://lex-navy.vercel.app)",
+        },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) {
+        throw new DatajudError(`Datajud respondeu ${res.status}`, res.status);
+      }
+      return (await res.json()) as DatajudSearchResponse;
+    } finally {
+      clearTimeout(timer);
     }
-    return (await res.json()) as DatajudSearchResponse;
+  }
+
+  /**
+   * Constrói uma query Elasticsearch sem executar (útil em dry-run).
+   * Permite que o caller inspecione o body antes de enviar.
+   */
+  static buildQuery(args: DatajudFilters): Record<string, unknown> {
+    return buildDatajudListQuery(args);
   }
 }
 
-/** ES DSL helper exportado pra teste unitário do shape da query. */
-export function buildDatajudListQuery(args: { cursor?: string | null; size: number }): unknown {
+/**
+ * Query Elasticsearch para listagem incremental.
+ *
+ * Aceita filtros tipados que cobrem 90% dos casos:
+ *  - tribunal           — sigla canônica (ex.: "TJSP")
+ *  - classe             — código CNJ da classe processual
+ *  - grau               — "G1" | "G2"
+ *  - orgaoJulgador      — código numérico CNJ
+ *  - assunto            — código CNJ do assunto
+ *  - numeroProcesso     — número CNJ específico
+ *  - dataAjuizamentoFrom / dataAjuizamentoTo (ISO yyyy-mm-dd)
+ *  - atualizadoDesde    — para sync incremental por dataHoraUltimaAtualizacao
+ *
+ * `cursor` é o `search_after` opaco da página anterior (já em JSON).
+ *
+ * Documentado em https://datajud-wiki.cnj.jus.br/api-publica/exemplos/exemplo3.
+ */
+export type DatajudFilters = {
+  cursor?: string | null;
+  size: number;
+  tribunal?: string;
+  classe?: number | string;
+  grau?: "G1" | "G2";
+  orgaoJulgador?: number | string;
+  assunto?: number | string;
+  numeroProcesso?: string;
+  dataAjuizamentoFrom?: string;
+  dataAjuizamentoTo?: string;
+  atualizadoDesde?: string;
+};
+
+export function buildDatajudListQuery(args: DatajudFilters): Record<string, unknown> {
+  const must: Record<string, unknown>[] = [];
+
+  if (args.tribunal) must.push({ match: { tribunal: args.tribunal } });
+  if (args.classe !== undefined)
+    must.push({ match: { "classe.codigo": args.classe } });
+  if (args.grau) must.push({ match: { grau: args.grau } });
+  if (args.orgaoJulgador !== undefined)
+    must.push({ match: { "orgaoJulgador.codigo": args.orgaoJulgador } });
+  if (args.assunto !== undefined)
+    must.push({ match: { "assuntos.codigo": args.assunto } });
+  if (args.numeroProcesso) {
+    const cleaned = String(args.numeroProcesso).replace(/\D+/g, "");
+    if (cleaned) must.push({ match: { numeroProcesso: cleaned } });
+  }
+  if (args.dataAjuizamentoFrom || args.dataAjuizamentoTo) {
+    const range: Record<string, string> = {};
+    if (args.dataAjuizamentoFrom) range["gte"] = args.dataAjuizamentoFrom;
+    if (args.dataAjuizamentoTo) range["lte"] = args.dataAjuizamentoTo;
+    must.push({ range: { dataAjuizamento: range } });
+  }
+  if (args.atualizadoDesde) {
+    must.push({
+      range: { "@timestamp": { gte: args.atualizadoDesde } },
+    });
+  }
+
   const base: Record<string, unknown> = {
     size: args.size,
-    sort: [{ "@timestamp": { order: "desc" } }, { _id: "asc" }],
-    query: { match_all: {} },
+    sort: [{ "@timestamp": { order: "asc" } }, { _id: "asc" }],
+    query: must.length === 0 ? { match_all: {} } : { bool: { must } },
   };
   if (args.cursor) {
     try {

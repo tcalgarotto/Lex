@@ -519,6 +519,8 @@ enum CorpusProvider {
   TST
   PLANALTO
   DATAJUD
+  CAMARA
+  SENADO
   MANUAL
   FIXTURE
 }

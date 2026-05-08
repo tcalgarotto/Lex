@@ -15,6 +15,7 @@
 
 import { CorpusProvider, NormKind } from "@prisma/client";
 import { buildCanonicalUrn } from "@/lib/corpus/urn";
+import { acquireProviderSlot } from "./rate-limit";
 import type {
   CorpusCandidate,
   CorpusPayload,
@@ -36,16 +37,24 @@ type StfFetchOpts = {
   fetchImpl?: typeof fetch;
   /** Janela máxima de IDs a varrer por sync (proteção). */
   maxIds?: number;
+  /** Token-bucket por minuto. Default 10 (rate-limit conservador). */
+  ratePerMinute?: number;
+  /** Timeout por request HTTP. Default 20s. */
+  timeoutMs?: number;
 };
 
 export class StfCorpusProvider implements CorpusProviderClient {
   readonly id = CorpusProvider.STF;
   private readonly fetchImpl: typeof fetch;
   private readonly maxIds: number;
+  private readonly ratePerMinute: number;
+  private readonly timeoutMs: number;
 
   constructor(opts: StfFetchOpts = {}) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.maxIds = opts.maxIds ?? 80;
+    this.ratePerMinute = opts.ratePerMinute ?? 10;
+    this.timeoutMs = opts.timeoutMs ?? 20_000;
   }
 
   async list(filters: ListFilters): Promise<ListPage> {
@@ -114,14 +123,19 @@ export class StfCorpusProvider implements CorpusProviderClient {
     const url = `${STF_BASE}/textos/verTexto.asp?servico=jurisprudencia${
       isVinculante ? "SumulaVinculante" : "Sumula"
     }&pagina=${isVinculante ? "sumulaVinculante" : "sumula"}&numero=${num}`;
+    await acquireProviderSlot({ scope: "stf", ratePerMinute: this.ratePerMinute });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     let res: Response;
     try {
       res = await this.fetchImpl(url, {
-        headers: { "User-Agent": "lex-corpus-sync/1.0" },
-        // STF responde com text/html
+        headers: { "User-Agent": "lex-corpus-sync/1.0 (+https://lex-navy.vercel.app)" },
+        signal: ctrl.signal,
       });
     } catch (err) {
       throw new StfError(`STF fetch falhou: ${(err as Error).message}`);
+    } finally {
+      clearTimeout(timer);
     }
     if (!res.ok) {
       if (res.status === 404) return "";

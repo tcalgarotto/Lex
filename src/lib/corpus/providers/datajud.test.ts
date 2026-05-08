@@ -8,10 +8,12 @@ import {
 } from "./datajud";
 
 describe("buildDatajudListQuery", () => {
-  it("inclui sort por @timestamp e _id", () => {
+  it("inclui sort por @timestamp asc e _id (sync incremental com search_after)", () => {
     const q = buildDatajudListQuery({ size: 10 }) as Record<string, unknown>;
     expect(q["size"]).toBe(10);
-    expect(q["sort"]).toEqual([{ "@timestamp": { order: "desc" } }, { _id: "asc" }]);
+    // ASC porque o sync incremental avança no tempo. Cursor `search_after`
+    // depois mantém posição estável.
+    expect(q["sort"]).toEqual([{ "@timestamp": { order: "asc" } }, { _id: "asc" }]);
     expect(q["query"]).toEqual({ match_all: {} });
   });
 

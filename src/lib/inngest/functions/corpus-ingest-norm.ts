@@ -7,10 +7,13 @@
  */
 
 import { NonRetriableError } from "inngest";
-import { CorpusProvider } from "@prisma/client";
+import type { CorpusProvider } from "@prisma/client";
 import { inngest } from "@/lib/inngest/client";
-import { fixtureProvider } from "@/lib/corpus/providers/fixture";
-import { lexmlProvider, LexmlError } from "@/lib/corpus/providers/lexml";
+import { LexmlError } from "@/lib/corpus/providers/lexml";
+import {
+  getProviderEntry,
+  resolveProvider,
+} from "@/lib/corpus/providers/registry";
 import type { CorpusPayload } from "@/lib/corpus/providers/types";
 import {
   resolvePendingCitationsTo,
@@ -19,14 +22,15 @@ import {
 import { embedAndUpsertNormVersion } from "@/lib/corpus/embeddings-pipeline";
 
 function pickProvider(p: CorpusProvider) {
-  switch (p) {
-    case CorpusProvider.LEXML:
-      return lexmlProvider();
-    case CorpusProvider.FIXTURE:
-      return fixtureProvider();
-    default:
-      throw new NonRetriableError(`Provider não suportado: ${p}`);
+  const entry = getProviderEntry(p);
+  if (!entry) throw new NonRetriableError(`Provider não suportado: ${p}`);
+  const status = entry.status();
+  if (status.status === "disabled" || status.status === "not_configured") {
+    throw new NonRetriableError(
+      `Provider ${p} ${status.status}: ${status.detail ?? status.hint ?? ""}`,
+    );
   }
+  return resolveProvider(p);
 }
 
 export const corpusIngestNorm = inngest.createFunction(

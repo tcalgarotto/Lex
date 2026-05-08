@@ -25,7 +25,13 @@
 import { NextResponse } from "next/server";
 import "@/lib/env-normalize"; // aplica POSTGRES_PRISMA_URL → DATABASE_URL antes de checar
 import { prisma } from "@/lib/prisma";
-import { getRedis, isRedisAvailable, isRedisRequired } from "@/lib/redis";
+import {
+  describeRedisUrl,
+  isRedisRequired,
+  pingRedis,
+  type RedisUrlInfo,
+} from "@/lib/redis";
+import { snapshotProviderStatuses } from "@/lib/corpus/providers/registry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,8 +41,12 @@ type CheckResult = {
   required: boolean;
   latencyMs: number;
   error?: string;
+  /** Código curto de erro (ETIMEDOUT, ENOTFOUND, etc.) quando disponível. */
+  errorCode?: string;
   /** Próxima ação concreta (admin-friendly). */
   hint?: string;
+  /** Diagnóstico extra estruturado (sem segredo). */
+  debug?: Record<string, unknown>;
 };
 
 async function checkWithTimeout(
@@ -99,16 +109,28 @@ function hintForError(component: string, message: string): string {
   }
 
   if (component === "redis") {
-    if (m.includes("redis_url ausente") || m.includes("missing-url")) {
-      return "REDIS_URL ausente. Adicione em Vercel → Environment Variables (escopo Production) e Redeploy. Use formato TLS: rediss://default:<pwd>@<host>.upstash.io:6379";
+    if (m.includes("redis_url ausente") || m.includes("missing-url") || m.includes("missingurl")) {
+      return "REDIS_URL ausente neste deployment. Adicione em Vercel → Environment Variables (escopo Production) e clique Redeploy SEM cache. Mudanças de env não afetam deployments antigos.";
     }
-    if (m.includes("ping falhou") || m.includes("ping timeout") || m.includes("econnrefused")) {
-      return "Redis não responde ao PING. Confirme que REDIS_URL é rediss:// (TLS) e não a URL REST https://. ioredis não funciona com REST.";
+    if (m.includes("wrong_scheme") || m.includes("https://")) {
+      return "REDIS_URL usa scheme `https://` (REST API). ioredis precisa de TCP+RESP. Em Upstash → Database → Connect → escolha aba TLS e copie `rediss://default:<pwd>@<host>:6379`.";
+    }
+    if (m.includes("etimedout") || m.includes("ping timeout") || m.includes("connect_timeout") || m.includes("etimedout")) {
+      return "Timeout conectando no Redis. Confirme que o database Upstash está ativo (não pausado por inatividade) e que a região suporta TLS na porta 6379. Se acabou de mudar a env, faça Redeploy SEM cache.";
+    }
+    if (m.includes("enotfound")) {
+      return "Hostname Redis não resolve. Confira se copiou o host correto da Upstash (algo como `<random>-<random>-<id>.upstash.io`).";
+    }
+    if (m.includes("econnrefused")) {
+      return "Redis recusou conexão. Confirme porta 6379 e que o database Upstash está ativo.";
     }
     if (m.includes("noauth") || m.includes("wrongpass") || m.includes("auth")) {
-      return "Senha do Redis inválida. Reset em Upstash → Database e atualize REDIS_URL.";
+      return "Senha do Redis inválida. Reset em Upstash → Database → Reset Password e atualize REDIS_URL na Vercel + Redeploy.";
     }
-    return "Para o primeiro teste sem Redis, defina REDIS_REQUIRED=false em Production.";
+    if (m.includes("ssl") || m.includes("tls") || m.includes("certificate")) {
+      return "TLS handshake falhou. Use scheme `rediss://` (com 2 s) e confirme que o host bate com o servername do certificado do provider.";
+    }
+    return "Falha conectando no Redis. Após alterar env na Vercel, faça Redeploy SEM cache (env changes não afetam deployments antigos).";
   }
 
   if (component === "qdrant") {
@@ -134,6 +156,107 @@ function hintForError(component: string, message: string): string {
   return "";
 }
 
+/**
+ * Devolve um RedisUrlInfo "público" — apenas dados não-secretos para o JSON
+ * de health. NUNCA inclui senha ou URL completa.
+ */
+function publicRedisDebug(info: RedisUrlInfo): Record<string, unknown> {
+  return {
+    envPresent: info.envPresent,
+    protocol: info.protocol,
+    host: info.host,
+    port: info.port,
+    username: info.username,
+    hasPassword: info.hasPassword,
+    tls: info.tls,
+    ...(info.parseError ? { parseError: info.parseError } : {}),
+  };
+}
+
+/**
+ * Check Redis com PING real + diagnóstico inspecionável.
+ * Usa `pingRedis()` (cliente isolado, sem singleton/cache) para obter código
+ * de erro exato. Sempre devolve `debug{}` com host/protocol/etc — admins
+ * conseguem confirmar que o deploy atual recebeu a env certa.
+ */
+async function checkRedis(required: boolean): Promise<CheckResult> {
+  const start = Date.now();
+  const info = describeRedisUrl();
+  const debug = publicRedisDebug(info);
+
+  if (!info.envPresent) {
+    if (!required) {
+      return { ok: true, required, latencyMs: 0, debug };
+    }
+    return {
+      ok: false,
+      required,
+      latencyMs: 0,
+      error: "REDIS_URL ausente",
+      hint: hintForError("redis", "redis_url ausente"),
+      debug,
+    };
+  }
+
+  if (info.protocol === "https") {
+    return {
+      ok: false,
+      required,
+      latencyMs: Date.now() - start,
+      error: "REDIS_URL usa scheme `https://` (REST). ioredis fala TCP+RESP.",
+      errorCode: "WRONG_SCHEME",
+      hint: "Vá em Upstash → Database → Connect → aba TLS e copie o `rediss://default:<pwd>@<host>:6379`. NÃO use a URL REST.",
+      debug,
+    };
+  }
+
+  if (info.protocol !== "rediss" && info.protocol !== "redis") {
+    return {
+      ok: false,
+      required,
+      latencyMs: Date.now() - start,
+      error: `Protocol desconhecido: ${info.protocol}`,
+      errorCode: "BAD_SCHEME",
+      hint: "Esperado `rediss://` (TLS) ou `redis://` (sem TLS). Use rediss em produção.",
+      debug,
+    };
+  }
+
+  const ping = await pingRedis(3_500);
+
+  if (ping.ok) {
+    return {
+      ok: true,
+      required,
+      latencyMs: ping.latencyMs,
+      debug: { ...debug, pong: ping.pong },
+    };
+  }
+
+  // Falha real
+  if (!required) {
+    // Em dev: degraded, não-bloqueante
+    return {
+      ok: false,
+      required,
+      latencyMs: ping.latencyMs,
+      error: ping.errorMessage ?? "redis ping falhou",
+      ...(ping.errorCode ? { errorCode: ping.errorCode } : {}),
+      hint: hintForError("redis", ping.errorMessage ?? "ping"),
+      debug,
+    };
+  }
+  return {
+    ok: false,
+    required,
+    latencyMs: ping.latencyMs,
+    error: ping.errorMessage ?? "redis ping falhou",
+    ...(ping.errorCode ? { errorCode: ping.errorCode } : {}),
+    hint: hintForError("redis", `${ping.errorCode ?? ""} ${ping.errorMessage ?? ""}`),
+    debug,
+  };
+}
+
 function isQdrantRequired(): boolean {
   const flag = (process.env["QDRANT_REQUIRED"] ?? "").trim().toLowerCase();
   if (flag === "true" || flag === "1") return true;
@@ -157,23 +280,7 @@ export async function GET() {
       },
       3_000,
     ),
-    checkWithTimeout(
-      "redis",
-      redisRequired,
-      async () => {
-        const r = getRedis();
-        if (!r) {
-          if (redisRequired) throw new Error("REDIS_URL ausente");
-          return; // dev opcional: ok
-        }
-        const available = await isRedisAvailable();
-        if (!available) {
-          if (redisRequired) throw new Error("redis ping falhou");
-          return; // degraded mas não bloqueia em dev
-        }
-      },
-      1_500,
-    ),
+    checkRedis(redisRequired),
     checkWithTimeout(
       "qdrant",
       qdrantRequired,
@@ -232,6 +339,16 @@ export async function GET() {
     Object.values(checks).find((c) => !c.ok)?.hint ??
     "";
 
+  // Provedores jurídicos não bloqueiam health (são informativos): apresentam
+  // visibilidade do registro e ajudam o admin a saber se DataJud aguarda chave,
+  // ou se LexML/STF/STJ estão disabled. Não conta para `criticalDown`.
+  let providers: ReturnType<typeof snapshotProviderStatuses> | undefined;
+  try {
+    providers = snapshotProviderStatuses();
+  } catch {
+    providers = undefined;
+  }
+
   return NextResponse.json(
     {
       status,
@@ -241,6 +358,7 @@ export async function GET() {
         QDRANT_REQUIRED: qdrantRequired,
         NODE_ENV: process.env["NODE_ENV"] ?? "development",
       },
+      ...(providers ? { providers } : {}),
       ...(primaryHint ? { hint: primaryHint } : {}),
       timestamp: new Date().toISOString(),
     },
