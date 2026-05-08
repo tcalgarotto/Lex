@@ -17,6 +17,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "qdrant:init": "tsx --env-file=.env scripts/init-qdrant.ts",
+    "redis:check": "tsx --env-file=.env scripts/redis-check.ts",
     "ingest:corpus": "tsx --env-file=.env seed/ingest-corpus.ts",
     "corpus:sync": "tsx --env-file=.env scripts/corpus-sync.ts",
     "corpus:seed": "tsx --env-file=.env scripts/corpus-seed.ts",
