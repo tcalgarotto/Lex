@@ -17,5 +17,5 @@ export class PgVectorStoreStub implements VectorStore {
     return [];
   }
 
-  async deleteByDocumentId(): Promise<void> {}
+  async deleteByDocumentId(_documentId: string, _workspaceId: string): Promise<void> {}
 }

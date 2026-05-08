@@ -124,7 +124,9 @@ export const ingestDocument = inngest.createFunction(
     await step.run("reset-chunks", async () => {
       await prisma.documentChunk.deleteMany({ where: { documentId: doc.id } });
       const store = getQdrantVectorStore();
-      await store.deleteByDocumentId(doc.id);
+      // workspaceId é obrigatório: o filtro Qdrant precisa isolar o tenant
+      // antes de deletar (defesa em profundidade contra colisão de id).
+      await store.deleteByDocumentId(doc.id, doc.workspaceId);
     });
 
     await step.run("status-embedding", () =>

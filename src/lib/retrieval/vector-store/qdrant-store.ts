@@ -77,13 +77,32 @@ export class QdrantVectorStore implements VectorStore {
     }));
   }
 
-  async deleteByDocumentId(documentId: string): Promise<void> {
+  /**
+   * Deleta vetores de um documento dentro do workspace informado.
+   *
+   * `workspaceId` é obrigatório por segurança: o filtro Qdrant exige
+   * MATCH em `documentId` E `workspaceId`. Defesa em profundidade
+   * contra colisão de IDs ou input malicioso que tente apagar dados
+   * de outro tenant.
+   */
+  async deleteByDocumentId(documentId: string, workspaceId: string): Promise<void> {
+    if (!documentId || typeof documentId !== "string") {
+      throw new Error("deleteByDocumentId: documentId obrigatório");
+    }
+    if (!workspaceId || typeof workspaceId !== "string") {
+      throw new Error(
+        "deleteByDocumentId: workspaceId obrigatório (segurança multi-tenant)",
+      );
+    }
     const c = client();
     const col = collection();
     await c.delete(col, {
       wait: true,
       filter: {
-        must: [{ key: "documentId", match: { value: documentId } }],
+        must: [
+          { key: "documentId", match: { value: documentId } },
+          { key: "workspaceId", match: { value: workspaceId } },
+        ],
       },
     });
   }
