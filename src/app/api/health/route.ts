@@ -32,6 +32,7 @@ import {
   type RedisUrlInfo,
 } from "@/lib/redis";
 import { snapshotProviderStatuses } from "@/lib/corpus/providers/registry";
+import { inngestSecuritySnapshot } from "@/lib/inngest/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -315,7 +316,36 @@ export async function GET() {
     ),
   ]);
 
-  const checks = { db, redis, qdrant, supabase };
+  // Inngest: signing/event keys obrigatórios em produção. Sem eles o
+  // serve() do SDK aceita requisições não autenticadas.
+  const inngestSec = inngestSecuritySnapshot();
+  const inngest: CheckResult = inngestSec.isSecure
+    ? {
+        ok: true,
+        required: inngestSec.isProduction,
+        latencyMs: 0,
+        debug: {
+          appId: inngestSec.appId,
+          hasEventKey: inngestSec.hasEventKey,
+          hasSigningKey: inngestSec.hasSigningKey,
+        },
+      }
+    : {
+        ok: false,
+        required: inngestSec.isProduction,
+        latencyMs: 0,
+        error: inngestSec.error ?? "Inngest misconfigured",
+        errorCode: "MISSING_KEYS",
+        hint:
+          "Adicione INNGEST_EVENT_KEY e INNGEST_SIGNING_KEY em Vercel → Environment Variables (Production) e Redeploy. Ambas vêm de Inngest Cloud → Apps → <seu-app>.",
+        debug: {
+          appId: inngestSec.appId,
+          hasEventKey: inngestSec.hasEventKey,
+          hasSigningKey: inngestSec.hasSigningKey,
+        },
+      };
+
+  const checks = { db, redis, qdrant, supabase, inngest };
   const criticalDown = Object.values(checks).some((c) => c.required && !c.ok);
   const anyDown = Object.values(checks).some((c) => !c.ok);
 

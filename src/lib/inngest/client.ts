@@ -17,6 +17,48 @@ import type { CorpusProvider, NormKind } from "@prisma/client";
 export const INNGEST_APP_ID =
   (process.env["INNGEST_APP_ID"] ?? "").trim() || "lex-production";
 
+/**
+ * Validação de segurança: em produção, INNGEST_SIGNING_KEY é obrigatório.
+ *
+ * Sem signing key, qualquer um que descubra a URL do `/api/inngest` pode
+ * disparar nossas funções (ingestão, embeddings, sync de corpus). O SDK
+ * cai em modo "dev" silenciosamente — exatamente o que a auditoria
+ * apontou como risco crítico.
+ *
+ * Em produção, exigimos as duas chaves (event key + signing key). Em
+ * dev/test/preview, apenas avisamos.
+ */
+export function inngestSecuritySnapshot(): {
+  appId: string;
+  hasEventKey: boolean;
+  hasSigningKey: boolean;
+  isProduction: boolean;
+  isSecure: boolean;
+  error?: string;
+} {
+  const eventKey = (process.env["INNGEST_EVENT_KEY"] ?? "").trim();
+  const signingKey = (process.env["INNGEST_SIGNING_KEY"] ?? "").trim();
+  const isProduction = process.env["NODE_ENV"] === "production";
+  const hasEventKey = eventKey.length > 0;
+  const hasSigningKey = signingKey.length > 0;
+  const isSecure = !isProduction || (hasEventKey && hasSigningKey);
+  return {
+    appId: INNGEST_APP_ID,
+    hasEventKey,
+    hasSigningKey,
+    isProduction,
+    isSecure,
+    ...(!isSecure
+      ? {
+          error:
+            "INNGEST_SIGNING_KEY/INNGEST_EVENT_KEY ausentes em produção. " +
+            "/api/inngest aceitaria requisições não autenticadas. " +
+            "Configure as duas chaves em Vercel → Environment Variables (Production) e faça Redeploy.",
+        }
+      : {}),
+  };
+}
+
 export const inngest = new Inngest({ id: INNGEST_APP_ID, name: "Lex" });
 
 export type IngestDocumentEvent = {

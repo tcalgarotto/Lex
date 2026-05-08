@@ -20,20 +20,24 @@
  *    Veja `docs/INNGEST_PRODUCTION.md` (seção Troubleshooting).
  */
 
+import { NextResponse } from "next/server";
 import { serve } from "inngest/next";
-import { inngest } from "@/lib/inngest/client";
+import { inngest, inngestSecuritySnapshot } from "@/lib/inngest/client";
 import { ingestDocument } from "@/lib/inngest/functions/ingest-document";
 import { recomputeStyle } from "@/lib/inngest/functions/update-style";
 import { summarizeProcessMemory } from "@/lib/inngest/functions/update-memory";
 import { reindexCorpus } from "@/lib/inngest/functions/reindex-corpus";
 import { corpusSync } from "@/lib/inngest/functions/corpus-sync";
 import { corpusIngestNorm } from "@/lib/inngest/functions/corpus-ingest-norm";
+import { getLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export const { GET, POST, PUT } = serve({
+const log = getLogger("inngest.route");
+
+const handlers = serve({
   client: inngest,
   functions: [
     ingestDocument,
@@ -44,3 +48,46 @@ export const { GET, POST, PUT } = serve({
     corpusIngestNorm,
   ],
 });
+
+/**
+ * Gate de segurança: em produção, a rota só aceita requisições se as
+ * chaves do Inngest estiverem configuradas. Sem isso, o SDK cai em
+ * modo "dev" silenciosamente e qualquer requisição com payload
+ * arbitrário pode disparar nossas funções.
+ *
+ * Quando inseguro, devolvemos 503 explícito em vez de aceitar.
+ */
+function ensureSecureOr503(): Response | null {
+  const sec = inngestSecuritySnapshot();
+  if (sec.isSecure) return null;
+  log.errorOnce(
+    "missing-inngest-keys",
+    "REJEITANDO requisições /api/inngest — chaves ausentes em produção",
+    { appId: sec.appId, hasEventKey: sec.hasEventKey, hasSigningKey: sec.hasSigningKey },
+  );
+  return NextResponse.json(
+    {
+      error: "Inngest misconfigured",
+      detail: sec.error,
+    },
+    { status: 503 },
+  );
+}
+
+export async function GET(req: Request, ctx?: unknown) {
+  const blocked = ensureSecureOr503();
+  if (blocked) return blocked;
+  return handlers.GET(req as never, ctx as never);
+}
+
+export async function POST(req: Request, ctx?: unknown) {
+  const blocked = ensureSecureOr503();
+  if (blocked) return blocked;
+  return handlers.POST(req as never, ctx as never);
+}
+
+export async function PUT(req: Request, ctx?: unknown) {
+  const blocked = ensureSecureOr503();
+  if (blocked) return blocked;
+  return handlers.PUT(req as never, ctx as never);
+}
