@@ -14,25 +14,29 @@
  */
 
 import { NextResponse } from "next/server";
-import { CorpusProvider, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { GLOBAL_WORKSPACE_ID } from "@/lib/constants";
 import { embedQuery } from "@/lib/ai/embeddings";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
+import {
+  DEMO_TOKEN_REGEX,
+  isProductionVisibleSource,
+  legalChunkProductionWhere,
+  legalSourceProductionWhere,
+  shouldBypassDemoVisibility,
+} from "@/lib/corpus/source-visibility";
 import type { SearchHit } from "@/types/search";
 
 const IS_PROD = process.env.NODE_ENV === "production";
-const DEMO_REGEX = /\b(DEMO|FIXTURE|TEST(E)?|EXEMPLO)\b/i;
-const STF_DEMO_REGEX = /STF-RE-DEMO|RE-DEMO-\d+/i;
 const MIN_CHUNK_CHARS = 60;
 
 function isPollutedText(text: string | null | undefined): boolean {
   if (!text) return true;
   const cleaned = text.replace(/\s+/g, " ").trim();
   if (cleaned.length < MIN_CHUNK_CHARS) return true;
-  if (STF_DEMO_REGEX.test(cleaned)) return true;
-  // chunks que parecem "explicação do sistema" ou placeholders
+  if (DEMO_TOKEN_REGEX.test(cleaned)) return true;
   if (/^lorem ipsum/i.test(cleaned)) return true;
   if (/^[#=*\-]{3,}/.test(cleaned)) return true;
   return false;
@@ -40,9 +44,7 @@ function isPollutedText(text: string | null | undefined): boolean {
 
 function isPollutedCode(code: string | null | undefined): boolean {
   if (!code) return false;
-  if (DEMO_REGEX.test(code)) return true;
-  if (STF_DEMO_REGEX.test(code)) return true;
-  return false;
+  return DEMO_TOKEN_REGEX.test(code);
 }
 
 export async function GET(req: Request) {
@@ -50,7 +52,10 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
   const limit = Math.min(20, Math.max(1, Number(searchParams.get("limit") ?? "12")));
-  const showAll = searchParams.get("all") === "1";
+  const bypassDemo = shouldBypassDemoVisibility({
+    searchParams,
+    isProduction: IS_PROD,
+  });
   if (q.length < 2) {
     return NextResponse.json({ hits: [] satisfies SearchHit[], hadOfficialCorpus: false });
   }
@@ -60,11 +65,9 @@ export async function GET(req: Request) {
   // Quick win: 5 queries independentes rodam em paralelo.
   // `select` explícito em todas para evitar overfetch (especialmente
   // em LegalPiece.contentJson e LegalChunk.text/norm).
-  const legalChunkWhere = {
+  const legalChunkWhere: Prisma.LegalChunkWhereInput = {
     text: { contains: q, mode: "insensitive" as const },
-    ...(showAll
-      ? {}
-      : { norm: { sourceProvider: { not: CorpusProvider.FIXTURE } } }),
+    ...(bypassDemo ? {} : legalChunkProductionWhere()),
   };
 
   const [processes, pieces, docs, officialChunksOrErr, legalLegacy] =
@@ -126,27 +129,23 @@ export async function GET(req: Request) {
           take: limit,
         })
         .catch((e) => e as Error),
-      // LegalSource legacy — descontaminado em produção.
+      // LegalSource legacy — descontaminado via helper canônico.
       (() => {
-        const legalWhere: Prisma.LegalSourceWhereInput = {
+        const queryWhere: Prisma.LegalSourceWhereInput = {
           OR: [
             { code: { contains: q, mode: "insensitive" } },
             { body: { contains: q, mode: "insensitive" } },
           ],
         };
-        if (IS_PROD && !showAll) {
-          legalWhere.AND = [
-            { NOT: { code: { contains: "DEMO" } } },
-            { NOT: { code: { contains: "demo" } } },
-            { NOT: { code: { contains: "FIXTURE" } } },
-            { NOT: { code: { contains: "fixture" } } },
-          ];
-        }
+        const legalWhere: Prisma.LegalSourceWhereInput = bypassDemo
+          ? queryWhere
+          : { AND: [queryWhere, legalSourceProductionWhere()] };
         return prisma.legalSource.findMany({
           where: legalWhere,
           select: {
             id: true,
             code: true,
+            title: true,
             body: true,
             articleRef: true,
             tribunal: true,
@@ -195,7 +194,17 @@ export async function GET(req: Request) {
     hadOfficialCorpus = officialChunks.length > 0;
 
     for (const c of officialChunks) {
-      if (isPollutedText(c.text) && !showAll) continue;
+      if (
+        !bypassDemo &&
+        !isProductionVisibleSource({
+          identifier: c.norm.identifier ?? null,
+          title: c.norm.title,
+          sourceProvider: c.norm.sourceProvider,
+        })
+      ) {
+        continue;
+      }
+      if (isPollutedText(c.text) && !bypassDemo) continue;
       const article = c.fullPath ?? c.articleRef ?? "";
       const head = `${c.norm.identifier ?? c.norm.title}${article ? ` — ${article}` : ""}`;
       hits.push({
@@ -216,11 +225,17 @@ export async function GET(req: Request) {
     }
   }
 
-  // LegalSource (legado) — já filtrado anti-DEMO/FIXTURE no Promise.all
-  // acima. Aqui só transformamos para SearchHit.
+  // LegalSource (legado) — defesa em profundidade: mesmo após o filtro
+  // Prisma, validamos com o helper canônico antes de renderizar.
   for (const l of legalLegacy) {
-    if (!showAll && isPollutedCode(l.code)) continue;
-    if (!showAll && isPollutedText(l.body)) continue;
+    if (
+      !bypassDemo &&
+      !isProductionVisibleSource({ code: l.code, title: l.title })
+    ) {
+      continue;
+    }
+    if (!bypassDemo && isPollutedCode(l.code)) continue;
+    if (!bypassDemo && isPollutedText(l.body)) continue;
     hits.push({
       id: l.id,
       type: l.layer === "legislation" ? "legislação" : "jurisprudência",
@@ -241,8 +256,8 @@ export async function GET(req: Request) {
       limit: 8,
     });
     for (const h of vecHits) {
-      if (!showAll && isPollutedText(h.payload.chunkText)) continue;
-      if (!showAll && isPollutedCode(h.payload.sourceCode)) continue;
+      if (!bypassDemo && isPollutedText(h.payload.chunkText)) continue;
+      if (!bypassDemo && isPollutedCode(h.payload.sourceCode)) continue;
       const preview = h.payload.chunkText.slice(0, 80);
       hits.push({
         id: h.id,

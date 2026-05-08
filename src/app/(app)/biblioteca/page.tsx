@@ -6,32 +6,60 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import {
+  isProductionVisibleSource,
+  legalSourceProductionWhere,
+  shouldBypassDemoVisibility,
+} from "@/lib/corpus/source-visibility";
 
 export default async function BibliotecaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; id?: string }>;
+  searchParams: Promise<{ q?: string; id?: string; all?: string }>;
 }) {
   const sp = await searchParams;
   const q = sp.q?.trim() ?? "";
   const highlightId = sp.id;
+  const isProduction = process.env.NODE_ENV === "production";
+  const bypassDemo = shouldBypassDemoVisibility({
+    searchParams: { all: sp.all ?? null },
+    pathname: "/biblioteca",
+    isProduction,
+  });
+
+  const productionFilter = bypassDemo ? {} : legalSourceProductionWhere();
+  const queryFilter = q
+    ? {
+        OR: [
+          { code: { contains: q, mode: "insensitive" as const } },
+          { body: { contains: q, mode: "insensitive" as const } },
+        ],
+      }
+    : {};
 
   const sources = await prisma.legalSource.findMany({
-    where: q
-      ? {
-          OR: [
-            { code: { contains: q, mode: "insensitive" } },
-            { body: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: { ...productionFilter, ...queryFilter },
     orderBy: { createdAt: "desc" },
     take: 80,
   });
 
-  const selected = highlightId
+  // Defesa em profundidade: mesmo após o filtro Prisma, removemos qualquer
+  // resíduo via helper canônico antes de renderizar.
+  const visibleSources = bypassDemo
+    ? sources
+    : sources.filter((s) =>
+        isProductionVisibleSource({ code: s.code, title: s.title }),
+      );
+
+  const selectedRaw = highlightId
     ? await prisma.legalSource.findUnique({ where: { id: highlightId } })
     : null;
+  const selected =
+    selectedRaw &&
+    (bypassDemo ||
+      isProductionVisibleSource({ code: selectedRaw.code, title: selectedRaw.title }))
+      ? selectedRaw
+      : null;
 
   return (
     <AppShell title="Biblioteca jurídica">
@@ -49,7 +77,7 @@ export default async function BibliotecaPage({
           <CardContent className="p-0">
             <ScrollArea className="h-[560px]">
               <ul className="space-y-1 p-4 pt-0">
-                {sources.map((s) => (
+                {visibleSources.map((s) => (
                   <li key={s.id}>
                     <Link
                       href={`/biblioteca?id=${s.id}`}

@@ -26,6 +26,10 @@ import fs from "node:fs/promises";
 import { CorpusProvider } from "@prisma/client";
 import { prisma } from "../src/lib/prisma";
 import { CORPUS_COLLECTIONS } from "../src/lib/corpus/qdrant-collections";
+import {
+  legalNormProductionWhere,
+  legalSourceProductionWhere,
+} from "../src/lib/corpus/source-visibility";
 
 type CheckOutcome = {
   id: string;
@@ -179,6 +183,84 @@ async function checkPrismaCounts(): Promise<CheckOutcome[]> {
       ok: false,
       detail: `Prisma falhou: ${(e as Error).message}`,
       hint: "DATABASE_URL apontando para Postgres acessível?",
+    });
+  }
+  return out;
+}
+
+async function checkDemoIsolation(): Promise<CheckOutcome[]> {
+  const out: CheckOutcome[] = [];
+  try {
+    const [
+      totalLegalSource,
+      visibleLegalSource,
+      totalLegalNorm,
+      visibleLegalNorm,
+    ] = await Promise.all([
+      prisma.legalSource.count(),
+      prisma.legalSource.count({ where: legalSourceProductionWhere() }),
+      prisma.legalNorm.count(),
+      prisma.legalNorm.count({ where: legalNormProductionWhere() }),
+    ]);
+    const blockedSources = totalLegalSource - visibleLegalSource;
+    const blockedNorms = totalLegalNorm - visibleLegalNorm;
+
+    // Critério: depois de aplicar o filtro canônico, NÃO pode sobrar
+    // nenhuma fonte com DEMO/FIXTURE no que iria pra UI normal.
+    const stillVisibleDemoSource = await prisma.legalSource.count({
+      where: {
+        AND: [
+          legalSourceProductionWhere(),
+          {
+            OR: [
+              { code: { contains: "DEMO", mode: "insensitive" } },
+              { code: { contains: "FIXTURE", mode: "insensitive" } },
+            ],
+          },
+        ],
+      },
+    });
+    const stillVisibleDemoNorm = await prisma.legalNorm.count({
+      where: {
+        AND: [
+          legalNormProductionWhere(),
+          {
+            OR: [
+              { identifier: { contains: "DEMO", mode: "insensitive" } },
+              { sourceProvider: CorpusProvider.FIXTURE },
+            ],
+          },
+        ],
+      },
+    });
+
+    out.push({
+      id: "demo-isolation-source",
+      ok: stillVisibleDemoSource === 0,
+      detail: `LegalSource: ${visibleLegalSource}/${totalLegalSource} visíveis (${blockedSources} bloqueados)`,
+      ...(stillVisibleDemoSource > 0
+        ? {
+            hint:
+              "Helper source-visibility.legalSourceProductionWhere() não está cobrindo todos os tokens. Adicione padrões em DEMO_PATTERNS/LEGACY_DEMO_CODES.",
+          }
+        : {}),
+    });
+    out.push({
+      id: "demo-isolation-norm",
+      ok: stillVisibleDemoNorm === 0,
+      detail: `LegalNorm: ${visibleLegalNorm}/${totalLegalNorm} visíveis (${blockedNorms} bloqueadas)`,
+      ...(stillVisibleDemoNorm > 0
+        ? {
+            hint:
+              "Helper source-visibility.legalNormProductionWhere() não está bloqueando todas as FIXTURE. Verifique sourceProvider e identifier.",
+          }
+        : {}),
+    });
+  } catch (e) {
+    out.push({
+      id: "demo-isolation",
+      ok: false,
+      detail: `falhou ao consultar DB: ${(e as Error).message}`,
     });
   }
   return out;
@@ -341,6 +423,7 @@ async function main(): Promise<void> {
   items.push(await checkInngestSecurity());
   items.push(await checkBundleSafety());
   items.push(...(await checkPrismaCounts()));
+  items.push(...(await checkDemoIsolation()));
   items.push(await checkQdrantCorpus());
 
   if (!flags.skipHttp) {
