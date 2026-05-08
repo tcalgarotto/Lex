@@ -18,6 +18,8 @@ import { LexmlCorpusProvider } from "./lexml";
 import { StfCorpusProvider } from "./stf";
 import { StjCorpusProvider } from "./stj";
 import { DatajudCorpusProvider } from "./datajud";
+import { CamaraCorpusProvider } from "./camara";
+import { SenadoCorpusProvider } from "./senado";
 
 export type CorpusProviderStatusCode =
   | "ok"
@@ -294,12 +296,118 @@ const DATAJUD_ENTRY: CorpusProviderEntry = {
   },
 };
 
+const CAMARA_ENTRY: CorpusProviderEntry = {
+  id: CorpusProvider.CAMARA,
+  label: "Câmara dos Deputados (proposições legislativas)",
+  priority: 60,
+  requiresApiKey: false,
+  envKeys: [
+    "CAMARA_BASE_URL",
+    "CAMARA_PROVIDER_MODE",
+    "CAMARA_RATE_LIMIT_PER_MINUTE",
+    "ENABLE_CAMARA_PROVIDER",
+  ],
+  sourceKind: "legislative_proposals",
+  status(): CorpusProviderStatus {
+    const env = getEnv();
+    const enabled = bool(env.ENABLE_CAMARA_PROVIDER);
+    if (!enabled || env.CAMARA_PROVIDER_MODE === "disabled") {
+      return {
+        id: CorpusProvider.CAMARA,
+        label: this.label,
+        status: "disabled",
+        mode: "disabled",
+        requiresApiKey: false,
+        envKeys: this.envKeys,
+        baseUrl: env.CAMARA_BASE_URL,
+        rateLimitPerMinute: env.CAMARA_RATE_LIMIT_PER_MINUTE,
+        hint: "Defina ENABLE_CAMARA_PROVIDER=true e CAMARA_PROVIDER_MODE=live.",
+      };
+    }
+    return {
+      id: CorpusProvider.CAMARA,
+      label: this.label,
+      status: "ok",
+      mode: env.CAMARA_PROVIDER_MODE,
+      requiresApiKey: false,
+      envKeys: this.envKeys,
+      baseUrl: env.CAMARA_BASE_URL,
+      rateLimitPerMinute: env.CAMARA_RATE_LIMIT_PER_MINUTE,
+    };
+  },
+  factory() {
+    const env = getEnv();
+    if (!bool(env.ENABLE_CAMARA_PROVIDER) || env.CAMARA_PROVIDER_MODE === "disabled") {
+      throw new Error("Câmara provider está disabled");
+    }
+    if (env.CAMARA_PROVIDER_MODE === "fixture") return fixtureProvider();
+    return new CamaraCorpusProvider({
+      baseUrl: env.CAMARA_BASE_URL,
+      ratePerMinute: env.CAMARA_RATE_LIMIT_PER_MINUTE,
+    });
+  },
+};
+
+const SENADO_ENTRY: CorpusProviderEntry = {
+  id: CorpusProvider.SENADO,
+  label: "Senado Federal (matérias legislativas)",
+  priority: 55,
+  requiresApiKey: false,
+  envKeys: [
+    "SENADO_BASE_URL",
+    "SENADO_PROVIDER_MODE",
+    "SENADO_RATE_LIMIT_PER_MINUTE",
+    "ENABLE_SENADO_PROVIDER",
+  ],
+  sourceKind: "legislative_proposals",
+  status(): CorpusProviderStatus {
+    const env = getEnv();
+    const enabled = bool(env.ENABLE_SENADO_PROVIDER);
+    if (!enabled || env.SENADO_PROVIDER_MODE === "disabled") {
+      return {
+        id: CorpusProvider.SENADO,
+        label: this.label,
+        status: "disabled",
+        mode: "disabled",
+        requiresApiKey: false,
+        envKeys: this.envKeys,
+        baseUrl: env.SENADO_BASE_URL,
+        rateLimitPerMinute: env.SENADO_RATE_LIMIT_PER_MINUTE,
+        hint: "Defina ENABLE_SENADO_PROVIDER=true e SENADO_PROVIDER_MODE=live.",
+      };
+    }
+    return {
+      id: CorpusProvider.SENADO,
+      label: this.label,
+      status: "ok",
+      mode: env.SENADO_PROVIDER_MODE,
+      requiresApiKey: false,
+      envKeys: this.envKeys,
+      baseUrl: env.SENADO_BASE_URL,
+      rateLimitPerMinute: env.SENADO_RATE_LIMIT_PER_MINUTE,
+    };
+  },
+  factory() {
+    const env = getEnv();
+    if (!bool(env.ENABLE_SENADO_PROVIDER) || env.SENADO_PROVIDER_MODE === "disabled") {
+      throw new Error("Senado provider está disabled");
+    }
+    if (env.SENADO_PROVIDER_MODE === "fixture") return fixtureProvider();
+    return new SenadoCorpusProvider({
+      baseUrl: env.SENADO_BASE_URL,
+      ratePerMinute: env.SENADO_RATE_LIMIT_PER_MINUTE,
+    });
+  },
+};
+
 const REGISTRY: Record<CorpusProvider, CorpusProviderEntry | undefined> = {
   FIXTURE: FIXTURE_ENTRY,
   LEXML: LEXML_ENTRY,
   STF: STF_ENTRY,
   STJ: STJ_ENTRY,
   DATAJUD: DATAJUD_ENTRY,
+  CAMARA: CAMARA_ENTRY,
+  SENADO: SENADO_ENTRY,
   TST: undefined,
   PLANALTO: undefined,
   MANUAL: undefined,

@@ -100,11 +100,44 @@ A query gerada segue o formato Elasticsearch documentado em
 
 ---
 
-## Aliases já mapeados
+## Aliases já mapeados (91 tribunais — 100% do DataJud)
 
-Lista completa em `src/lib/corpus/providers/datajud-aliases.ts`. Para
-adicionar um tribunal não listado, basta usar o alias diretamente em
-`DATAJUD_ALIAS`. O provider não exige que o alias esteja no registry.
+A lista canônica está em `src/lib/corpus/providers/datajud-aliases.ts`,
+com totais expostos por `DATAJUD_ALIAS_TOTALS`:
+
+| Categoria | Quantidade |
+|---|---|
+| Superiores (`STJ`, `TST`, `TSE`, `STM`) | 4 |
+| TRFs (`api_publica_trf1` … `trf6`) | 6 |
+| TJs (todos os 26 estados + DF) | 27 |
+| TRTs (`api_publica_trt1` … `trt24`) | 24 |
+| TREs (todos os 26 estados + DF) | 27 |
+| TJMs estaduais (MG, RS, SP) | 3 |
+| **Total** | **91** |
+
+> O **STF não consta** no DataJud (tem portal próprio — coberto pelo
+> provider `STF` do Lex). Esse é um fato do CNJ, não uma omissão do Lex.
+
+Sugestão de varredura por prioridade (ordem decrescente):
+
+```bash
+# Top 10 por volume/relevância
+for alias in api_publica_stj api_publica_tjsp api_publica_tjmg api_publica_tjrj \
+             api_publica_tjpr api_publica_tjrs api_publica_tjsc api_publica_tjba \
+             api_publica_tjpe api_publica_trf3; do
+  npm run corpus:sync -- --provider=DATAJUD --alias="$alias" --max-pages=2
+done
+```
+
+Helpers exportados:
+
+```ts
+import {
+  listPriorityAliases,        // ordenado por priority desc
+  aliasesByCategory,          // agrupado por superior/trf/estadual/...
+  getAliasEntry,              // lookup por alias
+} from "@/lib/corpus/providers/datajud-aliases";
+```
 
 ---
 

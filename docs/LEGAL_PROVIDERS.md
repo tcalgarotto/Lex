@@ -14,9 +14,9 @@
 | **`LEXML`** | não — SRU/XML público | **Vade mecum federal** completo (legislação federal, estadual, EC, decretos) | `lex_corpus_norms` | `live` |
 | **`STF`** | não — HTML público | Súmulas + Súmulas Vinculantes | `lex_corpus_jurisprudence` | `live` |
 | **`STJ`** | não — SCON público | Súmulas (acórdãos via plug-in extractor) | `lex_corpus_jurisprudence` | `live` |
-| **`DATAJUD`** | **sim — `DATAJUD_API_KEY` (CNJ)** | Movimentações processuais de TJs/TRFs/TRTs/TST/TSE/STJ/STF | `lex_corpus_jurisprudence` (process_metadata) | `disabled` (até chave existir) |
-| **`CAMARA`** (stub) | não | Proposições legislativas | n/d (planejado) | `disabled` |
-| **`SENADO`** (stub) | não | Matérias legislativas | n/d (planejado) | `disabled` |
+| **`DATAJUD`** | **sim — `DATAJUD_API_KEY` (CNJ)** | **91 tribunais** (4 superiores + 27 TJs + 6 TRFs + 24 TRTs + 27 TREs + 3 TJMs) | `lex_corpus_jurisprudence` (process_metadata) | `live` (status `not_configured` enquanto faltar chave) |
+| **`CAMARA`** | não — REST/JSON público | Proposições legislativas (PL, PEC, MPV...) | `lex_corpus_norms` (legislative_proposals) | `live` |
+| **`SENADO`** | não — REST/JSON público | Matérias legislativas (PL, PEC, PLS, PLN...) | `lex_corpus_norms` (legislative_proposals) | `live` |
 
 > O roteamento Qdrant é automático — `collectionForKind(kind)` em `src/lib/corpus/qdrant-collections.ts` decide.
 
@@ -30,14 +30,21 @@ Cada provider aceita 3 modos via env `<PROVIDER>_PROVIDER_MODE`:
 - `fixture`  — usa dataset embutido (zero rede)
 - `disabled` — provider rejeita qualquer chamada (`NonRetriableError`)
 
-Em **produção** recomendamos:
+Em **produção** o default é **tudo `live`**:
 
 ```env
 LEXML_PROVIDER_MODE=live
 STF_PROVIDER_MODE=live
 STJ_PROVIDER_MODE=live
-DATAJUD_PROVIDER_MODE=disabled   # vira live quando DATAJUD_API_KEY existir
+DATAJUD_PROVIDER_MODE=live      # exige DATAJUD_API_KEY
+CAMARA_PROVIDER_MODE=live
+SENADO_PROVIDER_MODE=live
 ```
+
+Sem `DATAJUD_API_KEY` o provider DataJud entra em **`not_configured`**:
+o build, o deploy e o `/api/health` continuam saudáveis; apenas as
+chamadas a esse provider falham com `NonRetriableError` claro até a
+chave ser preenchida.
 
 Em **preview** mantenha `fixture` para evitar martelar APIs públicas a cada PR.
 
@@ -64,22 +71,44 @@ Em **preview** mantenha `fixture` para evitar martelar APIs públicas a cada PR.
 - Wiki oficial: <https://datajud-wiki.cnj.jus.br/api-publica/acesso>
 - Chave gratuita: preencha o formulário do CNJ → recebe key por email em poucos minutos.
 - Endpoints por alias: <https://datajud-wiki.cnj.jus.br/api-publica/endpoints>
-- Lista de aliases prontos no Lex: `src/lib/corpus/providers/datajud-aliases.ts`.
+- Lista canônica dos **91 aliases** no Lex: `src/lib/corpus/providers/datajud-aliases.ts`.
+
+### Câmara dos Deputados
+- API pública REST/JSON: `https://dadosabertos.camara.leg.br/api/v2`
+- Sem chave. Sem registro. Endpoints usados: `/proposicoes`, `/proposicoes/{id}`.
+- Rate-limit recomendado: **30 req/min** (default).
+
+### Senado Federal
+- API pública REST/JSON (com `Accept: application/json`): `https://legis.senado.leg.br/dadosabertos`
+- Sem chave. Endpoints usados: `/materia/pesquisa/lista?ano=YYYY`, `/materia/{codigo}`.
+- Rate-limit recomendado: **30 req/min** (default).
 
 ---
 
-## Aliases DataJud já mapeados
+## Aliases DataJud (91 tribunais, oficial CNJ)
 
-```
-api_publica_stj      api_publica_tst       api_publica_tse
-api_publica_stm      api_publica_trf1..6   api_publica_tjsp
-api_publica_tjrs     api_publica_tjpr      api_publica_tjsc
-api_publica_tjmg     api_publica_tjrj      api_publica_trt12
-api_publica_tresc
-```
+| Categoria | Quantidade | Exemplos |
+|---|---|---|
+| Superiores | 4 | `api_publica_stj`, `api_publica_tst`, `api_publica_tse`, `api_publica_stm` |
+| TRFs | 6 | `api_publica_trf1` … `api_publica_trf6` |
+| TJs estaduais | 27 | `api_publica_tjsp`, `api_publica_tjrj`, `api_publica_tjmg`, `api_publica_tjdft`, … |
+| TRTs | 24 | `api_publica_trt1` … `api_publica_trt24` |
+| TREs | 27 | `api_publica_tresp`, `api_publica_trers`, `api_publica_trepr`, … |
+| TJMs estaduais | 3 | `api_publica_tjmmg`, `api_publica_tjmrs`, `api_publica_tjmsp` |
 
-Adicione mais em `datajud-aliases.ts` conforme necessário. Aliases extras
-funcionam mesmo sem registro — basta passar a string para `DATAJUD_ALIAS`.
+> **STF NÃO está no DataJud** — tem portal próprio (coberto pelo provider `STF` do Lex).
+
+A lista completa, com `priority`, `category` e `label`, está em
+`src/lib/corpus/providers/datajud-aliases.ts`. Helpers exportados:
+
+```ts
+import {
+  DATAJUD_ALIASES,
+  DATAJUD_ALIAS_TOTALS,
+  listPriorityAliases,
+  aliasesByCategory,
+} from "@/lib/corpus/providers/datajud-aliases";
+```
 
 ---
 
@@ -119,6 +148,12 @@ npm run corpus:seed:stj
 # 4. (Quando tiver chave) DataJud
 npm run datajud:check
 npm run corpus:sync -- --provider=DATAJUD --max-pages=2
+
+# 5. Câmara dos Deputados (proposições) — sem chave
+npm run corpus:sync -- --provider=CAMARA --max-pages=5
+
+# 6. Senado Federal (matérias) — sem chave
+npm run corpus:sync -- --provider=SENADO --max-pages=5
 ```
 
 ---

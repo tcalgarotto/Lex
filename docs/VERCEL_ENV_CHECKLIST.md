@@ -48,8 +48,8 @@ depender de ordem de boot.
 
 ```bash
 # A) App
-NEXT_PUBLIC_APP_URL=https://lex-navy.vercel.app   # SEM trailing slash
-NODE_ENV=production                                # Vercel já define
+NEXT_PUBLIC_APP_URL=https://lex-navy.vercel.app   
+NODE_ENV=production                                
 LOG_LEVEL=info
 PRISMA_QUERY_LOGS=false
 
@@ -114,27 +114,40 @@ STJ_BASE_URL=https://scon.stj.jus.br
 STJ_PROVIDER_MODE=live
 STJ_RATE_LIMIT_PER_MINUTE=10
 
-# DataJud — sem chave, deixe disabled (não quebra build/health)
+# DataJud — REQUIRED: DATAJUD_API_KEY. Solicite a chave em
+# https://datajud-wiki.cnj.jus.br/api-publica/acesso
+# 91 aliases disponíveis em src/lib/corpus/providers/datajud-aliases.ts
+# (4 superiores + 27 TJs + 6 TRFs + 24 TRTs + 27 TREs + 3 TJMs).
 DATAJUD_BASE_URL=https://api-publica.datajud.cnj.jus.br
-DATAJUD_API_KEY=                # solicite em https://datajud-wiki.cnj.jus.br/api-publica/acesso
-DATAJUD_ALIAS=api_publica_tjsp
-DATAJUD_PROVIDER_MODE=disabled  # quando tiver chave: live + ENABLE_DATAJUD=true
+DATAJUD_API_KEY=                # ← preencher
+DATAJUD_ALIAS=api_publica_tjsp  # alias inicial (use scripts para multi-alias)
+DATAJUD_PROVIDER_MODE=live
 DATAJUD_RATE_LIMIT_PER_MINUTE=30
 DATAJUD_DEFAULT_PAGE_SIZE=100
 DATAJUD_MAX_PAGES_PER_SYNC=10
 
-# Feature flags
+# Câmara dos Deputados — REST/JSON público, sem chave
+CAMARA_BASE_URL=https://dadosabertos.camara.leg.br/api/v2
+CAMARA_PROVIDER_MODE=live
+CAMARA_RATE_LIMIT_PER_MINUTE=30
+
+# Senado Federal — REST/JSON público, sem chave
+SENADO_BASE_URL=https://legis.senado.leg.br/dadosabertos
+SENADO_PROVIDER_MODE=live
+SENADO_RATE_LIMIT_PER_MINUTE=30
+
+# Feature flags — produção: TUDO habilitado
 ENABLE_CORPUS_SYNC=true
 ENABLE_LEGAL_RETRIEVAL=true
 ENABLE_CORPUS_GRAPH=true
 ENABLE_LEXML_PROVIDER=true
 ENABLE_STF_PROVIDER=true
 ENABLE_STJ_PROVIDER=true
-ENABLE_DATAJUD=false                              # vire true após DATAJUD_API_KEY
-ENABLE_CAMARA_PROVIDER=false                      # stub
-ENABLE_SENADO_PROVIDER=false                      # stub
+ENABLE_DATAJUD=true              # status fica `not_configured` se faltar API key
+ENABLE_CAMARA_PROVIDER=true
+ENABLE_SENADO_PROVIDER=true
 ENABLE_INTEGRATIONS_MOCKS=false
-ENABLE_E2E_TEST_HELPERS=false                     # NUNCA habilitar em prod
+ENABLE_E2E_TEST_HELPERS=false    # NUNCA habilitar em prod
 ```
 
 > Detalhes do papel de cada provider: `docs/LEGAL_PROVIDERS.md`.

@@ -82,10 +82,10 @@ const envSchema = z
       .url()
       .default("https://api-publica.datajud.cnj.jus.br"),
     DATAJUD_API_KEY: z.string().optional().default(""),
-    DATAJUD_ALIAS: z.string().optional().default(""),
+    DATAJUD_ALIAS: z.string().optional().default("api_publica_tjsp"),
     DATAJUD_PROVIDER_MODE: z
       .enum(["live", "fixture", "disabled"])
-      .default("disabled"),
+      .default("live"),
     DATAJUD_DEFAULT_PAGE_SIZE: z.coerce.number().int().min(1).max(500).default(100),
     DATAJUD_MAX_PAGES_PER_SYNC: z.coerce.number().int().min(1).max(100).default(10),
     DATAJUD_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(30),
@@ -94,24 +94,26 @@ const envSchema = z
       .string()
       .url()
       .default("https://dadosabertos.camara.leg.br/api/v2"),
-    CAMARA_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("disabled"),
+    CAMARA_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
+    CAMARA_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(30),
 
     SENADO_BASE_URL: z
       .string()
       .url()
       .default("https://legis.senado.leg.br/dadosabertos"),
-    SENADO_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("disabled"),
+    SENADO_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
+    SENADO_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(30),
 
-    // Feature flags de retrieval/ingestion.
+    // Feature flags de retrieval/ingestion (production-grade defaults).
     ENABLE_CORPUS_SYNC: z.coerce.boolean().default(true),
     ENABLE_LEGAL_RETRIEVAL: z.coerce.boolean().default(true),
     ENABLE_CORPUS_GRAPH: z.coerce.boolean().default(true),
     ENABLE_LEXML_PROVIDER: z.coerce.boolean().default(true),
     ENABLE_STF_PROVIDER: z.coerce.boolean().default(true),
     ENABLE_STJ_PROVIDER: z.coerce.boolean().default(true),
-    ENABLE_DATAJUD: z.coerce.boolean().default(false),
-    ENABLE_CAMARA_PROVIDER: z.coerce.boolean().default(false),
-    ENABLE_SENADO_PROVIDER: z.coerce.boolean().default(false),
+    ENABLE_DATAJUD: z.coerce.boolean().default(true),
+    ENABLE_CAMARA_PROVIDER: z.coerce.boolean().default(true),
+    ENABLE_SENADO_PROVIDER: z.coerce.boolean().default(true),
   })
   .superRefine((data, ctx) => {
     // Em produção exigimos a chave do provider configurado; em dev apenas avisamos.
