@@ -91,8 +91,8 @@ async function main(): Promise<void> {
       continue;
     }
     console.log(`◆ ${collection} — ${info.pointsCount ?? 0} pontos`);
-    console.log(`  Vetores nomeados: ${JSON.stringify(info.vectorsConfig).slice(0, 200)}`);
-    console.log(`  Sparse vectors:   ${JSON.stringify(info.sparseConfig).slice(0, 200)}`);
+    console.log(`  Vetores nomeados: ${JSON.stringify(info.vectorsConfig ?? null).slice(0, 200)}`);
+    console.log(`  Sparse vectors:   ${JSON.stringify(info.sparseConfig ?? null).slice(0, 200)}`);
     console.log("  Payload indexes:");
     const idx = (info.payloadIndexes ?? {}) as Record<string, unknown>;
     const present = new Set(Object.keys(idx));
