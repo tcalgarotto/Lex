@@ -4,6 +4,10 @@ import { test, expect } from "@playwright/test";
 test.describe("auth redirects (sem sessão)", () => {
   for (const path of [
     "/dashboard",
+    "/cases",
+    "/documentos",
+    "/pesquisa-juridica",
+    "/editor",
     "/processos",
     "/biblioteca",
     "/busca",

@@ -199,6 +199,10 @@ model Process {
   memories     MemoryEntry[]
   timeline     ProcessTimelineEvent[]
   feedbacks    FeedbackEntry[]
+  /**
+   * Backref: Case.processId? aponta pra cá (1:1 opcional).
+   */
+  case         Case?
 
   @@index([workspaceId])
   @@index([workspaceId, number])
@@ -208,6 +212,12 @@ model Document {
   id              String          @id @default(cuid())
   workspaceId     String
   processId       String?
+  /**
+   * Vínculo opcional ao Case (jornada centrada em caso). Coexiste com
+   * `processId` (legado, /processos). Um documento pode estar standalone,
+   * vinculado a um Process, vinculado a um Case, ou ambos.
+   */
+  caseId          String?
   originalName    String
   mimeType        String
   sizeBytes       Int
@@ -230,11 +240,14 @@ model Document {
   updatedAt       DateTime        @updatedAt
   workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   process         Process?        @relation(fields: [processId], references: [id])
+  case            Case?           @relation(fields: [caseId], references: [id])
   chunks          DocumentChunk[]
 
   @@index([workspaceId])
   @@index([processId])
+  @@index([caseId])
   @@index([status])
+  @@index([workspaceId, updatedAt])
 }
 
 model DocumentChunk {
@@ -945,22 +958,31 @@ model Case {
    * Numero do processo, se já existir.
    */
   processNumber String?
+  /**
+   * Ponte 1:1 opcional para um Process interno do Lex (/processos). Quando
+   * presente, documentos do Process aparecem dentro do Case (na aba
+   * Documentos) e vice-versa. Não migramos automaticamente Process → Case.
+   */
+  processId     String?    @unique
   metadataJson  Json?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  facts       CaseFact[]
-  parties     CaseParty[]
-  requests    CaseRequest[]
-  risks       CaseRisk[]
-  drafts      CaseDraft[]
-  reviews     CaseReview[]
-  timeline    CaseTimelineEvent[]
-  comments    CaseComment[]
-  annotations CaseAnnotation[]
-  approvals   DraftApproval[]
-  alerts      CaseAlert[]
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process      Process?            @relation(fields: [processId], references: [id])
+  facts        CaseFact[]
+  parties      CaseParty[]
+  requests     CaseRequest[]
+  risks        CaseRisk[]
+  drafts       CaseDraft[]
+  reviews      CaseReview[]
+  timeline     CaseTimelineEvent[]
+  comments     CaseComment[]
+  annotations  CaseAnnotation[]
+  approvals    DraftApproval[]
+  alerts       CaseAlert[]
+  documents    Document[]
+  legalSources CaseLegalSource[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])
@@ -1135,6 +1157,42 @@ model CaseTimelineEvent {
   case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
   @@index([caseId, createdAt])
+}
+
+/**
+ * Fundamento jurídico pinado em um caso. O usuário busca em
+ * `/pesquisa-juridica` (ou na aba Pesquisa do caso) e clica em "Usar no
+ * caso" — gera um CaseLegalSource. Mais tarde, esses ids alimentam
+ * `CaseDraft.groundingChunkIds[]`.
+ * Não é cache de retrieval — é a curadoria do advogado sobre quais
+ * fundamentos importam para esse caso.
+ */
+model CaseLegalSource {
+  id         String   @id @default(cuid())
+  caseId     String
+  /**
+   * Ponteiro lógico para `LegalChunk.id` (corpus oficial). Não criamos FK
+   * dura porque o corpus é multi-tenant `_global_` e pode ser reindexado.
+   */
+  chunkId    String
+  /**
+   * Cópia denormalizada para evitar join no render (URN/articleRef).
+   */
+  normUrn    String?
+  articleRef String?
+  excerpt    String   @db.Text
+  /**
+   * Query original que originou o pin (para auditoria/UX).
+   */
+  query      String?
+  pinnedById String?
+  createdAt  DateTime @default(now())
+
+  case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@unique([caseId, chunkId])
+  @@index([caseId, createdAt])
+  @@index([chunkId])
 }
 
 // ============================================================================

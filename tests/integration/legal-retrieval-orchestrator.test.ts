@@ -156,16 +156,19 @@ Art. 6º São direitos básicos do consumidor: educação, segurança, informaç
     expect(a.chunks.map((c) => c.chunkId).sort()).toEqual(b.chunks.map((c) => c.chunkId).sort());
   });
 
-  it("query sem matches retorna chunks vazios e confidence Baixa", async () => {
+  it("query sem matches reporta confidence Baixa e grounding fraco", async () => {
+    // Com hybrid search (dense + sparse + RRF), uma query absurda quase
+    // sempre encontra vizinhos próximos no espaço denso. O sinal de
+    // ausência de matches passa a ser confidence=Baixa e groundingScore
+    // baixo, e não chunks.length === 0.
     const result = await retrieveLegalContext("xyz_string_inexistente_unique_" + tag, {
       filters: { normUrns: [urnPai, urnFilho] },
       useCache: false,
       useRerank: false,
       useGraphExpansion: false,
     });
-    expect(result.chunks.length).toBe(0);
     expect(result.confidence.label).toBe("Baixa");
-    expect(result.groundingScore).toBe(0);
+    expect(result.groundingScore).toBeLessThan(0.5);
   });
 
   it("groundingScore reflete top1 + diversidade", async () => {

@@ -61,3 +61,9 @@ prisma/*.db-journal
 
 # cache local de HTML do Planalto (corpus seed)
 .cache/
+
+# Dados de treino do Tesseract baixados em runtime/CI
+*.traineddata
+
+# Planos locais do Cursor IDE (não pertencem ao repo)
+.cursor/plans/

@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { DocumentStatus, JobRunStatus } from "@prisma/client";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { FileText, FolderKanban, HardDrive, Sparkles, AlertTriangle, Zap } from "lucide-react";
+import { Briefcase, FileText, HardDrive, Sparkles, AlertTriangle, Zap } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { TokenUsageChart, type TokenSeriesPoint } from "@/components/dashboard/token-usage-chart";
 import { DocsByStatusChart, type DocStatusPoint } from "@/components/dashboard/docs-by-status-chart";
+import { NextActionsCard } from "@/components/dashboard/next-actions-card";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { buildNextActions } from "@/lib/dashboard/next-actions";
 
 const DOC_STATUS_ORDER: DocumentStatus[] = [
   DocumentStatus.UPLOADED,
@@ -56,18 +58,20 @@ async function DashboardContent() {
 
   const [
     processCount,
+    casesCount,
     docCount,
     indexedCount,
     failedJobsCount,
     storageAgg,
     docStatusGroup,
     costRows,
-    processes,
     queueDocs,
     activities,
     failedJobs,
+    nextActions,
   ] = await Promise.all([
     prisma.process.count({ where: { workspaceId } }),
+    prisma.case.count({ where: { workspaceId } }),
     prisma.document.count({ where: { workspaceId } }),
     prisma.document.count({ where: { workspaceId, status: DocumentStatus.INDEXED } }),
     prisma.jobRun.count({
@@ -85,11 +89,6 @@ async function DashboardContent() {
     prisma.costLedgerEntry.findMany({
       where: { workspaceId, createdAt: { gte: since } },
       select: { createdAt: true, totalTokens: true, costUsd: true },
-    }),
-    prisma.process.findMany({
-      where: { workspaceId },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
     }),
     prisma.document.findMany({
       where: {
@@ -109,6 +108,7 @@ async function DashboardContent() {
       orderBy: { updatedAt: "desc" },
       take: 5,
     }),
+    buildNextActions(workspaceId),
   ]);
 
   // Series por dia (últimos 14)
@@ -145,18 +145,18 @@ async function DashboardContent() {
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Processos"
-          value={processCount.toLocaleString("pt-BR")}
-          hint={processCount === 0 ? "Crie o primeiro processo" : "no workspace"}
-          icon={FolderKanban}
+          label="Casos"
+          value={casesCount.toLocaleString("pt-BR")}
+          hint={casesCount === 0 ? "Crie seu primeiro caso" : `${processCount} processo(s) legados`}
+          icon={Briefcase}
         />
         <StatCard
           label="Docs indexados"
           value={`${indexedCount.toLocaleString("pt-BR")} / ${docCount.toLocaleString("pt-BR")}`}
           hint={
             docCount === 0
-              ? "Faça upload de documentos"
-              : `${Math.round((indexedCount / Math.max(docCount, 1)) * 100)}% pronto para RAG`
+              ? "Envie documentos para começar"
+              : `${Math.round((indexedCount / Math.max(docCount, 1)) * 100)}% pronto para análise`
           }
           icon={FileText}
           tone="success"
@@ -173,6 +173,43 @@ async function DashboardContent() {
           hint="documentos enviados"
           icon={HardDrive}
         />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <NextActionsCard bundle={nextActions} />
+        </div>
+
+        <Card className="border-white/10 bg-zinc-900/40">
+          <CardHeader>
+            <CardTitle className="text-base">Em processamento</CardTitle>
+            <CardDescription>
+              Documentos sendo parseados, chunkados ou indexados.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {queueDocs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum job em andamento.</p>
+            ) : (
+              queueDocs.map((d) => (
+                <div
+                  key={d.id}
+                  className="rounded-lg border border-white/5 px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{d.originalName}</span>
+                    <Badge variant="secondary" className="shrink-0 text-[10px]">
+                      {d.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    {formatDistanceToNow(d.updatedAt, { addSuffix: true, locale: ptBR })}
+                  </p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -208,86 +245,6 @@ async function DashboardContent() {
               </div>
             ) : (
               <DocsByStatusChart data={docStatusData} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-white/10 bg-zinc-900/40 lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Processos recentes</CardTitle>
-              <CardDescription>Ordenados por última atualização.</CardDescription>
-            </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/processos">Ver todos</Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {processes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-white/10 bg-zinc-950/40 px-6 py-10 text-center">
-                <FolderKanban className="mb-2 size-6 text-violet-300" />
-                <p className="text-sm text-zinc-300">Nenhum processo ainda.</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Comece criando um processo ou rodando a demo.
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm" asChild>
-                    <Link href="/processos">Novo processo</Link>
-                  </Button>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href="/demo">Modo demonstração</Link>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              processes.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/processos/${p.id}`}
-                  className="flex items-center justify-between rounded-lg border border-white/5 px-3 py-2 transition-colors hover:bg-white/5"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{p.title ?? p.number}</p>
-                    <p className="truncate text-xs text-muted-foreground">{p.number}</p>
-                  </div>
-                  <Badge variant="outline" className="shrink-0 text-[10px]">
-                    {formatDistanceToNow(p.updatedAt, { addSuffix: true, locale: ptBR })}
-                  </Badge>
-                </Link>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-white/10 bg-zinc-900/40">
-          <CardHeader>
-            <CardTitle className="text-base">Em processamento</CardTitle>
-            <CardDescription>
-              Documentos sendo parseados, chunkados ou indexados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {queueDocs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum job em andamento.</p>
-            ) : (
-              queueDocs.map((d) => (
-                <div
-                  key={d.id}
-                  className="rounded-lg border border-white/5 px-3 py-2 text-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate">{d.originalName}</span>
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      {d.status}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {formatDistanceToNow(d.updatedAt, { addSuffix: true, locale: ptBR })}
-                  </p>
-                </div>
-              ))
             )}
           </CardContent>
         </Card>

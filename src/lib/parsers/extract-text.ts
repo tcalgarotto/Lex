@@ -133,7 +133,14 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
   // OCR sai como etapa futura, sem retry infinito.
   // Lemos process.env direto para evitar carregar todo o env schema
   // (que tem campos obrigatórios que não interessam pro parser).
-  const ocrEnabled = String(process.env["OCR_PROVIDER"] ?? "").toLowerCase() === "tesseract";
+  //
+  // Em NODE_ENV=test o OCR fica forçadamente desligado: tesseract.js
+  // carrega um Worker pesado que vaza unhandled errors entre arquivos
+  // de teste e torna o resultado dependente do `.env` local. Quem
+  // precisar testar o caminho de OCR deve mockar tesseract diretamente.
+  const ocrProviderRaw = String(process.env["OCR_PROVIDER"] ?? "").toLowerCase();
+  const isTestEnv = process.env["NODE_ENV"] === "test" || process.env["VITEST"] === "true";
+  const ocrEnabled = ocrProviderRaw === "tesseract" && !isTestEnv;
 
   if (ocrEnabled) {
     try {

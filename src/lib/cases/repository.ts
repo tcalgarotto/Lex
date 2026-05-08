@@ -99,6 +99,36 @@ export async function getCaseById(workspaceId: string, caseId: string) {
       drafts: { orderBy: { version: "desc" } },
       reviews: { orderBy: { createdAt: "desc" }, take: 5 },
       timeline: { orderBy: { createdAt: "desc" }, take: 50 },
+      documents: {
+        orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          originalName: true,
+          mimeType: true,
+          status: true,
+          progress: true,
+          totalChunks: true,
+          processedChunks: true,
+          updatedAt: true,
+          createdAt: true,
+          processId: true,
+          caseId: true,
+        },
+      },
+      process: {
+        select: {
+          id: true,
+          number: true,
+          title: true,
+          tribunal: true,
+          vara: true,
+          tags: true,
+        },
+      },
+      legalSources: {
+        orderBy: { createdAt: "desc" },
+        take: 30,
+      },
     },
   });
 }

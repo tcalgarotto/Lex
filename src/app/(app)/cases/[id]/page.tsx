@@ -3,19 +3,11 @@ import { Sparkles, Calendar, Building2, Hash } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { getCaseById } from "@/lib/cases/repository";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
-import { CaseFactsTab } from "@/components/cases/case-facts-tab";
-import { CasePartiesTab } from "@/components/cases/case-parties-tab";
-import { CaseRequestsTab } from "@/components/cases/case-requests-tab";
-import { CaseRisksTab } from "@/components/cases/case-risks-tab";
-import { CaseDraftsTab } from "@/components/cases/case-drafts-tab";
-import { CaseReviewTab } from "@/components/cases/case-review-tab";
-import { CaseTimelineTab } from "@/components/cases/case-timeline-tab";
 import { CaseActions } from "@/components/cases/case-actions";
-import { CaseCollabTab } from "@/components/cases/case-collab-tab";
+import { CaseTabs } from "@/components/cases/case-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -51,9 +43,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
                 <Building2 className="mr-1 size-3" /> {tribunal.code} · {tribunal.name}
               </Badge>
             ) : null}
-            {c.uf ? (
-              <Badge variant="outline" className="text-[10px]">{c.uf}</Badge>
-            ) : null}
+            {c.uf ? <Badge variant="outline" className="text-[10px]">{c.uf}</Badge> : null}
             {c.processNumber ? (
               <Badge variant="outline" className="font-mono text-[10px]">
                 <Hash className="mr-1 size-3" />
@@ -79,43 +69,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
           </div>
         </header>
 
-        <Tabs defaultValue="facts">
-          <TabsList className="flex flex-wrap gap-1">
-            <TabsTrigger value="facts">Fatos · {c.facts.length}</TabsTrigger>
-            <TabsTrigger value="parties">Partes · {c.parties.length}</TabsTrigger>
-            <TabsTrigger value="requests">Pedidos · {c.requests.length}</TabsTrigger>
-            <TabsTrigger value="risks">Riscos · {c.risks.length}</TabsTrigger>
-            <TabsTrigger value="drafts">Minuta · {c.drafts.length}</TabsTrigger>
-            <TabsTrigger value="review">Review · {c.reviews.length}</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline · {c.timeline.length}</TabsTrigger>
-            <TabsTrigger value="collab">Colaboração</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="facts" className="mt-4">
-            <CaseFactsTab facts={c.facts} />
-          </TabsContent>
-          <TabsContent value="parties" className="mt-4">
-            <CasePartiesTab parties={c.parties} />
-          </TabsContent>
-          <TabsContent value="requests" className="mt-4">
-            <CaseRequestsTab requests={c.requests} />
-          </TabsContent>
-          <TabsContent value="risks" className="mt-4">
-            <CaseRisksTab risks={c.risks} />
-          </TabsContent>
-          <TabsContent value="drafts" className="mt-4">
-            <CaseDraftsTab drafts={c.drafts} />
-          </TabsContent>
-          <TabsContent value="review" className="mt-4">
-            <CaseReviewTab reviews={c.reviews} />
-          </TabsContent>
-          <TabsContent value="timeline" className="mt-4">
-            <CaseTimelineTab events={c.timeline} />
-          </TabsContent>
-          <TabsContent value="collab" className="mt-4">
-            <CaseCollabTab caseId={c.id} />
-          </TabsContent>
-        </Tabs>
+        <CaseTabs caseData={c} />
 
         <Card className="p-4 text-xs text-muted-foreground">
           <strong className="text-foreground">Auditável por design.</strong> Todas as gerações (intake,

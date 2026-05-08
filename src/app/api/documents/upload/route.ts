@@ -38,6 +38,9 @@ export async function POST(req: Request) {
   const processIdRaw = form.get("processId");
   const processId =
     typeof processIdRaw === "string" && processIdRaw.length > 0 ? processIdRaw : null;
+  const caseIdRaw = form.get("caseId");
+  const caseId =
+    typeof caseIdRaw === "string" && caseIdRaw.length > 0 ? caseIdRaw : null;
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
@@ -56,6 +59,26 @@ export async function POST(req: Request) {
     );
   }
 
+  // Valida processId/caseId no escopo do workspace antes de tocar storage.
+  if (processId) {
+    const ok = await prisma.process.findFirst({
+      where: { id: processId, workspaceId },
+      select: { id: true },
+    });
+    if (!ok) {
+      return NextResponse.json({ error: "Processo não encontrado" }, { status: 404 });
+    }
+  }
+  if (caseId) {
+    const ok = await prisma.case.findFirst({
+      where: { id: caseId, workspaceId },
+      select: { id: true },
+    });
+    if (!ok) {
+      return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
+    }
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer());
   const documentId = nanoid();
   const path = documentStoragePath(workspaceId, documentId, file.name);
@@ -71,6 +94,7 @@ export async function POST(req: Request) {
       id: documentId,
       workspaceId,
       processId,
+      caseId,
       originalName: file.name,
       mimeType: file.type || "application/octet-stream",
       sizeBytes: buffer.length,
@@ -90,9 +114,24 @@ export async function POST(req: Request) {
       workspaceId,
       kind: "document.uploaded",
       title: `Documento enviado: ${file.name}`,
-      metaJson: { documentId: doc.id, processId },
+      metaJson: { documentId: doc.id, processId, caseId },
     },
   });
 
-  return NextResponse.json({ documentId: doc.id, status: doc.status });
+  if (caseId) {
+    await prisma.caseTimelineEvent
+      .create({
+        data: {
+          caseId,
+          kind: "NOTE",
+          message: `Documento "${file.name}" enviado para o caso.`,
+          payloadJson: { documentId: doc.id, action: "document.uploaded" },
+        },
+      })
+      .catch((err) => {
+        console.error("[upload] timeline event failed (non-fatal)", err);
+      });
+  }
+
+  return NextResponse.json({ documentId: doc.id, status: doc.status, caseId });
 }
