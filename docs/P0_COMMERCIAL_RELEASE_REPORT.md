@@ -10,13 +10,20 @@
   - **API**: `/api/interview-templates` + `/api/interview-templates/[id]` (multi-tenant por `workspaceId`, com regras de permissão por escopo).
   - **Integração no caso**: “Trocar roteiro” (entrevista guiada) lista também “Modelos salvos” e permite selecionar por `templateId` do banco.
 
+- **F7.1–F7.3 (parcial com evidência)**: reforços no retrieval jurídico (intent → search plan → rerank explicável) e guardrails de chunking v3 (inclui Art. 208, inciso IV isolado).
+
+- **F8/F9 (parcial)**: drafting passa a consumir somente `ApprovedLegalFoundation[]` (fontes aprovadas). Review ganhou bloqueios explícitos para ADCT irrelevante e “promessa de protocolo”.
+
+- **F10 (parcial)**: export de **minuta do caso** em **DOCX/PDF/Markdown** via endpoint dedicado com validação obrigatória `workspaceId/caseId/draftId` + teste de integração multi-tenant.
+
 ## 2. Fluxo final (produto)
 
 Novo caso → relato livre / entrevista guiada → estrutura editável (partes/fatos/pedidos/riscos) → documentos → pesquisa jurídica confiável → estratégia → peça → revisão → export → processo judicial (CNJ) se houver.
 
 ## 3. Telas alteradas (lista)
 
-- (preencher)
+- `/cases/[id]` (aba “Peças” / drafts) — botões de export DOCX/PDF/MD.
+- `/test-guide` — atualizado com 6 jornadas sentinela copiáveis.
 
 ## 4. Arquivos principais
 
@@ -29,7 +36,8 @@ Novo caso → relato livre / entrevista guiada → estrutura editável (partes/f
 
 ## 5. Bugs corrigidos
 
-- (preencher com evidência)
+- `npm test` voltava a falhar por import runtime de Prisma no provider Câmara; corrigido para type-only.
+- Export de minuta do caso inexistente: agora existe `GET /api/cases/[id]/drafts/[draftId]/export`.
 
 ## 6. Riscos remanescentes
 
@@ -57,14 +65,15 @@ Novo caso → relato livre / entrevista guiada → estrutura editável (partes/f
 
 ## 9. Itens adiados
 
-- Export DOCX/PDF (se ainda não implementado; confirmar com evidência)
-- (preencher)
+- **F11–F13**: Biblioteca real, separação Documento/Peça/Biblioteca e fluxo completo de soft delete + exclusão definitiva ainda não implementados nesta branch.
+- **F15–F20**: Jobs em Admin (cobertura total), Pesquisa Jurídica como busca avançada com filtros completos, Dashboard final comercial, Memória opt-in multi-escopo e painel “Origem dos dados” ainda pendentes.
+- **F21–F23**: auditorias completas por evidência (uploads/downloads/exports + PII/logs/perf/caches) ainda pendentes.
 
 ## 10. Status final
 
 **Status**: NOT READY
 
-Motivo: este relatório ainda não contém evidência de testes/build/e2e e checklist de segurança P0 não foi confirmado nesta atualização.
+Motivo: apesar de **todos os checks** estarem verdes nesta rodada, ainda faltam entregas grandes do P0 comercial (F11–F23) e a auditoria de superfície de segurança/performance não está completa por evidência.
 
 ## 11. Instruções para testar (manual)
 
