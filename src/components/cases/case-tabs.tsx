@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import type {
   Case,
   CaseDraft,
@@ -53,7 +54,7 @@ type CaseFull = Case & {
   process: Pick<Process, "id" | "number" | "title" | "tribunal" | "vara" | "tags"> | null;
 };
 
-type TabKey =
+export type CaseTabKey =
   | "overview"
   | "documents"
   | "facts"
@@ -61,6 +62,8 @@ type TabKey =
   | "strategy"
   | "activity"
   | "checklist";
+
+type TabKey = CaseTabKey;
 
 function readStrategy(metadataJson: unknown): CaseStrategyView | null {
   if (!metadataJson || typeof metadataJson !== "object") return null;
@@ -79,12 +82,27 @@ function readStrategy(metadataJson: unknown): CaseStrategyView | null {
   };
 }
 
-export function CaseTabs({ caseData: c }: { caseData: CaseFull }) {
-  const [tab, setTab] = useState<TabKey>("overview");
+export function CaseTabs({
+  caseData: c,
+  initialTab,
+}: {
+  caseData: CaseFull;
+  initialTab?: CaseTabKey;
+}) {
+  const router = useRouter();
+  const [tab, setTab] = useState<TabKey>(() => initialTab ?? "overview");
   const strategy = readStrategy(c.metadataJson);
 
+  const goTab = useCallback(
+    (next: TabKey) => {
+      setTab(next);
+      router.replace(`/cases/${c.id}?tab=${next}`, { scroll: false });
+    },
+    [c.id, router],
+  );
+
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+    <Tabs value={tab} onValueChange={(v) => goTab(v as TabKey)}>
       <TabsList className="flex flex-wrap gap-1">
         <TabsTrigger value="overview">Visão geral</TabsTrigger>
         <TabsTrigger value="documents">Documentos · {c.documents.length}</TabsTrigger>
@@ -104,7 +122,7 @@ export function CaseTabs({ caseData: c }: { caseData: CaseFull }) {
       <TabsContent value="overview" className="mt-4">
         <CaseOverviewTab
           caseData={c}
-          onGoToTab={(t) => setTab(t)}
+          onGoToTab={(t) => goTab(t)}
         />
       </TabsContent>
       <TabsContent value="documents" className="mt-4">

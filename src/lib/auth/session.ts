@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveWorkspaceId } from "@/lib/auth/workspace";
 import { prisma } from "@/lib/prisma";
@@ -80,6 +81,23 @@ export async function requirePermission(permission: PermissionKey): Promise<{
     throw new Error(`Permissão insuficiente: ${permission}`);
   }
   return { user: ctx.user, workspaceId: ctx.workspaceId, role: ctx.role };
+}
+
+/**
+ * F15 — Gate de páginas admin/observabilidade: mesmo critério de
+ * `observabilityView` (hoje: OWNER), respondendo com 404 para não vazar
+ * existência da rota.
+ */
+export async function requireObservabilityViewPage(): Promise<{
+  user: Awaited<ReturnType<typeof requireAuthUser>>;
+  workspaceId: string;
+  role: MembershipRole;
+}> {
+  try {
+    return await requirePermission("observabilityView");
+  } catch {
+    notFound();
+  }
 }
 
 /**

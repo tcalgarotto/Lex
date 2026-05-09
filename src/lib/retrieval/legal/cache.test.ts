@@ -52,4 +52,21 @@ describe("buildCacheKey", () => {
     expect(hashA).not.toBe(hashB);
     expect(hashA).not.toBe(noHash);
   });
+
+  it("F22 — inclui workspaceId e caseBrainFingerprint nas options estáveis", () => {
+    const a = buildCacheKey({
+      query: "x",
+      options: { topK: 5, workspaceId: "ws-a", caseBrainFingerprint: "fp1" },
+    });
+    const b = buildCacheKey({
+      query: "x",
+      options: { topK: 5, workspaceId: "ws-b", caseBrainFingerprint: "fp1" },
+    });
+    const c = buildCacheKey({
+      query: "x",
+      options: { topK: 5, workspaceId: "ws-a", caseBrainFingerprint: "fp2" },
+    });
+    expect(a).not.toBe(b);
+    expect(a).not.toBe(c);
+  });
 });

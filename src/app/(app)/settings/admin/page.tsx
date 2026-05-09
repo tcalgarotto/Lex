@@ -1,15 +1,10 @@
-import { notFound } from "next/navigation";
-import { MembershipRole } from "@prisma/client";
 import { AppShell } from "@/components/app/app-shell";
-import { getWorkspaceContextWithRole } from "@/lib/auth/session";
+import { requireObservabilityViewPage } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function AdminInternoPage() {
-  const { workspaceId, role } = await getWorkspaceContextWithRole();
-  if (role !== MembershipRole.OWNER) {
-    notFound();
-  }
+  const { workspaceId } = await requireObservabilityViewPage();
 
   const since = new Date();
   since.setDate(since.getDate() - 30);

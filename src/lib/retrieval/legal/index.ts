@@ -531,15 +531,25 @@ export async function retrieveLegalContext(
   if (opts.workspaceId) {
     recordObservabilityLog({
       workspaceId: opts.workspaceId,
+      traceId,
       kind: "retrieval.legal",
       name: "retrieve_legal_context",
       latencyMs: trace.totalLatencyMs,
       payloadJson: {
         traceId,
+        queryLen: rawQuery.length,
         candidates: trace.candidates,
         groundingScore,
         confidence: confidence.label,
-        intent: intent.signals,
+        intentSummary: {
+          prefersLegislation: intent.prefersLegislation,
+          prefersJurisprudence: intent.prefersJurisprudence,
+          wantsSumula: intent.wantsSumula,
+        },
+        timings: trace.timings ?? null,
+        stageMs: stages.map((s) => ({ stage: s.stage, ms: s.latencyMs })),
+        cacheKeyTail: cacheKey.slice(-20),
+        caseBrainFingerprint: opts.caseBrainFingerprint ?? null,
       },
       retrievalChunkIds: finalChunks.map((c) => c.chunkId),
     });

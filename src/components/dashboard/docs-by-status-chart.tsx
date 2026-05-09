@@ -1,5 +1,6 @@
 "use client";
 
+import type { DocumentStatus } from "@prisma/client";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const COLORS: Record<string, string> = {
@@ -11,14 +12,20 @@ const COLORS: Record<string, string> = {
   FAILED: "#ef4444",
 };
 
-export type DocStatusPoint = { status: string; count: number };
+export type DocStatusPoint = {
+  /** Chave técnica (só para cor). */
+  statusKey: DocumentStatus;
+  /** Rótulo amigável no eixo X. */
+  label: string;
+  count: number;
+};
 
 export function DocsByStatusChart({ data }: { data: DocStatusPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
         <XAxis
-          dataKey="status"
+          dataKey="label"
           stroke="rgba(255,255,255,0.4)"
           fontSize={10}
           tickLine={false}
@@ -46,7 +53,7 @@ export function DocsByStatusChart({ data }: { data: DocStatusPoint[] }) {
         />
         <Bar dataKey="count" radius={[4, 4, 0, 0]}>
           {data.map((d) => (
-            <Cell key={d.status} fill={COLORS[d.status] ?? "#a1a1aa"} />
+            <Cell key={d.statusKey} fill={COLORS[d.statusKey] ?? "#a1a1aa"} />
           ))}
         </Bar>
       </BarChart>
