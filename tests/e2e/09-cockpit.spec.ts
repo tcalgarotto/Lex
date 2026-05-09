@@ -7,6 +7,11 @@ test.describe("cockpit operacional", () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fcockpit/);
   });
 
+  test("GET /api/cockpit/checklist -> 401 sem auth", async ({ request }) => {
+    const res = await request.get("/api/cockpit/checklist");
+    expect(res.status()).toBe(401);
+  });
+
   test("GET /api/alerts -> 401 sem auth", async ({ request }) => {
     const res = await request.get("/api/alerts");
     expect(res.status()).toBe(401);

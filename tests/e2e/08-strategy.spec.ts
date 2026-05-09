@@ -8,7 +8,7 @@ test.describe("strategy platform", () => {
   });
 
   test("GET /api/strategy/analyze -> 401 sem auth", async ({ request }) => {
-    const res = await request.get("/api/strategy/analyze?q=teste+juridico");
+    const res = await request.get("/api/strategy/analyze?q=teste+juridico+com+mais+de+dois");
     expect(res.status()).toBe(401);
   });
 

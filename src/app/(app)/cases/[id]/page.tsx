@@ -7,7 +7,7 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { getCaseById } from "@/lib/cases/repository";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
 import { CaseActions } from "@/components/cases/case-actions";
-import { CaseTabs } from "@/components/cases/case-tabs";
+import { CaseTabs, type CaseTabKey } from "@/components/cases/case-tabs";
 import { caseStatusLabel, isCasePreProcessual } from "@/lib/cases/labels";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
 
@@ -30,8 +30,28 @@ function readReadiness(metadataJson: unknown): ProceduralReadiness | null {
 
 export const dynamic = "force-dynamic";
 
-export default async function CasePage({ params }: { params: Promise<{ id: string }> }) {
+const CASE_TAB_KEYS = new Set([
+  "overview",
+  "documents",
+  "facts",
+  "research",
+  "strategy",
+  "checklist",
+  "activity",
+]);
+
+export default async function CasePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ tab?: string }>;
+}) {
   const { id } = await params;
+  const sp = (await searchParams) ?? {};
+  const tabRaw = typeof sp.tab === "string" ? sp.tab : undefined;
+  const initialTab =
+    tabRaw && CASE_TAB_KEYS.has(tabRaw) ? (tabRaw as CaseTabKey) : undefined;
   const { workspaceId } = await getWorkspaceContext();
   const c = await getCaseById(workspaceId, id);
   if (!c) notFound();
@@ -87,7 +107,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
           </div>
         </header>
 
-        <CaseTabs caseData={c} />
+        <CaseTabs caseData={c} initialTab={initialTab} />
 
         <Card className="p-4 text-xs text-muted-foreground">
           <strong className="text-foreground">Auditável por design.</strong> Todas as ações no caso —

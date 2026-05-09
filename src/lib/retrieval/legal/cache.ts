@@ -112,6 +112,9 @@ function stableOptions(o?: LegalRetrievalOptions): Record<string, unknown> | nul
     useRerank: o.useRerank ?? null,
     useQueryRewrite: o.useQueryRewrite ?? null,
     includeGeneric: o.includeGeneric ?? null,
+    /** F22 — tenant + estado do cérebro do caso entram na chave quando informados. */
+    workspaceId: o.workspaceId ?? null,
+    caseBrainFingerprint: o.caseBrainFingerprint ?? null,
   };
 }
 

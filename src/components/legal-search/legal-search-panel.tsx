@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Loader2, AlertTriangle, Pin, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,11 +27,14 @@ interface SearchBase {
 interface SearchResult {
   id: string;
   text: string;
-  /** F3 — trecho relevante recortado pelo backend (default 320 chars). */
   snippet?: string;
   articleRef: string | null;
   hierarchy: string | null;
   score: number;
+  source?: string;
+  reason?: string;
+  origin?: string;
+  referenceDate?: string;
   norm: {
     id: string;
     urn: string;
@@ -42,11 +46,49 @@ interface SearchResult {
   };
 }
 
+interface LibraryMatch {
+  id: string;
+  title: string;
+  tags: string[];
+  href: string;
+  origin?: string;
+  reason?: string;
+  optInRag: boolean;
+  useAsModel: boolean;
+  useAsStyle: boolean;
+}
+
+interface CasePin {
+  id: string;
+  chunkId: string;
+  excerpt: string;
+  articleRef: string | null;
+  normUrn: string | null;
+  createdAt: string;
+  origin?: string;
+  reason?: string;
+}
+
+interface PieceMatch {
+  id: string;
+  title: string;
+  kind: string;
+  href: string;
+  updatedAt: string;
+  origin?: string;
+  reason?: string;
+}
+
 interface SearchResponse {
   query: string;
   scope: string;
   caseId: string | null;
+  layers?: string[];
   results: SearchResult[];
+  libraryMatches?: LibraryMatch[];
+  casePins?: CasePin[];
+  pieceMatches?: PieceMatch[];
+  pendingLayers?: string[];
   total: number;
   bases: SearchBase[];
   confidence: { label: string; score: number; reason: string } | null;
@@ -59,6 +101,44 @@ type FetchState =
   | { kind: "ok"; data: SearchResponse }
   | { kind: "empty"; data: SearchResponse }
   | { kind: "error"; message: string };
+
+const LAYER_OPTS: { id: string; label: string; needsCase?: boolean }[] = [
+  { id: "legislacao", label: "Legislação (corpus indexado)" },
+  { id: "escritorio", label: "Acervo do escritório" },
+  { id: "fundamentos", label: "Fundamentos salvos (texto)" },
+  { id: "caso", label: "Deste caso (fixados)", needsCase: true },
+  { id: "pecas", label: "Peças (títulos)" },
+  { id: "jurisprudencia", label: "Jurisprudência (em breve)" },
+];
+
+function defaultLayerSet(caseId: string | null): Set<string> {
+  const s = new Set(["legislacao", "escritorio", "fundamentos", "pecas"]);
+  if (caseId) s.add("caso");
+  return s;
+}
+
+function parseLayersFromUrl(raw: string | null, caseId: string | null): Set<string> {
+  const d = defaultLayerSet(caseId);
+  if (!raw?.trim()) return d;
+  const parts = raw.split(",").map((p) => p.trim().toLowerCase());
+  const next = new Set<string>();
+  for (const p of parts) {
+    if (LAYER_OPTS.some((o) => o.id === p)) {
+      if (p === "caso" && !caseId) continue;
+      next.add(p);
+    }
+  }
+  return next.size > 0 ? next : d;
+}
+
+function totalHits(d: SearchResponse): number {
+  return (
+    d.results.length +
+    (d.libraryMatches?.length ?? 0) +
+    (d.casePins?.length ?? 0) +
+    (d.pieceMatches?.length ?? 0)
+  );
+}
 
 function normKindLabel(r: SearchResult): string | null {
   const kind = (r.norm.kind ?? "").toLowerCase();
@@ -91,33 +171,52 @@ export function LegalSearchPanel({
   const [pinning, setPinning] = useState<string | null>(null);
   const [pinned, setPinned] = useState<Set<string>>(new Set());
   const [pinError, setPinError] = useState<string | null>(null);
+  const [layers, setLayers] = useState<Set<string>>(() =>
+    parseLayersFromUrl(sp?.get("layers") ?? null, caseId),
+  );
 
-  async function run(query: string) {
-    if (query.trim().length < 2) return;
-    setState({ kind: "loading" });
-    try {
-      const url = new URL("/api/retrieval/search", window.location.origin);
-      url.searchParams.set("q", query);
-      url.searchParams.set("scope", scope);
-      if (caseId) url.searchParams.set("caseId", caseId);
-      const res = await fetch(url.toString());
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        throw new Error(detail || `HTTP ${res.status}`);
+  const toggleLayer = useCallback((id: string) => {
+    setLayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      if (next.size === 0) return defaultLayerSet(caseId);
+      return next;
+    });
+  }, [caseId]);
+
+  const run = useCallback(
+    async (query: string) => {
+      if (query.trim().length < 2) return;
+      setState({ kind: "loading" });
+      try {
+        const url = new URL("/api/retrieval/search", window.location.origin);
+        url.searchParams.set("q", query);
+        url.searchParams.set("scope", scope);
+        if (caseId) url.searchParams.set("caseId", caseId);
+        url.searchParams.set("layers", [...layers].join(","));
+        const res = await fetch(url.toString());
+        const requestId = res.headers.get("x-request-id");
+        if (!res.ok) {
+          const detail = await res.text().catch(() => "");
+          throw new Error(detail || `HTTP ${res.status}${requestId ? ` · ${requestId}` : ""}`);
+        }
+        const data = (await res.json()) as SearchResponse;
+        const hits = totalHits(data);
+        setState({ kind: hits === 0 ? "empty" : "ok", data });
+      } catch (e) {
+        setState({
+          kind: "error",
+          message: e instanceof Error ? e.message : String(e),
+        });
       }
-      const data = (await res.json()) as SearchResponse;
-      setState({ kind: data.results.length === 0 ? "empty" : "ok", data });
-    } catch (e) {
-      setState({
-        kind: "error",
-        message: e instanceof Error ? e.message : String(e),
-      });
-    }
-  }
+    },
+    [caseId, layers, scope],
+  );
 
   useEffect(() => {
     if (initialQ.trim().length >= 2) void run(initialQ);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-busca só na carga inicial
   }, [initialQ]);
 
   async function pin(r: SearchResult) {
@@ -140,9 +239,6 @@ export function LegalSearchPanel({
         throw new Error(`HTTP ${res.status}`);
       }
       setPinned((s) => new Set(s).add(r.id));
-      // F1: pin instantâneo — quando embutido em /cases/[id], o router
-      // refresh garante que a aba "Fundamentos do caso" reflita a adição
-      // sem reload manual.
       if (embeddedCaseId) router.refresh();
     } catch (e) {
       setPinError(e instanceof Error ? e.message : String(e));
@@ -159,6 +255,28 @@ export function LegalSearchPanel({
   return (
     <div className="space-y-4">
       <BasesBadges bases={bases} />
+
+      <Card className="border-white/10 bg-zinc-900/30 p-3">
+        <p className="mb-2 text-[11px] font-medium text-muted-foreground">Camadas da busca</p>
+        <div className="flex flex-wrap gap-2">
+          {LAYER_OPTS.map((opt) => {
+            if (opt.needsCase && !caseId) return null;
+            const on = layers.has(opt.id);
+            return (
+              <Button
+                key={opt.id}
+                type="button"
+                size="sm"
+                variant={on ? "secondary" : "outline"}
+                className="h-7 text-[10px]"
+                onClick={() => toggleLayer(opt.id)}
+              >
+                {opt.label}
+              </Button>
+            );
+          })}
+        </div>
+      </Card>
 
       <form
         className="flex flex-wrap gap-2"
@@ -213,8 +331,8 @@ function Body({
     return (
       <EmptyState
         icon={<BookOpen className="size-5" />}
-        title="Pesquise legislação e fundamentos"
-        description="Digite um artigo, tema ou trecho jurídico. Exemplos: devido processo legal, art. 5º LV, contraditório, ampla defesa."
+        title="Pesquisa jurídica em camadas"
+        description="Combine legislação indexada, acervo do escritório, peças e (quando houver caso aberto) fundamentos já fixados. A jurisprudência vem em uma próxima onda."
       />
     );
   }
@@ -240,96 +358,246 @@ function Body({
     return (
       <EmptyState
         icon={<Search className="size-5" />}
-        title="Nenhum resultado encontrado"
-        description="Tente outro termo, simplifique a busca ou troque o escopo. A base disponível inclui Constituição Federal e ADCT."
+        title="Nenhum resultado nestas camadas"
+        description="Tente outro termo, ative mais camadas acima ou abra um caso para buscar fixações locais."
       />
     );
   }
 
+  const d = state.data;
+  const pending = d.pendingLayers ?? [];
+
   return (
-    <ul className="space-y-2">
-      {state.data.results.map((r) => {
-        const isPinned = pinned.has(r.id);
-        const isPinning = pinning === r.id;
-        return (
-          <li key={r.id}>
-            <Card className="p-3">
-              <div className="flex flex-wrap items-start gap-2">
-                <div className="min-w-0 flex-1 space-y-1">
-                  <div className="flex flex-wrap gap-1">
-                    {r.articleRef ? (
-                      <Badge variant="outline" className="text-[10px]">
-                        {r.articleRef}
-                      </Badge>
-                    ) : null}
-                    <Badge variant="outline" className="text-[10px]">
-                      {r.norm.identifier ?? r.norm.title}
-                    </Badge>
-                    {normKindLabel(r) ? (
-                      <Badge variant="outline" className="text-[10px]">
-                        {normKindLabel(r)}
+    <div className="space-y-6">
+      {pending.length > 0 ? (
+        <Card className="border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-100">
+          Camadas previstas, ainda sem base nesta versão: {pending.join(", ")}.
+        </Card>
+      ) : null}
+
+      {d.results.length > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Legislação e corpus indexado
+          </h3>
+          <ul className="space-y-2">
+            {d.results.map((r) => {
+              const isPinned = pinned.has(r.id);
+              const isPinning = pinning === r.id;
+              return (
+                <li key={r.id}>
+                  <Card className="p-3">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap gap-1">
+                          {r.articleRef ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              {r.articleRef}
+                            </Badge>
+                          ) : null}
+                          <Badge variant="outline" className="text-[10px]">
+                            {r.norm.identifier ?? r.norm.title}
+                          </Badge>
+                          {normKindLabel(r) ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              {normKindLabel(r)}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <p className="text-sm leading-relaxed">{r.snippet ?? r.text}</p>
+                        <MetaLine
+                          source={r.source ?? r.norm.title}
+                          origin={r.origin}
+                          reason={r.reason}
+                          date={r.referenceDate}
+                        />
+                        {r.snippet && r.snippet !== r.text ? (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-[11px] text-violet-300 underline-offset-2 hover:underline"
+                              >
+                                Ver texto completo na norma
+                              </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle className="text-sm">
+                                  {r.norm.identifier ?? r.norm.title}
+                                  {r.articleRef ? ` — ${r.articleRef}` : ""}
+                                </DialogTitle>
+                              </DialogHeader>
+                              <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm leading-relaxed">
+                                {r.text}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        ) : null}
+                        {r.hierarchy ? (
+                          <p className="text-[11px] text-muted-foreground">{r.hierarchy}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px]"
+                          title={relevanceLabel(r.score).hint}
+                        >
+                          Relevância: {relevanceLabel(r.score).label}
+                        </Badge>
+                        {caseId ? (
+                          <Button
+                            variant={isPinned ? "ghost" : "secondary"}
+                            size="sm"
+                            disabled={isPinning || isPinned}
+                            onClick={() => onPin(r)}
+                          >
+                            <Pin className="mr-1 size-3" />
+                            {isPinned
+                              ? "Já no caso"
+                              : isPinning
+                                ? "Salvando…"
+                                : "Usar no caso"}
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+
+      {(d.libraryMatches?.length ?? 0) > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Acervo e fundamentos do escritório
+          </h3>
+          <ul className="space-y-2">
+            {(d.libraryMatches ?? []).map((f) => (
+              <li key={f.id}>
+                <Card className="p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <Link href={f.href} className="font-medium hover:underline">
+                        {f.title}
+                      </Link>
+                      <MetaLine source={f.title} origin={f.origin} reason={f.reason} />
+                      <div className="flex flex-wrap gap-1">
+                        {f.optInRag ? (
+                          <Badge className="text-[10px]">Opt-in busca assistida</Badge>
+                        ) : null}
+                        {f.useAsModel ? (
+                          <Badge variant="outline" className="text-[10px]">
+                            Modelo de peça
+                          </Badge>
+                        ) : null}
+                        {f.useAsStyle ? (
+                          <Badge variant="outline" className="text-[10px]">
+                            Referência de estilo
+                          </Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                    <Button asChild size="sm" variant="outline">
+                      <Link href={f.href}>Abrir</Link>
+                    </Button>
+                  </div>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {(d.casePins?.length ?? 0) > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Fundamentos já usados neste caso
+          </h3>
+          <ul className="space-y-2">
+            {(d.casePins ?? []).map((p) => (
+              <li key={p.id}>
+                <Card className="p-3 text-sm">
+                  <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                    {p.articleRef ? <Badge variant="outline">{p.articleRef}</Badge> : null}
+                    {p.normUrn ? (
+                      <Badge variant="outline" className="max-w-[220px] truncate font-mono">
+                        {p.normUrn}
                       </Badge>
                     ) : null}
                   </div>
-                  <p className="text-sm leading-relaxed">{r.snippet ?? r.text}</p>
-                  {r.snippet && r.snippet !== r.text ? (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button
-                          type="button"
-                          className="text-[11px] text-violet-300 underline-offset-2 hover:underline"
-                        >
-                          Ver artigo completo
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle className="text-sm">
-                            {r.norm.identifier ?? r.norm.title}
-                            {r.articleRef ? ` — ${r.articleRef}` : ""}
-                          </DialogTitle>
-                        </DialogHeader>
-                        <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm leading-relaxed">
-                          {r.text}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  ) : null}
-                  {r.hierarchy ? (
-                    <p className="text-[11px] text-muted-foreground">{r.hierarchy}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <Badge
-                    variant="outline"
-                    className="text-[10px]"
-                    title={relevanceLabel(r.score).hint}
-                  >
-                    Relevância: {relevanceLabel(r.score).label}
-                  </Badge>
-                  {caseId ? (
-                    <Button
-                      variant={isPinned ? "ghost" : "secondary"}
-                      size="sm"
-                      disabled={isPinning || isPinned}
-                      onClick={() => onPin(r)}
-                    >
-                      <Pin className="mr-1 size-3" />
-                      {isPinned
-                        ? "No caso"
-                        : isPinning
-                          ? "Adicionando…"
-                          : "Adicionar ao caso"}
+                  <p className="mt-2 leading-relaxed">{p.excerpt}</p>
+                  <MetaLine
+                    source="Fixação no caso"
+                    origin={p.origin}
+                    reason={p.reason}
+                    date={p.createdAt}
+                  />
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {(d.pieceMatches?.length ?? 0) > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Peças relacionadas
+          </h3>
+          <ul className="space-y-2">
+            {(d.pieceMatches ?? []).map((p) => (
+              <li key={p.id}>
+                <Card className="p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <Link href={p.href} className="font-medium hover:underline">
+                        {p.title}
+                      </Link>
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px]">
+                          {p.kind}
+                        </Badge>{" "}
+                        · Atualizada {new Date(p.updatedAt).toLocaleDateString("pt-BR")}
+                      </p>
+                      <MetaLine source={p.title} origin={p.origin} reason={p.reason} />
+                    </div>
+                    <Button asChild size="sm" variant="secondary">
+                      <Link href={p.href}>Abrir peça</Link>
                     </Button>
-                  ) : null}
-                </div>
-              </div>
-            </Card>
-          </li>
-        );
-      })}
-    </ul>
+                  </div>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
   );
+}
+
+function MetaLine({
+  source,
+  origin,
+  reason,
+  date,
+}: {
+  source: string;
+  origin?: string;
+  reason?: string;
+  date?: string;
+}) {
+  const parts = [
+    `Fonte: ${source}`,
+    origin ? `Origem: ${origin}` : null,
+    reason ? `Motivo: ${reason}` : null,
+    date ? `Data: ${new Date(date).toLocaleDateString("pt-BR")}` : null,
+  ].filter(Boolean);
+  return <p className="text-[11px] leading-snug text-muted-foreground">{parts.join(" · ")}</p>;
 }
 
 function BasesBadges({ bases }: { bases: SearchBase[] }) {

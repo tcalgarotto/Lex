@@ -16,6 +16,10 @@ import { NextActionsCard } from "@/components/dashboard/next-actions-card";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { buildNextActions } from "@/lib/dashboard/next-actions";
+import {
+  deriveDocumentDisplayStatus,
+  DOCUMENT_STATUS_LABELS_PT,
+} from "@/lib/documents/status-display";
 
 const DOC_STATUS_ORDER: DocumentStatus[] = [
   DocumentStatus.UPLOADED,
@@ -129,13 +133,13 @@ async function DashboardContent() {
   }
   const tokenSeries = Array.from(seriesMap.values());
   const totalTokens14d = tokenSeries.reduce((s, p) => s + p.tokens, 0);
-  const totalCost14d = tokenSeries.reduce((s, p) => s + p.costUsd, 0);
 
   // Doc status (sempre na ordem do pipeline, mesmo zerados)
   const statusCount = new Map<string, number>();
   for (const g of docStatusGroup) statusCount.set(g.status, g._count._all);
   const docStatusData: DocStatusPoint[] = DOC_STATUS_ORDER.map((s) => ({
-    status: s,
+    statusKey: s,
+    label: DOCUMENT_STATUS_LABELS_PT[s],
     count: statusCount.get(s) ?? 0,
   }));
 
@@ -151,20 +155,20 @@ async function DashboardContent() {
           icon={Briefcase}
         />
         <StatCard
-          label="Docs indexados"
+          label="Documentos prontos"
           value={`${indexedCount.toLocaleString("pt-BR")} / ${docCount.toLocaleString("pt-BR")}`}
           hint={
             docCount === 0
               ? "Envie documentos para começar"
-              : `${Math.round((indexedCount / Math.max(docCount, 1)) * 100)}% pronto para análise`
+              : `${Math.round((indexedCount / Math.max(docCount, 1)) * 100)}% prontos para leitura e vínculo ao caso`
           }
           icon={FileText}
           tone="success"
         />
         <StatCard
-          label="Tokens (14d)"
-          value={totalTokens14d.toLocaleString("pt-BR")}
-          hint={`USD ${totalCost14d.toFixed(4)} estimado`}
+          label="Assistência registrada (14d)"
+          value={costRows.length.toLocaleString("pt-BR")}
+          hint="Sessões com uso de IA (pesquisa, minutas, revisão) — volume agregado, sem detalhe técnico."
           icon={Sparkles}
         />
         <StatCard
@@ -184,7 +188,7 @@ async function DashboardContent() {
           <CardHeader>
             <CardTitle className="text-base">Em processamento</CardTitle>
             <CardDescription>
-              Documentos sendo parseados, chunkados ou indexados.
+              Arquivos que ainda estão sendo preparados para leitura e busca no caso.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -199,7 +203,10 @@ async function DashboardContent() {
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate">{d.originalName}</span>
                     <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      {d.status}
+                      {deriveDocumentDisplayStatus({
+                        status: d.status,
+                        updatedAt: d.updatedAt,
+                      }).label}
                     </Badge>
                   </div>
                   <p className="mt-1 text-[10px] text-muted-foreground">
@@ -215,9 +222,10 @@ async function DashboardContent() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="border-white/10 bg-zinc-900/40 lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base">Uso de IA — últimos 14 dias</CardTitle>
+            <CardTitle className="text-base">Ritmo de trabalho assistido (14 dias)</CardTitle>
             <CardDescription>
-              Tokens consumidos por dia. Custo estimado por provedor/modelo.
+              Intensidade agregada por dia (referência interna de processamento, sem valores de
+              provedor).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -234,8 +242,8 @@ async function DashboardContent() {
 
         <Card className="border-white/10 bg-zinc-900/40">
           <CardHeader>
-            <CardTitle className="text-base">Pipeline de documentos</CardTitle>
-            <CardDescription>Distribuição por estágio.</CardDescription>
+            <CardTitle className="text-base">Onde seus documentos estão</CardTitle>
+            <CardDescription>Distribuição por fase de preparação.</CardDescription>
           </CardHeader>
           <CardContent>
             {docCount === 0 ? (

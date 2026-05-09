@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { getWorkspaceContext, requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getCaseById } from "@/lib/cases/repository";
 import { primaryRegionalForUf } from "@/lib/corpus/tribunals/registry";
@@ -24,6 +24,15 @@ import { WINNING_SAMPLE_KIND } from "@/lib/lawyer-brain/ingest";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  try {
+    await requirePermission("observabilityView");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("Permissão insuficiente")) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   const { workspaceId, user } = await getWorkspaceContext();
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") ?? "").trim();

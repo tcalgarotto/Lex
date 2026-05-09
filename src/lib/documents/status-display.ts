@@ -36,7 +36,8 @@ export const STALLED_THRESHOLDS_MS: Record<DocumentStatus, number | null> = {
   FAILED: null,
 };
 
-const LABELS: Record<DocumentStatus, string> = {
+/** Rótulos curtos para gráficos e dashboards (sem jargão de enum). */
+export const DOCUMENT_STATUS_LABELS_PT: Record<DocumentStatus, string> = {
   UPLOADED: "Enviado",
   PARSING: "Extraindo texto",
   CHUNKING: "Quebrando em trechos",
@@ -84,7 +85,7 @@ export function deriveDocumentDisplayStatus(input: StatusInput): DocumentDisplay
   }
 
   return {
-    label: LABELS[input.status],
+    label: DOCUMENT_STATUS_LABELS_PT[input.status],
     kind: KINDS[input.status],
     raw: input.status,
     stalled: false,

@@ -78,6 +78,11 @@ export type LegalRetrievalOptions = {
     problem?: string;
   };
   /**
+   * F22 — Fingerprint estável do Case Brain (ex.: hash do `metadataJson.brain`
+   * + `case.updatedAt`) para particionar cache de retrieval por estado do caso.
+   */
+  caseBrainFingerprint?: string;
+  /**
    * F4 — Fontes pinadas pelo advogado que DEVEM constar no resultado
    * mesmo que o ranking natural não as eleja. Garantia explícita de
    * grounding para a etapa de drafting.

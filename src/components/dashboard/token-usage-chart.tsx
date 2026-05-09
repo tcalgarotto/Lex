@@ -50,8 +50,8 @@ export function TokenUsageChart({ data }: { data: TokenSeriesPoint[] }) {
           labelStyle={{ color: "#e4e4e7" }}
           formatter={(value, name) => {
             const n = typeof value === "number" ? value : Number(value ?? 0);
-            if (name === "tokens") return [n.toLocaleString("pt-BR"), "Tokens"];
-            if (name === "costUsd") return [`$${n.toFixed(4)}`, "Custo (USD)"];
+            if (name === "tokens") return [n.toLocaleString("pt-BR"), "Atividade (referência)"];
+            if (name === "costUsd") return [n.toFixed(4), "Economia interna (não é fatura)"];
             return [String(value ?? ""), String(name ?? "")];
           }}
         />

@@ -1,9 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { buildCaseBrainFingerprint } from "@/lib/cases/brain-fingerprint";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
 import { extractRelevantSnippet } from "@/lib/retrieval/legal/snippet";
 import { buildCaseContext } from "@/lib/cases/context";
 import { getCorpusManifest } from "@/lib/corpus/manifest";
+import { getLogger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Endpoint "amigável" da Pesquisa jurídica do usuário final.
@@ -14,34 +18,74 @@ import { getCorpusManifest } from "@/lib/corpus/manifest";
  */
 export const dynamic = "force-dynamic";
 
+const log = getLogger("lex.api.retrieval.search");
+
+const LAYER_KEYS = [
+  "legislacao",
+  "escritorio",
+  "fundamentos",
+  "caso",
+  "pecas",
+  "jurisprudencia",
+] as const;
+
+type LayerKey = (typeof LAYER_KEYS)[number];
+
 export async function GET(req: Request) {
+  const requestId = randomUUID();
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") ?? "").trim();
   const topK = parseTopK(url.searchParams.get("topK"));
   const scope = url.searchParams.get("scope") ?? "tudo";
   const caseId = url.searchParams.get("caseId");
+  const layers = parseLayers(url.searchParams.get("layers"));
 
   if (q.length < 2) {
-    return NextResponse.json({
-      query: q,
-      results: [],
-      bases: await dynamicBases(),
-      confidence: null,
-      ranBy: "skip",
-    });
+    return withRequestId(
+      NextResponse.json({
+        query: q,
+        results: [],
+        libraryMatches: [],
+        casePins: [],
+        pieceMatches: [],
+        pendingLayers: [],
+        bases: await dynamicBases(),
+        confidence: null,
+        ranBy: "skip",
+        layers: [...layers],
+      }),
+      requestId,
+    );
   }
 
   let workspaceId: string;
   try {
     ({ workspaceId } = await getWorkspaceContext());
   } catch {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    return withRequestId(
+      NextResponse.json({ error: "Não autenticado" }, { status: 401 }),
+      requestId,
+    );
   }
 
   try {
-    // F3: usa contexto do caso (se passado) para enriquecer query expansion.
+    const wantLegislacao = layers.has("legislacao");
+    const wantLibrary =
+      layers.has("escritorio") || layers.has("fundamentos");
+    const wantCaso = layers.has("caso") && Boolean(caseId);
+    const wantPecas = layers.has("pecas");
+    const wantJuris = layers.has("jurisprudencia");
+
     let caseContext: { area: string[]; problem?: string } | undefined;
+    let caseBrainFingerprint: string | undefined;
     if (caseId) {
+      const row = await prisma.case.findFirst({
+        where: { workspaceId, id: caseId, deletedAt: null },
+        select: { metadataJson: true, updatedAt: true },
+      });
+      if (row) {
+        caseBrainFingerprint = buildCaseBrainFingerprint(row.metadataJson, row.updatedAt);
+      }
       const ctx = await buildCaseContext({ workspaceId, caseId });
       if (ctx?.brain) {
         caseContext = {
@@ -51,48 +95,205 @@ export async function GET(req: Request) {
       }
     }
 
-    const result = await retrieveLegalContext(q, {
-      topK,
-      useCache: true,
+    const tSearch = Date.now();
+    const [corpusResult, libraryMatches, casePins, pieceMatches] = await Promise.all([
+      wantLegislacao
+        ? retrieveLegalContext(q, {
+            topK,
+            useCache: true,
+            workspaceId,
+            traceId: requestId,
+            ...(caseContext ? { caseContext } : {}),
+            ...(caseBrainFingerprint ? { caseBrainFingerprint } : {}),
+          })
+        : Promise.resolve(null),
+      wantLibrary && q.length >= 2
+        ? prisma.libraryFoundation.findMany({
+            where: {
+              workspaceId,
+              deletedAt: null,
+              archivedAt: null,
+              OR: [
+                { title: { contains: q, mode: "insensitive" } },
+                { contentMd: { contains: q, mode: "insensitive" } },
+              ],
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 12,
+            select: {
+              id: true,
+              title: true,
+              tags: true,
+              updatedAt: true,
+              optInRag: true,
+              useAsModel: true,
+              useAsStyle: true,
+            },
+          })
+        : Promise.resolve([]),
+      wantCaso && caseId
+        ? prisma.caseLegalSource.findMany({
+            where: { caseId, case: { workspaceId } },
+            orderBy: { createdAt: "desc" },
+            take: 12,
+            select: {
+              id: true,
+              chunkId: true,
+              normUrn: true,
+              articleRef: true,
+              excerpt: true,
+              query: true,
+              createdAt: true,
+            },
+          })
+        : Promise.resolve([]),
+      wantPecas && q.length >= 2
+        ? prisma.legalPiece.findMany({
+            where: {
+              workspaceId,
+              deletedAt: null,
+              archivedAt: null,
+              title: { contains: q, mode: "insensitive" },
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 10,
+            select: { id: true, title: true, kind: true, updatedAt: true },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const results =
+      corpusResult?.chunks.map((c) => ({
+        layer: "legislacao" as const,
+        id: c.chunkId,
+        text: c.text,
+        snippet: extractRelevantSnippet(c.text, q, { maxChars: 320 }),
+        articleRef: c.articleRef,
+        hierarchy: c.fullPath,
+        score: roundScore(c.scores.final ?? 0),
+        source: c.norm.title,
+        article: c.articleRef,
+        excerpt: extractRelevantSnippet(c.text, q, { maxChars: 320 }),
+        reason: c.explanation,
+        origin: `Corpus indexado (${(c.provenance ?? []).slice(0, 2).join(", ") || "híbrido"})`,
+        referenceDate: c.validFrom.toISOString(),
+        norm: {
+          id: c.norm.id,
+          urn: c.norm.urn,
+          kind: c.norm.kind,
+          identifier: c.norm.identifier,
+          title: c.norm.title,
+          jurisdiction: c.norm.jurisdiction,
+          tribunal: c.norm.tribunal,
+        },
+      })) ?? [];
+
+    const pendingLayers: string[] = [];
+    if (wantJuris) pendingLayers.push("jurisprudencia");
+
+    log.info("retrieval.search.ok", {
+      event: "retrieval.search.ok",
+      requestId,
       workspaceId,
-      ...(caseContext ? { caseContext } : {}),
-    });
-
-    const results = result.chunks.map((c) => ({
-      id: c.chunkId,
-      text: c.text,
-      snippet: extractRelevantSnippet(c.text, q, { maxChars: 320 }),
-      articleRef: c.articleRef,
-      hierarchy: c.fullPath,
-      score: roundScore(c.scores.final ?? 0),
-      norm: {
-        id: c.norm.id,
-        urn: c.norm.urn,
-        kind: c.norm.kind,
-        identifier: c.norm.identifier,
-        title: c.norm.title,
-        jurisdiction: c.norm.jurisdiction,
-        tribunal: c.norm.tribunal,
+      queryLen: q.length,
+      layers: [...layers],
+      counts: {
+        legislacao: results.length,
+        library: libraryMatches.length,
+        casoPins: casePins.length,
+        pecas: pieceMatches.length,
       },
-    }));
-
-    return NextResponse.json({
-      query: q,
-      scope,
-      caseId: caseId ?? null,
-      results,
-      total: results.length,
-      bases: await dynamicBases(),
-      confidence: result.confidence,
-      cached: result.cached,
+      durationMs: Date.now() - tSearch,
     });
+
+    return withRequestId(
+      NextResponse.json({
+        query: q,
+        scope,
+        caseId: caseId ?? null,
+        layers: [...layers],
+        results,
+        libraryMatches: libraryMatches.map((f) => ({
+          layer: "fundamentos" as const,
+          id: f.id,
+          title: f.title,
+          tags: f.tags,
+          updatedAt: f.updatedAt.toISOString(),
+          optInRag: f.optInRag,
+          useAsModel: f.useAsModel,
+          useAsStyle: f.useAsStyle,
+          href: `/biblioteca/fundamentos/${f.id}`,
+          origin: "Acervo do escritório",
+          reason: "Texto salvo na biblioteca (não substitui norma indexada).",
+        })),
+        casePins: casePins.map((p) => ({
+          layer: "caso" as const,
+          id: p.id,
+          chunkId: p.chunkId,
+          articleRef: p.articleRef,
+          normUrn: p.normUrn,
+          excerpt: p.excerpt,
+          query: p.query,
+          createdAt: p.createdAt.toISOString(),
+          origin: "Fundamentos fixados neste caso",
+          reason: p.query ? `Salvo a partir da busca: ${p.query.slice(0, 80)}` : "Fixado manualmente",
+        })),
+        pieceMatches: pieceMatches.map((p) => ({
+          layer: "pecas" as const,
+          id: p.id,
+          title: p.title,
+          kind: p.kind,
+          updatedAt: p.updatedAt.toISOString(),
+          href: `/editor/${p.id}`,
+          origin: "Peça do workspace",
+          reason: "Título da peça contém o termo buscado.",
+        })),
+        pendingLayers,
+        total: results.length,
+        bases: await dynamicBases(),
+        confidence: corpusResult?.confidence ?? null,
+        cached: corpusResult?.cached ?? false,
+      }),
+      requestId,
+    );
   } catch (err) {
-    console.error("[/api/retrieval/search] erro", err);
-    return NextResponse.json(
-      { error: "Não foi possível buscar agora.", detail: messageOf(err) },
-      { status: 500 },
+    log.error("retrieval.search.error", {
+      event: "retrieval.search.error",
+      requestId,
+      workspaceId,
+      queryLen: q.length,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return withRequestId(
+      NextResponse.json({ error: "Não foi possível buscar agora." }, { status: 500 }),
+      requestId,
     );
   }
+}
+
+function withRequestId(res: NextResponse, requestId: string): NextResponse {
+  res.headers.set("x-request-id", requestId);
+  return res;
+}
+
+function parseLayers(raw: string | null): Set<LayerKey> {
+  const out = new Set<LayerKey>();
+  if (!raw?.trim()) {
+    for (const k of LAYER_KEYS) {
+      if (k !== "jurisprudencia") out.add(k);
+    }
+    return out;
+  }
+  for (const part of raw.split(",")) {
+    const p = part.trim().toLowerCase() as LayerKey;
+    if (LAYER_KEYS.includes(p)) out.add(p);
+  }
+  if (out.size === 0) {
+    for (const k of LAYER_KEYS) {
+      if (k !== "jurisprudencia") out.add(k);
+    }
+  }
+  return out;
 }
 
 function parseTopK(raw: string | null): number {
@@ -105,10 +306,6 @@ function roundScore(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function messageOf(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
 interface Base {
   key: string;
   label: string;
@@ -116,11 +313,6 @@ interface Base {
   hint?: string;
 }
 
-/**
- * F4.1: lista de bases vem do `getCorpusManifest()`. Evita "fake" UI
- * dizendo que algo está disponível quando não está, e expõe ao usuário
- * o que ainda está pendente de indexação.
- */
 async function dynamicBases(): Promise<Base[]> {
   try {
     const manifest = await getCorpusManifest();

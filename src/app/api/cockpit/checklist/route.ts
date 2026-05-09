@@ -18,7 +18,7 @@ import {
   describeRedisUrl,
   pingRedis,
 } from "@/lib/redis";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { getWorkspaceContext, requirePermission } from "@/lib/auth/session";
 import { CORPUS_COLLECTIONS } from "@/lib/corpus/qdrant-collections";
 
 export const runtime = "nodejs";
@@ -292,6 +292,16 @@ async function checkIntegrations(workspaceId: string): Promise<CheckItem> {
 }
 
 export async function GET() {
+  try {
+    await requirePermission("observabilityView");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("Permissão insuficiente")) {
+      return NextResponse.json({ items: [], error: "forbidden" }, { status: 403 });
+    }
+    return NextResponse.json({ items: [], error: "no-workspace" }, { status: 401 });
+  }
+
   let workspaceId: string;
   try {
     const ctx = await getWorkspaceContext();

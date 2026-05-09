@@ -10,9 +10,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { MembershipRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getWorkspaceContextWithRole } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { snapshotProviderStatuses } from "@/lib/corpus/providers/registry";
 import { CORPUS_COLLECTIONS } from "@/lib/corpus/qdrant-collections";
 
@@ -44,16 +43,14 @@ async function probeQdrantCounts(): Promise<Record<string, number | string>> {
 }
 
 export async function GET() {
-  // Auth: precisa workspace ativo + role OWNER. Sem isso, 401/403.
-  let role: MembershipRole | null;
   try {
-    const ctx = await getWorkspaceContextWithRole();
-    role = ctx.role;
-  } catch {
+    await requirePermission("observabilityView");
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("Permissão insuficiente")) {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
-  if (role !== MembershipRole.OWNER) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const [norms, versions, chunks, citations, watermarks, recentJobs] =
