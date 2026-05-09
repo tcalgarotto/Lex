@@ -281,7 +281,7 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
               </span>
             </p>
             <Button asChild variant="ghost" size="sm">
-              <Link href="/processos">
+              <Link href={`/processos?returnCase=${c.id}`}>
                 <Hash className="mr-1 size-3" /> Vincular processo existente
               </Link>
             </Button>

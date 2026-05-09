@@ -39,7 +39,7 @@
 
 1. **Superfície de rotas**: não há prova matemática de que *cada* handler `/api/*` valida `workspaceId`; há amostragem + suíte de integração nas rotas mais sensíveis.
 2. **Bootstrap / jobs offline**: `src/lib/env.ts` e `embeddings-pipeline.ts` ainda emitem `console.*` — aceito fora do gate HTTP (ver `docs/CODE_REVIEW_P0.md` §5).
-3. **UX comercial (fora do gate A–N desta sprint)**: checklist em `docs/COMMERCIAL_UX_P0_AUDIT.md` §3 ainda tem itens ⏳ (jargão, estados vazios, etc.); rastreado como dívida de produto — ver §8 do audit.
+3. **UX comercial (além do gate A–N)**: checklist §3 do audit ainda tem itens ⏳ (cobertura total de telas, tabs em 1366×768, etc.); a rodada P1 em §13 fechou a maioria dos itens §5.2 — ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1.
 4. **`AI_REASONING ≠ LEGAL_TRUTH`**: invariante de produto; qualquer regressão em drafting/review exige testes e revisão humana.
 
 ## 6. Testes rodados (comandos + resultados)
@@ -50,7 +50,7 @@
 | `npm run typecheck` | OK |
 | `npm test` | **534 passed** |
 | `npm run test:integration` | **43 passed** (inclui `office-memory.test.ts`) |
-| `npm run test:e2e` | **80 passed** |
+| `npm run test:e2e` | **80 passed** (revalidado após UX P1) |
 | `NODE_ENV=production npm run build` | OK (`/biblioteca/memoria` e rotas API compiladas) |
 | `npm run qa:retrieval:domains` | **10/10** domínios OK |
 | `npm run db:migrate:deploy` | Migração `20260509220000_office_memory` aplicada no DB configurado em `.env` |
@@ -63,7 +63,7 @@
 
 - **Exaustão de “toda rota Prisma”**: adiado como processo contínuo; ver tabela em `SECURITY_REVIEW_P0.md`.
 - **Refatorar componentes grandes** (`case-facts-tab`, página do caso): adiado (risco/retorno vs sprint).
-- **UX P1 (copy/jargão)** em `docs/COMMERCIAL_UX_P0_AUDIT.md`: não entram no gate A–N desta sprint; ver §8 do audit.
+- **UX P1 (restante §3 do audit)**: continuidade em sprints seguintes; entrega parcial documentada em §13 e no audit §8.1.
 
 ## 9. Critérios A–N (release) e status item a item
 
@@ -73,7 +73,7 @@
 | **B** | Typecheck | ✅ `npm run typecheck` |
 | **C** | Testes unitários | ✅ `npm test` (534) |
 | **D** | Testes integração | ✅ `npm run test:integration` (43) |
-| **E** | E2E | ✅ `npm run test:e2e` (79) |
+| **E** | E2E | ✅ `npm run test:e2e` (80) |
 | **F** | Build produção | ✅ `NODE_ENV=production npm run build` |
 | **G** | QA retrieval domínios | ✅ `npm run qa:retrieval:domains` (10/10) |
 | **H** | Migrações DB aplicáveis | ✅ `db:migrate:deploy` (OfficeMemory) |
@@ -86,9 +86,9 @@
 
 ## 10. Status global
 
-**READY** (para o **gate P0 comercial** definido por critérios **A–N** + bateria técnica §6 deste relatório).
+**READY + UX P1 (parcial)** — **READY** mantém-se para o **gate P0 comercial** (**A–N** + bateria §6). Após o fechamento do gate, a rodada **UX P1** em `7a7af85` fechou a maioria dos itens listados em `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2 (tabela §5.2.1), sem regressão de lint/typecheck/test/integration/e2e/build.
 
-**Argumentação:** **A–N** atendidos com evidência de comandos (§6). O critério **L** foi fechado com `getLogger` + scrub em `/api/search` e nas rotas críticas de documentos/casos, além de libs de caminho quente (`storage`, `observability`, `cost`, ingest). **Transparência:** o backlog de **UX comercial** (itens ⏳ em `docs/COMMERCIAL_UX_P0_AUDIT.md` §3 e P1 de copy) **não** faz parte do gate A–N desta sprint; continua como dívida de produto rastreada no audit (§8).
+**Argumentação:** **A–N** atendidos com evidência de comandos (§6). O critério **L** foi fechado na sprint anterior com `getLogger` + scrub. **Transparência:** o checklist amplo §3 do audit (todas as telas, tabs 1366×768, estados vazios globais) permanece **parcialmente** ⏳; ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1.
 
 ## 11. Instruções para testar (manual)
 
@@ -101,3 +101,9 @@
 - **Branch**: `p0-commercial-sprint-2026-05-09`
 - **PR #10**: https://github.com/tcalgarotto/Lex/pull/10
 - **Compare**: https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09
+
+## 13. Pós-READY — UX P1 (`7a7af85`)
+
+- **Objetivo**: aproximar o produto da linguagem e do fluxo do advogado (sem reabrir gate A–N).
+- **Entregas**: ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2.1 e §7 (comandos reexecutados após o commit).
+- **Arquivos tocados (resumo)**: `busca/page.tsx`, `pesquisa-juridica/page.tsx`, `legal-search-panel.tsx`, `case-overview-tab.tsx`, `processos/page.tsx`, `case-drafts-tab.tsx`, `case-research-tab.tsx`, `case-actions.tsx`, `orchestrator.ts`, `legal-sources/route.ts`, `cases/page.tsx`.

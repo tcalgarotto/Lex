@@ -311,9 +311,9 @@ function SidePanel({ current, meta }: { current: CaseDraft; meta: DraftMeta }) {
           </p>
         ) : (
           <ul className="space-y-1 text-[11px] text-foreground/80">
-            {current.groundingChunkIds.slice(0, 8).map((id) => (
+            {current.groundingChunkIds.slice(0, 8).map((id, idx) => (
               <li key={id}>
-                Fonte {id.slice(0, 8)}…
+                Fundamento consultado nº {idx + 1}
               </li>
             ))}
             {current.groundingChunkIds.length > 8 ? (

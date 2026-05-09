@@ -75,7 +75,7 @@ export async function POST(
       caseId: id,
       err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
     });
-    return NextResponse.json({ error: "Erro ao pinar fundamento" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao salvar fundamento no caso" }, { status: 500 });
   }
 }
 

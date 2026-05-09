@@ -32,7 +32,7 @@ export function CaseActions({ caseId, readiness }: CaseActionsProps) {
     readiness?.status === "insuficiente" && !forceMode;
   const blockedReason = readiness
     ? `Caso ainda insuficiente para gerar peça (score ${readiness.score}%). ${
-        readiness.nextBestAction || "Complete os blockers críticos primeiro."
+        readiness.nextBestAction || "Complete as pendências críticas primeiro."
       }`
     : "";
 
