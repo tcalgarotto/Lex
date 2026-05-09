@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CasePartyKind, CasePartyRole, CaseRequestKind, CaseStatus } from "@prisma/client";
 import { buildDraft } from "./drafting";
-import type { LegalRetrievedChunk } from "@/lib/retrieval/legal/types";
+import type { ApprovedLegalFoundation } from "@/lib/retrieval/legal/approved-foundation";
 import type { StrategySynthesis } from "@/lib/legal/reasoning/strategy";
 
 const fakeCase = {
@@ -91,28 +91,18 @@ const requests = [
   },
 ];
 
-const chunk: LegalRetrievedChunk = {
+const foundation: ApprovedLegalFoundation = {
   chunkId: "ch1",
-  text: "Art. 422. Os contratantes são obrigados a guardar nos contratos a probidade e boa-fé.",
-  fullPath: "Art. 422",
-  structure: "ARTIGO" as never,
-  articleRef: "Art. 422",
-  norm: {
-    id: "n1",
-    urn: "urn:lex:br:federal:lei:2002-01-10;10406",
-    kind: "LEI" as never,
-    jurisdiction: "FEDERAL" as never,
-    title: "Código Civil",
-    identifier: "Lei nº 10.406/2002",
-    tribunal: null,
-    publishedAt: new Date("2002-01-10"),
-  },
   versionId: "v1",
-  validFrom: new Date("2003-01-11"),
-  validTo: null,
-  scores: { dense: 0.7, bm25: 0.6, rerank: 0.8, boost: 1.1, final: 0.85, breakdownJson: {} } as never,
-  provenance: ["dense"],
-  explanation: "stub",
+  urn: "urn:lex:br:federal:lei:2002-01-10;10406",
+  title: "Código Civil",
+  identifier: "Lei nº 10.406/2002",
+  kind: "ORDINARY_LAW",
+  articleRef: "Art. 422",
+  fullPath: "Art. 422",
+  excerpt: "Art. 422. Os contratantes são obrigados a guardar nos contratos a probidade e boa-fé.",
+  reason: "stub",
+  score: 0.85,
 };
 
 const strategy: StrategySynthesis = {
@@ -135,7 +125,7 @@ const strategy: StrategySynthesis = {
 
 describe("buildDraft", () => {
   it("gera Markdown com seções estruturais", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [chunk], strategy });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [foundation], strategy });
     expect(out.content).toContain("## I. Endereçamento");
     expect(out.content).toContain("## II. Qualificação das partes");
     expect(out.content).toContain("## III. Dos fatos");
@@ -147,44 +137,44 @@ describe("buildDraft", () => {
   });
 
   it("inclui partes com CPF/CNPJ quando presentes", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [chunk] });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [foundation] });
     expect(out.content).toContain("Maria Souza");
     expect(out.content).toContain("111.222.333-44");
     expect(out.content).toContain("Empresa ABC Ltda");
   });
 
   it("aponta tribunal pelo registry quando código existe", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [chunk] });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [foundation] });
     expect(out.content).toContain("Tribunal de Justiça");
     expect(out.content).toContain("0123456-78.2020.8.26.0001");
   });
 
   it("renderiza fatos numerados com referência temporal", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [chunk] });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [foundation] });
     expect(out.content).toContain("**01.**");
     expect(out.content).toContain("**02.**");
     expect(out.content).toContain("2022-03-12");
   });
 
   it("popula groundingChunkIds com chunks usados", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [chunk], strategy });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [foundation], strategy });
     expect(out.groundingChunkIds).toContain("ch1");
   });
 
   it("inclui contra-argumentos com severidade quando há risks", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [chunk], strategy });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [foundation], strategy });
     expect(out.content).toContain("Riscos e contrapontos");
     expect(out.content).toContain("Versão histórica");
   });
 
   it("omite tutela de urgência quando não há pedido urgente", () => {
     const reqsNoUrg = requests.filter((r) => r.kind !== CaseRequestKind.URGENCY);
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests: reqsNoUrg, chunks: [chunk] });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests: reqsNoUrg, foundations: [foundation] });
     expect(out.content).not.toContain("VI. Da tutela de urgência");
   });
 
   it("usa fallback quando não há chunks recuperados", () => {
-    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, chunks: [] });
+    const out = buildDraft({ case: fakeCase as never, facts, parties, requests, foundations: [] });
     expect(out.content).toContain("retrieval sem hits");
   });
 });

@@ -29,6 +29,7 @@ import { fuseCandidates, indexLineage } from "./hybrid";
 import { expandViaGraph } from "./graph-expansion";
 import { classifyLegalIntent, type LegalIntent } from "./intent";
 import { rewriteLegalQuery } from "./rewrite";
+import { buildLegalSearchPlan } from "./search-plan";
 import {
   computeFinalScore,
   computeGroundingScore,
@@ -187,6 +188,20 @@ export async function retrieveLegalContext(
         ),
       )
     : [rawQuery];
+
+  const searchPlan = buildLegalSearchPlan({
+    query: rawQuery,
+    intent,
+    filters,
+    options: {
+      topK: opts.topK,
+      rerankPool: opts.rerankPool,
+      useGraphExpansion: opts.useGraphExpansion,
+      useRerank: opts.useRerank,
+      useQueryRewrite: opts.useQueryRewrite,
+      includeGeneric: opts.includeGeneric,
+    },
+  });
 
   // 1) Hybrid Qdrant (dense + sparse + RRF server-side ou in-code).
   //    Substitui o loop dense puro. Se a Query API rejeitar (servidor antigo,
@@ -407,6 +422,7 @@ export async function retrieveLegalContext(
       chunk: lin,
       intent,
       rawQuery,
+      ...(opts.caseContext?.area ? { caseAreas: opts.caseContext.area } : {}),
     };
     const rs = rerankScores.get(id);
     if (rs !== undefined) finalArgs.rerankScore = rs;
@@ -503,6 +519,7 @@ export async function retrieveLegalContext(
     rewrittenQueries: queries,
     filters,
     intent,
+    searchPlan,
     chunks: finalChunks,
     groundingScore,
     confidence,
