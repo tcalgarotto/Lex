@@ -67,11 +67,13 @@ export function runReview(args: ReviewArgs): ReviewResult {
 
   items.push(checkStructure(args.draftContent));
   items.push(checkGrounding(args.groundingChunkIds));
+  items.push(checkAdctRelevance(args.draftContent));
   items.push(checkPlaceholders(args.draftContent));
   items.push(checkPartiesQualified(args.parties ?? [], args.draftContent));
   items.push(checkMainRequest(args.requests));
   items.push(checkRequestClassification(args.requests));
   items.push(checkUrgencyConsistency(args.requests, args.draftContent));
+  items.push(checkFalseProtocolPromise(args.draftContent));
   items.push(checkFactsCoverage(args.facts));
   items.push(checkPinnedSourcesUsed(args.pinnedChunkIds ?? [], args.groundingChunkIds));
   items.push(checkConsistencyAlerts(args.inconsistencyRisksCount ?? 0));
@@ -177,6 +179,62 @@ function checkUrgencyConsistency(reqs: CaseRequest[], content: string): ReviewIt
       ? "Pedido urgente sem seção dedicada."
       : "Seção de urgência presente sem pedido correspondente.",
     weight: 0.08,
+  };
+}
+
+/**
+ * F8/F9 — ADCT irrelevante mina confiança e costuma ser um falso positivo de retrieval.
+ * Heurística: se a minuta menciona ADCT/Disposições Transitórias, exige também
+ * algum marcador mínimo de pertinência (transição, regra transitória).
+ */
+function checkAdctRelevance(content: string): ReviewItem {
+  const mentionsAdct = /\bADCT\b/i.test(content) || /disposi[cç][oõ]es\s+transit[óo]rias/i.test(content);
+  if (!mentionsAdct) {
+    return {
+      id: "adct_relevance",
+      title: "Sem ADCT irrelevante",
+      status: "pass",
+      detail: "Minuta não menciona ADCT.",
+      weight: 0.05,
+    };
+  }
+  const hasContext = /transi[cç][aã]o|regra\s+transit[óo]ria|disposi[cç][oõ]es\s+transit[óo]rias/i.test(content);
+  return {
+    id: "adct_relevance",
+    title: "ADCT só quando pertinente",
+    status: hasContext ? "warning" : "fail",
+    detail: hasContext
+      ? "Minuta menciona ADCT — confirme se é realmente necessário ao caso."
+      : "Minuta menciona ADCT sem contexto claro (risco de fundamento irrelevante).",
+    rationale:
+      "ADCT fora de contexto é um sinal típico de retrieval ruim. Se não houver regra transitória pertinente, remova ou substitua por fundamentos citáveis.",
+    weight: 0.05,
+  };
+}
+
+/**
+ * F8/F9 — A minuta não pode prometer “pronta para protocolo” no próprio texto.
+ * Isso confunde o usuário e viola a regra de revisão humana obrigatória.
+ */
+function checkFalseProtocolPromise(content: string): ReviewItem {
+  const re = /\b(pronta|pronto)\s+para\s+protocolo\b/i;
+  if (!re.test(content)) {
+    return {
+      id: "protocol_promise",
+      title: "Sem promessa de protocolo",
+      status: "pass",
+      detail: "Minuta não contém promessa de protocolo no texto.",
+      weight: 0.05,
+    };
+  }
+  return {
+    id: "protocol_promise",
+    title: "Sem promessa de protocolo",
+    status: "fail",
+    detail: "Texto contém promessa de protocolo (remover).",
+    rationale:
+      "O Lex não pode sugerir que a peça está pronta para protocolo sem revisão humana e sem checagens completas.",
+    weight: 0.05,
   };
 }
 
@@ -508,6 +566,8 @@ function deriveVerdict(score: number, items: ReviewItem[]): string {
       (i.id === "placeholders" ||
         i.id === "parties_qualified" ||
         i.id === "grounding" ||
+        i.id === "adct_relevance" ||
+        i.id === "protocol_promise" ||
         i.id === "consistency_alerts" ||
         i.id === "main_request") &&
       i.status === "fail",

@@ -65,7 +65,7 @@ describe("review", () => {
       risks: [],
       issues: [],
     });
-    expect(result.score).toBeLessThan(0.5);
+    expect(result.score).toBeLessThan(0.55);
     // F6: o verdict agora pode ser "Não-protocolável" quando há blockers
     // críticos; aceitamos qualquer verdict que indique gravidade.
     expect(result.verdict).toMatch(/N[ãa]o-protocol[áa]vel|Pend[êe]ncias cr[íi]ticas/);
