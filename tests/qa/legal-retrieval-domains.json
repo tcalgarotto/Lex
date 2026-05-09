@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "notes": "Gate de QA por domínios sentinela para retrieval jurídico (F7.4). O gate foca em: fonte real + trace mínimo + anti-ADCT + anti-base inventada. Rode com: npm run qa:retrieval:domains",
+  "domains": [
+    { "id": "educacao_creche", "label": "Educação/creche", "queries": [{ "q": "educação infantil em creche" }] },
+    { "id": "saude_medicamento", "label": "Saúde/medicamento", "queries": [{ "q": "direito à saúde dever do Estado" }] },
+    { "id": "consumidor_banco", "label": "Consumidor/banco", "queries": [{ "q": "defesa do consumidor" }] },
+    { "id": "contratos_inadimplemento", "label": "Contratos/inadimplemento", "queries": [{ "q": "ato jurídico perfeito direito adquirido" }] },
+    { "id": "familia_alimentos", "label": "Família/alimentos", "queries": [{ "q": "proteção da família" }] },
+    { "id": "mandado_de_seguranca", "label": "Mandado de segurança", "queries": [{ "q": "mandado de segurança direito líquido e certo" }] },
+    { "id": "acesso_justica", "label": "Acesso à Justiça", "queries": [{ "q": "lesão ou ameaça a direito" }] },
+    { "id": "meio_ambiente", "label": "Meio ambiente", "queries": [{ "q": "meio ambiente ecologicamente equilibrado" }] },
+    { "id": "stf_re", "label": "STF/RE", "queries": [{ "q": "recurso extraordinário" }] },
+    { "id": "adm_publica_concurso", "label": "Administração pública/concurso", "queries": [{ "q": "concurso público princípios da administração pública" }] }
+  ]
+}
+
+{
+  "version": 1,
+  "notes": "Gate de QA por domínios sentinela para retrieval jurídico (F7.4). Cada domínio tem 1 query para manter o teste rápido e determinístico. Rode com: npm run qa:retrieval:domains",
+  "domains": [
+    {
+      "id": "educacao_creche",
+      "label": "Educação/creche",
+      "queries": [{ "q": "vaga em creche direito da criança", "expectAnyArticleRefPrefix": ["Art. 208", "Art. 205", "Art. 227"] }]
+    },
+    {
+      "id": "saude_medicamento",
+      "label": "Saúde/medicamento",
+      "queries": [{ "q": "fornecimento de medicamento pelo SUS direito à saúde", "expectAnyArticleRefPrefix": ["Art. 196", "Art. 198", "Art. 6"] }]
+    },
+    {
+      "id": "consumidor_banco",
+      "label": "Consumidor/banco",
+      "queries": [{ "q": "proteção do consumidor na Constituição", "expectAnyArticleRefPrefix": ["Art. 5", "Art. 170", "Art. 24"] }]
+    },
+    {
+      "id": "contratos_inadimplemento",
+      "label": "Contratos/inadimplemento",
+      "queries": [{ "q": "acesso ao Judiciário para cobrar dívida inadimplida", "expectAnyArticleRefPrefix": ["Art. 5"] }]
+    },
+    {
+      "id": "familia_alimentos",
+      "label": "Família/alimentos",
+      "queries": [{ "q": "dever de sustento dos pais e proteção integral da criança", "expectAnyArticleRefPrefix": ["Art. 227", "Art. 229"] }]
+    },
+    {
+      "id": "mandado_de_seguranca",
+      "label": "Mandado de segurança",
+      "queries": [{ "q": "mandado de segurança direito líquido e certo", "expectAnyArticleRefPrefix": ["Art. 5"] }]
+    },
+    {
+      "id": "acesso_justica",
+      "label": "Acesso à Justiça",
+      "queries": [{ "q": "acesso ao Judiciário lesão ou ameaça a direito", "expectAnyArticleRefPrefix": ["Art. 5"] }]
+    },
+    {
+      "id": "meio_ambiente",
+      "label": "Meio ambiente",
+      "queries": [{ "q": "direito ao meio ambiente ecologicamente equilibrado", "expectAnyArticleRefPrefix": ["Art. 225"] }]
+    },
+    {
+      "id": "stf_re",
+      "label": "STF/RE",
+      "queries": [{ "q": "competência do STF recurso extraordinário", "expectAnyArticleRefPrefix": ["Art. 102"] }]
+    },
+    {
+      "id": "adm_publica_concurso",
+      "label": "Administração pública/concurso",
+      "queries": [{ "q": "princípios da administração pública legalidade impessoalidade moralidade publicidade eficiência", "expectAnyArticleRefPrefix": ["Art. 37"] }]
+    }
+  ]
+}
+
+{
+  "version": 1,
+  "notes": "QA generalista por domínios sentinela. Regra absoluta: AI_REASONING ≠ LEGAL_TRUTH. Este gate valida o retrieval: fonte real (URN + trecho + explicação), ADCT não pode dominar fora de contexto e o resultado precisa ser auditável.",
+  "domains": [
+    {
+      "id": "educacao-creche",
+      "label": "Educação / creche",
+      "queries": [
+        { "q": "vaga em creche direito da criança", "expectAnyArticleRefPrefix": ["Art. 208", "Art. 205", "Art. 227"] },
+        { "q": "educação infantil em creche dever do Estado", "expectAnyArticleRefPrefix": ["Art. 208"] }
+      ]
+    },
+    {
+      "id": "saude-medicamento",
+      "label": "Saúde / medicamento",
+      "queries": [
+        { "q": "fornecimento de medicamento pelo SUS direito à saúde", "expectAnyArticleRefPrefix": ["Art. 196", "Art. 198", "Art. 6"] },
+        { "q": "direito à saúde e dever do Estado", "expectAnyArticleRefPrefix": ["Art. 196"] }
+      ]
+    },
+    {
+      "id": "consumidor-banco",
+      "label": "Consumidor / banco",
+      "queries": [
+        { "q": "proteção do consumidor na Constituição", "expectAnyArticleRefPrefix": ["Art. 5", "Art. 170", "Art. 24"] },
+        { "q": "direito de indenização por dano moral e material", "expectAnyArticleRefPrefix": ["Art. 5"] }
+      ]
+    },
+    {
+      "id": "contratos-inadimplemento",
+      "label": "Contratos / inadimplemento",
+      "queries": [
+        { "q": "acesso ao Judiciário para cobrar dívida inadimplida", "expectAnyArticleRefPrefix": ["Art. 5", "Art. 103-B", "Art. 100"] },
+        { "q": "princípio da legalidade e liberdade contratual na Constituição", "expectAnyArticleRefPrefix": ["Art. 5", "Art. 1"] }
+      ]
+    },
+    {
+      "id": "familia-alimentos",
+      "label": "Família / alimentos",
+      "queries": [
+        { "q": "dever de sustento dos pais e proteção integral da criança", "expectAnyArticleRefPrefix": ["Art. 227", "Art. 229"] },
+        { "q": "proteção da família na Constituição", "expectAnyArticleRefPrefix": ["Art. 226"] }
+      ]
+    },
+    {
+      "id": "mandado-de-seguranca",
+      "label": "Mandado de segurança",
+      "queries": [
+        { "q": "mandado de segurança direito líquido e certo", "expectAnyArticleRefPrefix": ["Art. 5"] },
+        { "q": "remédio constitucional para autoridade pública", "expectAnyArticleRefPrefix": ["Art. 5", "Art. 37"] }
+      ]
+    },
+    {
+      "id": "acesso-a-justica",
+      "label": "Acesso à Justiça",
+      "queries": [
+        { "q": "acesso ao Judiciário lesão ou ameaça a direito", "expectAnyArticleRefPrefix": ["Art. 5"] },
+        { "q": "assistência jurídica integral e gratuita", "expectAnyArticleRefPrefix": ["Art. 5"] }
+      ]
+    },
+    {
+      "id": "meio-ambiente",
+      "label": "Meio ambiente",
+      "queries": [
+        { "q": "direito ao meio ambiente ecologicamente equilibrado", "expectAnyArticleRefPrefix": ["Art. 225"] },
+        { "q": "responsabilidade por dano ambiental", "expectAnyArticleRefPrefix": ["Art. 225", "Art. 85"] }
+      ]
+    },
+    {
+      "id": "stf-re",
+      "label": "STF / Recurso extraordinário",
+      "queries": [
+        { "q": "competência do STF recurso extraordinário", "expectAnyArticleRefPrefix": ["Art. 102"] },
+        { "q": "STF guarda da Constituição competência", "expectAnyArticleRefPrefix": ["Art. 102", "Art. 125"] }
+      ]
+    },
+    {
+      "id": "adm-concurso",
+      "label": "Administração pública / concurso",
+      "queries": [
+        { "q": "concurso público investidura em cargo público", "expectAnyArticleRefPrefix": ["Art. 37"] },
+        { "q": "princípios da administração pública legalidade impessoalidade moralidade publicidade eficiência", "expectAnyArticleRefPrefix": ["Art. 37"] }
+      ]
+    }
+  ]
+}
+

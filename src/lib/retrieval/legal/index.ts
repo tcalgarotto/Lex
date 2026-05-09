@@ -135,6 +135,13 @@ export async function retrieveLegalContext(
   };
 
   const opts = { ...DEFAULTS, ...options };
+
+  // Segurança/LGPD: se houver contexto de caso (ex.: `problem` do Case Brain),
+  // evitamos cache compartilhado. O benefício de cache aqui é pequeno e o risco
+  // de poluição/leak cross-tenant é alto.
+  if (opts.caseContext) {
+    opts.useCache = false;
+  }
   // `corpusContentHash` invalida o cache automaticamente quando o corpus
   // jurídico muda (nova ingest, revogação). Lazy + cached por 60s.
   const corpusContentHash = opts.useCache ? await getCorpusContentHash() : undefined;
@@ -194,58 +201,62 @@ export async function retrieveLegalContext(
   let denseMsAcc = 0;
   let sparseMsAcc = 0;
   let fusionMsHybrid = 0;
-  for (const q of queries.slice(0, 3)) {
-    try {
-      const hybridRes = await stage(
-        "hybrid",
-        () =>
-          withTimeout(
-            searchHybridQdrant({ query: q, limit: 24, intent, filters }),
-            STAGE_TIMEOUT_MS.hybrid,
-            "hybrid",
-          ),
-        { variant: q.slice(0, 80) },
-      );
-      denseCount += hybridRes.results.length;
-      denseLineage.push(...hybridRes.results.map((r) => r.chunk));
-      denseLists.push(hybridToCandidates(hybridRes.results));
-      hybridNativeUsed = hybridNativeUsed || hybridRes.trace.hybridNativeUsed;
-      if (hybridRes.trace.sparseUnavailable) sparseUnavailable = true;
-      denseMsAcc += hybridRes.trace.denseMs;
-      sparseMsAcc += hybridRes.trace.sparseMs;
-      fusionMsHybrid += hybridRes.trace.fusionMs;
-    } catch (err) {
-      const msg = (err as Error).message;
-      fallbackFlags.add("hybrid_unavailable");
-      if (/timeout/i.test(msg)) fallbackFlags.add("hybrid_timeout");
-      if (/qdrant|ECONNREFUSED|ENOTFOUND/i.test(msg)) fallbackFlags.add("qdrant_unavailable");
-      log.warnOnce(`hybrid:${msg.slice(0, 40)}`, `hybrid indisponível: ${msg}`);
-      // Última cartada: tenta dense puro (caso hybrid esteja falhando mas
-      // dense funcione — improvável, mas não custa).
+  if (opts.disableVectorSearch) {
+    fallbackFlags.add("vector_search_disabled");
+  } else {
+    for (const q of queries.slice(0, 3)) {
       try {
-        const denseRes = await stage(
-          "dense-after-hybrid-fail",
+        const hybridRes = await stage(
+          "hybrid",
           () =>
             withTimeout(
-              searchDense({ query: q, limit: 24, filters }),
-              STAGE_TIMEOUT_MS.dense,
-              "dense",
+              searchHybridQdrant({ query: q, limit: 24, intent, filters }),
+              STAGE_TIMEOUT_MS.hybrid,
+              "hybrid",
             ),
           { variant: q.slice(0, 80) },
         );
-        denseCount += denseRes.length;
-        denseLineage.push(...denseRes.map((d) => d.chunk));
-        denseLists.push(denseToCandidates(denseRes));
-        sparseUnavailable = true;
-      } catch {
-        fallbackFlags.add("dense_unavailable");
+        denseCount += hybridRes.results.length;
+        denseLineage.push(...hybridRes.results.map((r) => r.chunk));
+        denseLists.push(hybridToCandidates(hybridRes.results));
+        hybridNativeUsed = hybridNativeUsed || hybridRes.trace.hybridNativeUsed;
+        if (hybridRes.trace.sparseUnavailable) sparseUnavailable = true;
+        denseMsAcc += hybridRes.trace.denseMs;
+        sparseMsAcc += hybridRes.trace.sparseMs;
+        fusionMsHybrid += hybridRes.trace.fusionMs;
+      } catch (err) {
+        const msg = (err as Error).message;
+        fallbackFlags.add("hybrid_unavailable");
+        if (/timeout/i.test(msg)) fallbackFlags.add("hybrid_timeout");
+        if (/qdrant|ECONNREFUSED|ENOTFOUND/i.test(msg)) fallbackFlags.add("qdrant_unavailable");
+        log.warnOnce(`hybrid:${msg.slice(0, 40)}`, `hybrid indisponível: ${msg}`);
+        // Última cartada: tenta dense puro (caso hybrid esteja falhando mas
+        // dense funcione — improvável, mas não custa).
+        try {
+          const denseRes = await stage(
+            "dense-after-hybrid-fail",
+            () =>
+              withTimeout(
+                searchDense({ query: q, limit: 24, filters }),
+                STAGE_TIMEOUT_MS.dense,
+                "dense",
+              ),
+            { variant: q.slice(0, 80) },
+          );
+          denseCount += denseRes.length;
+          denseLineage.push(...denseRes.map((d) => d.chunk));
+          denseLists.push(denseToCandidates(denseRes));
+          sparseUnavailable = true;
+        } catch {
+          fallbackFlags.add("dense_unavailable");
+        }
+        break;
       }
-      break;
     }
-  }
-  if (sparseUnavailable) fallbackFlags.add("sparse_unavailable");
-  if (!hybridNativeUsed && denseCount > 0 && !sparseUnavailable) {
-    fallbackFlags.add("hybrid_native_unavailable");
+    if (sparseUnavailable) fallbackFlags.add("sparse_unavailable");
+    if (!hybridNativeUsed && denseCount > 0 && !sparseUnavailable) {
+      fallbackFlags.add("hybrid_native_unavailable");
+    }
   }
 
   // 2) BM25: por variante
@@ -281,6 +292,7 @@ export async function retrieveLegalContext(
     denseCount === 0 &&
     bm25Count === 0 &&
     Object.keys(filters).length > 0 &&
+    !opts.disableVectorSearch &&
     !fallbackFlags.has("hybrid_unavailable") &&
     !fallbackFlags.has("dense_unavailable")
   ) {

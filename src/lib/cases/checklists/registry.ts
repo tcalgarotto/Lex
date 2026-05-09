@@ -11,6 +11,16 @@
  */
 
 import { CRECHE_CHECKLIST } from "./templates/creche";
+import { GENERIC_OFFLINE_CHECKLIST } from "./templates/generic-offline";
+import { CONSUMER_INSURANCE_CHECKLIST } from "./templates/consumer-insurance";
+import { BANK_CHARGEBACK_CHECKLIST } from "./templates/bank-chargeback";
+import { LABOR_TERMINATION_CHECKLIST } from "./templates/labor-termination";
+import { FAMILY_CHILD_SUPPORT_CHECKLIST } from "./templates/family-child-support";
+import { FAMILY_DIVORCE_CHECKLIST } from "./templates/family-divorce";
+import { REAL_ESTATE_RENT_CHECKLIST } from "./templates/real-estate-rent";
+import { CIVIL_MEDICAL_MALPRACTICE_CHECKLIST } from "./templates/civil-medical-malpractice";
+import { ADMIN_PUBLIC_TENDER_CHECKLIST } from "./templates/admin-public-tender";
+import { CRIMINAL_BAIL_CHECKLIST } from "./templates/criminal-bail";
 
 export type ChecklistFieldKind =
   | "text"
@@ -62,7 +72,21 @@ export type ChecklistTemplate = {
   sections: ChecklistSection[];
 };
 
-const TEMPLATES: ChecklistTemplate[] = [CRECHE_CHECKLIST];
+const TEMPLATES: ChecklistTemplate[] = [
+  // Genérico offline — sempre disponível como fallback.
+  GENERIC_OFFLINE_CHECKLIST,
+  // Templates por domínio (mínimo 10)
+  CRECHE_CHECKLIST,
+  CONSUMER_INSURANCE_CHECKLIST,
+  BANK_CHARGEBACK_CHECKLIST,
+  LABOR_TERMINATION_CHECKLIST,
+  FAMILY_CHILD_SUPPORT_CHECKLIST,
+  FAMILY_DIVORCE_CHECKLIST,
+  REAL_ESTATE_RENT_CHECKLIST,
+  CIVIL_MEDICAL_MALPRACTICE_CHECKLIST,
+  ADMIN_PUBLIC_TENDER_CHECKLIST,
+  CRIMINAL_BAIL_CHECKLIST,
+];
 
 const TEMPLATES_BY_ID: Map<string, ChecklistTemplate> = new Map(
   TEMPLATES.map((t) => [t.id, t]),

@@ -96,6 +96,7 @@ model User {
   updatedAt     DateTime       @updatedAt
   memberships   Membership[]
   styleProfiles StyleProfile[]
+  interviewTemplates InterviewTemplate[]
 }
 
 model Workspace {
@@ -124,6 +125,7 @@ model Workspace {
   integrations        Integration[]
   notifications       Notification[]
   alerts              CaseAlert[]
+  interviewTemplates  InterviewTemplate[]
 }
 
 model Invitation {
@@ -1024,6 +1026,11 @@ model CaseFact {
    * Confidence 0..1 do parser.
    */
   confidence Float    @default(0.6)
+  /**
+   * Metadata do item (origem/status/confidence override, vínculos de evidência, etc).
+   * Usado para CRUD inline auditável sem inflar colunas.
+   */
+  metadataJson Json?
   createdAt  DateTime @default(now())
 
   case Case @relation(fields: [caseId], references: [id], onDelete: Cascade)
@@ -1362,6 +1369,37 @@ model CaseAlert {
   @@index([workspaceId, status, severity])
   @@index([caseId, status])
   @@index([workspaceId, kind, createdAt])
+}
+
+/**
+ * F6 — Roteiros de entrevista (templates do escritório/usuário).
+ *
+ * Guarda a estrutura de perguntas/sections em JSON para permitir
+ * criar/editar/reordenar sem inflar o schema com tabelas auxiliares.
+ */
+enum InterviewTemplateScope {
+  USER
+  WORKSPACE
+}
+
+model InterviewTemplate {
+  id          String                 @id @default(cuid())
+  workspaceId String
+  scope       InterviewTemplateScope @default(WORKSPACE)
+  ownerUserId String?
+  title       String
+  description String?                @db.Text
+  domain      String?
+  schemaJson  Json
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  owner     User?     @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, scope, updatedAt])
+  @@index([workspaceId, domain])
+  @@index([ownerUserId])
 }
 
 enum IntegrationProvider {

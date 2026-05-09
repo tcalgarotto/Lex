@@ -22,6 +22,7 @@ import {
   suggestChecklistTemplate,
 } from "@/lib/cases/checklists/registry";
 import { inngest } from "@/lib/inngest/client";
+import type { ChecklistTemplate } from "@/lib/cases/checklists/registry";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,39 @@ const PostBody = z.object({
   templateId: z.string().min(2).max(120),
   answers: z.record(z.unknown()),
 });
+
+async function resolveTemplate(workspaceId: string, templateId: string) {
+  // 1) templates estáticos (registry.ts)
+  const staticTpl = getChecklistTemplate(templateId);
+  if (staticTpl) return staticTpl;
+
+  // 2) templates do banco (F6)
+  const tpl = await prisma.interviewTemplate.findFirst({
+    where: { id: templateId, workspaceId },
+    select: { id: true, title: true, schemaJson: true, updatedAt: true },
+  });
+  if (!tpl) return null;
+
+  // Esperamos que `schemaJson` seja compatível com `ChecklistTemplate`.
+  // Se estiver malformado, retornamos null (sem quebrar a UX).
+  if (!tpl.schemaJson || typeof tpl.schemaJson !== "object") return null;
+  const schema = tpl.schemaJson as Record<string, unknown>;
+  if (!Array.isArray(schema["sections"])) return null;
+  if (!Array.isArray(schema["area"])) return null;
+  if (!Array.isArray(schema["triggers"])) return null;
+
+  const labelFromSchema = typeof schema["label"] === "string" ? (schema["label"] as string) : null;
+  const versionFromSchema = typeof schema["version"] === "number" ? (schema["version"] as number) : null;
+
+  const normalized: ChecklistTemplate = {
+    ...(tpl.schemaJson as ChecklistTemplate),
+    id: tpl.id,
+    label: labelFromSchema ?? tpl.title,
+    version: versionFromSchema ?? Math.max(1, Math.floor(tpl.updatedAt.getTime() / 1000)),
+  };
+
+  return normalized;
+}
 
 export async function GET(
   req: Request,
@@ -60,12 +94,17 @@ export async function GET(
       ? (meta["checklistTemplateId"] as string)
       : null);
 
-  let template = explicitTemplateId ? getChecklistTemplate(explicitTemplateId) : null;
+  let template = explicitTemplateId ? await resolveTemplate(workspaceId, explicitTemplateId) : null;
   let suggested = false;
   if (!template) {
     const areas = Array.isArray(brain["area"]) ? (brain["area"] as string[]) : [];
     template = suggestChecklistTemplate({ rawText: c.rawInput, brainAreas: areas });
     suggested = !!template;
+  }
+  // F2.1 — template genérico offline sempre disponível como fallback.
+  if (!template) {
+    template = getChecklistTemplate("generic.offline.intake");
+    suggested = false;
   }
 
   const answers = existingResponses?.answers ?? {};
@@ -98,7 +137,7 @@ export async function POST(
     );
   }
 
-  const template = getChecklistTemplate(body.templateId);
+  const template = await resolveTemplate(workspaceId, body.templateId);
   if (!template) {
     return NextResponse.json({ error: "Template de checklist desconhecido" }, { status: 404 });
   }

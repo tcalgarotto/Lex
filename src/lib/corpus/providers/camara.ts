@@ -16,7 +16,7 @@
  *  - Identificador de cliente: User-Agent identificável.
  */
 
-import { CorpusProvider, NormKind } from "@prisma/client";
+import type { CorpusProvider, NormKind } from "@prisma/client";
 import { buildCanonicalUrn } from "@/lib/corpus/urn";
 import { acquireProviderSlot } from "./rate-limit";
 import type {
@@ -74,7 +74,7 @@ type CamaraDetalhe = CamaraProposicao & {
  * monitorar tramitação de PLs/PECs e correlacionar com normas existentes.
  */
 export class CamaraCorpusProvider implements CorpusProviderClient {
-  readonly id = CorpusProvider.CAMARA;
+  readonly id = "CAMARA" as CorpusProvider;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly ratePerMinute: number;
@@ -159,7 +159,7 @@ export class CamaraCorpusProvider implements CorpusProviderClient {
     });
     const c: CorpusCandidate = {
       urn,
-      kind: NormKind.OTHER,
+      kind: "OTHER" as NormKind,
       title: `${p.siglaTipo} ${p.numero}/${p.ano}`,
       identifier: `${p.siglaTipo} ${p.numero}/${p.ano}`,
       authority: "Câmara dos Deputados",

@@ -60,6 +60,21 @@ type FetchState =
   | { kind: "empty"; data: SearchResponse }
   | { kind: "error"; message: string };
 
+function normKindLabel(r: SearchResult): string | null {
+  const kind = (r.norm.kind ?? "").toLowerCase();
+  if (kind.includes("constitution")) return "Constituição";
+  if (r.norm.urn.includes("!adct")) return "ADCT";
+  if (kind.includes("sumula")) return "Súmula";
+  if (kind.includes("jurisprudence")) return "Jurisprudência";
+  return null;
+}
+
+function relevanceLabel(score: number): { label: string; hint: string } {
+  if (score >= 0.86) return { label: "Alta", hint: "Muito relacionado ao que você buscou." };
+  if (score >= 0.72) return { label: "Média", hint: "Relacionado ao tema, com alguma distância." };
+  return { label: "Baixa", hint: "Pode ajudar como apoio, mas não é o principal." };
+}
+
 export function LegalSearchPanel({
   embeddedCaseId,
 }: {
@@ -172,7 +187,7 @@ export function LegalSearchPanel({
       {pinError ? (
         <Card className="border-rose-500/30 bg-rose-500/5 p-3 text-xs text-rose-200">
           <AlertTriangle className="mr-1 inline size-3" />
-          Não foi possível pinar fundamento: {pinError}
+          Não foi possível salvar o fundamento no caso: {pinError}
         </Card>
       ) : null}
 
@@ -250,9 +265,11 @@ function Body({
                     <Badge variant="outline" className="text-[10px]">
                       {r.norm.identifier ?? r.norm.title}
                     </Badge>
-                    <Badge variant="outline" className="text-[10px]">
-                      {r.norm.kind}
-                    </Badge>
+                    {normKindLabel(r) ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {normKindLabel(r)}
+                      </Badge>
+                    ) : null}
                   </div>
                   <p className="text-sm leading-relaxed">{r.snippet ?? r.text}</p>
                   {r.snippet && r.snippet !== r.text ? (
@@ -283,8 +300,12 @@ function Body({
                   ) : null}
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    {Math.round(r.score * 100)}%
+                  <Badge
+                    variant="outline"
+                    className="text-[10px]"
+                    title={relevanceLabel(r.score).hint}
+                  >
+                    Relevância: {relevanceLabel(r.score).label}
                   </Badge>
                   {caseId ? (
                     <Button

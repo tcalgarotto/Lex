@@ -42,7 +42,7 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/pesquisa-juridica", label: "Pesquisa jurídica", icon: Search },
   { href: "/editor", label: "Peças", icon: ScrollText },
-  { href: "/processos", label: "Processamentos", icon: FolderKanban },
+  { href: "/processos", label: "Processos judiciais", icon: FolderKanban },
   { href: "/settings/team", label: "Equipe", icon: Users },
 ];
 
@@ -51,6 +51,7 @@ const ADVANCED_NAV: NavItem[] = [
   { href: "/strategy", label: "Laboratório de estratégia", icon: GitBranch },
   { href: "/retrieval/explain", label: "Retrieval (debug)", icon: Sparkles },
   { href: "/settings/jobs", label: "Jobs IA", icon: Zap },
+  { href: "/settings/roteiros", label: "Roteiros de entrevista", icon: ClipboardList },
   { href: "/settings/admin", label: "Administração", icon: Server },
   { href: "/test-guide", label: "Guia de teste", icon: ClipboardList },
 ];

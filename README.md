@@ -20,6 +20,16 @@ Criar caso  →  Enviar documentos  →  Acompanhar processamento
 
 Documentação completa do fluxo, decisões e pendências: [`docs/UX_FLOW_AUDIT.md`](docs/UX_FLOW_AUDIT.md).
 
+## Docs de release (P0 comercial)
+
+- `docs/P0_COMMERCIAL_RELEASE_REPORT.md`
+- `docs/COMMERCIAL_UX_P0_AUDIT.md`
+- `docs/SECURITY_REVIEW_P0.md`
+- `docs/CODE_REVIEW_P0.md`
+- `docs/RETRIEVAL_PIPELINE_AUDIT.md`
+- `docs/DEEPINFRA_EMBEDDING_AUDIT.md`
+- `docs/UX_INSPIRATION_NOTES.md`
+
 ## Pré-requisitos
 
 - Node.js 22+

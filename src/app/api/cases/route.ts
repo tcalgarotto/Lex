@@ -61,9 +61,10 @@ const ExistingProcessSchema = z.object({
   title: z.string().min(2).max(200),
   processNumber: z
     .string()
-    .min(15, "Informe um CNJ válido.")
+    .min(20, "Informe um CNJ válido (20 dígitos).")
     .max(40)
-    .regex(/[\d.\-/]+/, "CNJ inválido."),
+    .regex(/[\d.\-/]+/, "CNJ inválido.")
+    .refine((s) => s.replace(/\D/g, "").length === 20, "CNJ inválido (20 dígitos)."),
   tribunalCode: z.string().min(2).max(20).optional(),
   uf: z
     .string()

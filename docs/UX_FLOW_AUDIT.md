@@ -73,6 +73,7 @@ O Lex acumulou módulos técnicos avançados (RAG nacional, ingest pipeline, int
 - Laboratório de estratégia (`/strategy`)
 - Retrieval (debug) (`/retrieval/explain`)
 - Jobs IA (`/settings/jobs`)
+- Roteiros de entrevista (`/settings/roteiros`)
 - Administração (`/settings/admin`)
 - Guia de teste (`/test-guide`)
 
@@ -297,6 +298,31 @@ A simulação revelou **4 lacunas estruturais** que vão além da lista dos 18 p
 | F5 — Draft Workspace | ✅ entregue | Preview/Editar (react-markdown), PATCH cria nova versão, painel Lacunas + Fontes. Export DOCX/PDF documentado P+1. |
 | F6 — Review v2 | ✅ entregue | Critérios placeholders/parties_qualified/request_classification/pinned_sources_used/consistency_alerts. Verdict honesto + tooltip. |
 | F7 — Tests + docs | ✅ entregue | +44 testes unitários (526 total). `CASE_BRAIN.md` e `DRAFTING_REVIEW_FLOW.md` publicados. |
+
+---
+
+## Atualização — F4/F5 (comandos slash + checklists) — 2026-05-09
+
+### Concluído ✅
+- **Comandos slash no relato/intake** com prioridade sobre inferência:
+  - Suportados: `/autora`, `/autor`, `/reu`, `/réu`, `/fato`, `/pedido`, `/urgencia`, `/documento`, `/risco`, `/observacao`, `/prazo`, `/valor`.
+  - Origem auditável no Case Brain: `origin="user_command"`.
+  - Persistência: `persistBrainEntities` agora sincroniza **fatos** e grava `metadataJson` em **partes/pedidos** (quando aplicável).
+- **Entrevista guiada**:
+  - **Template genérico offline** sempre disponível como fallback.
+  - **10 templates por domínio** registrados (mínimo exigido), além do template de creche.
+
+### Testes criados ✅
+- `src/lib/cases/slash-commands.test.ts` (parser e tolerância).
+
+### Comandos rodados ✅
+- `npm test`
+- `npm run typecheck`
+- `npm run lint`
+
+### Pendente / riscos ⚠️
+- UI ainda não expõe um seletor de template (além de sugestão automática + querystring `?templateId=` no endpoint).
+- `CaseFact` não tem `metadataJson` no schema, então origem/status/confiança por fato ficam apenas via `confidence` + timeline/brain.
 
 ### Métricas
 

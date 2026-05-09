@@ -50,6 +50,13 @@ export type LegalRetrievalOptions = {
   cacheTtlSec?: number;
   /** Tradução automática + sinônimos. Default true. */
   useQueryRewrite?: boolean;
+  /**
+   * Gate de QA/local: desabilita qualquer etapa que exija embedding/Qdrant.
+   * Mantém pipeline determinístico via BM25 + fusão + scoring + trace.
+   *
+   * Importante: não usar em produção para o usuário final (degrada recall).
+   */
+  disableVectorSearch?: boolean;
   /** Filtros explícitos (sobrescrevem o que o intent extrair). */
   filters?: LegalRetrievalFilters;
   /** Identifica o request nos logs/traces. */

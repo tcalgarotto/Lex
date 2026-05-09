@@ -29,6 +29,7 @@ const facts = [
     category: "vinculo",
     dates: ["2022-03-12"],
     confidence: 0.8,
+    metadataJson: null,
     createdAt: new Date(),
   },
   {
@@ -39,6 +40,7 @@ const facts = [
     category: "dano",
     dates: ["2023-05-05"],
     confidence: 0.8,
+    metadataJson: null,
     createdAt: new Date(),
   },
 ];

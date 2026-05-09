@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProcessVirtualList } from "@/components/processes/process-virtual-list";
 import { createProcessAndRedirect } from "@/app/(app)/processos/actions";
+import { formatCnj } from "@/lib/cnj";
 
 export default async function ProcessosPage() {
   const { workspaceId } = await getWorkspaceContext();
@@ -17,17 +18,26 @@ export default async function ProcessosPage() {
   });
 
   return (
-    <AppShell title="Processos">
+    <AppShell title="Processos judiciais">
       <div className="grid gap-8 lg:grid-cols-2">
         <Card className="border-white/10 bg-zinc-900/40">
           <CardHeader>
-            <CardTitle className="text-base">Novo processo</CardTitle>
+            <CardTitle className="text-base">Novo processo judicial</CardTitle>
           </CardHeader>
           <CardContent>
             <form action={createProcessAndRedirect} className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="number">Número</Label>
-                <Input id="number" name="number" required placeholder="0000000-00.0000.0.00.0000" />
+                <Label htmlFor="number">Número CNJ</Label>
+                <Input
+                  id="number"
+                  name="number"
+                  required
+                  placeholder="0000000-00.0000.0.00.0000"
+                  inputMode="numeric"
+                  onBlur={(e) => {
+                    e.currentTarget.value = formatCnj(e.currentTarget.value);
+                  }}
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="title">Título</Label>

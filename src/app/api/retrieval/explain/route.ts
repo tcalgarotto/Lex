@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
 import { spotLegalIssues } from "@/lib/legal/reasoning/issue-spotting";
 import { detectContradictions } from "@/lib/legal/reasoning/contradiction";
@@ -26,7 +26,7 @@ function flag(value: string | null, def: boolean): boolean {
 }
 
 export async function GET(req: Request) {
-  const { workspaceId } = await getWorkspaceContext();
+  const { workspaceId } = await requirePermission("observabilityView");
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
   if (q.length < 2) {

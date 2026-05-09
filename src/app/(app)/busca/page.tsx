@@ -28,6 +28,18 @@ type State =
   | { kind: "empty" }
   | { kind: "error"; message: string };
 
+function labelForType(type: string): string {
+  const t = type.toLowerCase();
+  if (t === "trecho") return "Trecho";
+  if (t === "lei") return "Legislação";
+  if (t === "jurisprudência" || t === "jurisprudencia") return "Jurisprudência";
+  if (t === "peça" || t === "peca") return "Peça";
+  if (t === "documento") return "Documento";
+  if (t === "processo") return "Processo";
+  if (t === "caso") return "Caso";
+  return type;
+}
+
 export default function BuscaPage() {
   const [q, setQ] = useState("");
   const [scope, setScope] = useState<Scope>("tudo");
@@ -154,16 +166,6 @@ export default function BuscaPage() {
                 Abrir fonte oficial
               </a>
             ) : null}
-            {active?.normUrn ? (
-              <code className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
-                {active.normUrn}
-              </code>
-            ) : null}
-            {active?.provider ? (
-              <span className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
-                {active.provider}
-              </span>
-            ) : null}
             <div className="ml-auto">
               <Button size="sm" variant="secondary" onClick={() => void copyCitation()}>
                 Copiar citação
@@ -269,7 +271,7 @@ function ResultItem({ h, onOpen }: { h: SearchHit; onOpen: (h: SearchHit) => voi
       <div className="flex items-start justify-between gap-3">
         <span className="text-sm font-medium">{h.title}</span>
         <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
-          {h.type}
+          {labelForType(h.type)}
         </Badge>
       </div>
       {h.subtitle ? (

@@ -22,11 +22,28 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import type {
   ChecklistField,
   ChecklistSection,
   ChecklistTemplate,
 } from "@/lib/cases/checklists/registry";
+import { listChecklistTemplates } from "@/lib/cases/checklists/registry";
+
+type InterviewTemplateListItem = {
+  id: string;
+  scope: "USER" | "WORKSPACE";
+  title: string;
+  description: string | null;
+  domain: string | null;
+  updatedAt: string;
+};
 
 type ChecklistApiResponse = {
   template: ChecklistTemplate | null;
@@ -59,6 +76,8 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
   const [saving, startSaving] = useTransition();
   const [savedAt, setSavedAt] = useState<string | null>(initial?.answeredAt ?? null);
   const [nextAction, setNextAction] = useState<string | null>(null);
+  const templates = useMemo(() => listChecklistTemplates(), []);
+  const [savedTemplates, setSavedTemplates] = useState<InterviewTemplateListItem[] | null>(null);
 
   useEffect(() => {
     if (initial) return;
@@ -74,6 +93,14 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
       .catch((e) => setErr((e as Error).message))
       .finally(() => setLoading(false));
   }, [caseId, initial]);
+
+  useEffect(() => {
+    // best-effort: carrega modelos salvos (F6). Não quebra se falhar.
+    fetch("/api/interview-templates")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`falha ${r.status}`))))
+      .then((j: { templates: InterviewTemplateListItem[] }) => setSavedTemplates(j.templates ?? []))
+      .catch(() => setSavedTemplates([]));
+  }, []);
 
   const template = data?.template ?? null;
   const missingFields = useMemo(() => {
@@ -128,6 +155,30 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
         setErr((e as Error).message);
       }
     });
+  }
+
+  async function changeTemplate(templateId: string) {
+    try {
+      const staticTpl = templates.find((t) => t.id === templateId) ?? null;
+      let resolved: ChecklistTemplate | null = staticTpl;
+      if (!resolved) {
+        const j = (await fetch(
+          `/api/cases/${caseId}/checklist?templateId=${encodeURIComponent(templateId)}`,
+        ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`falha ${r.status}`))))) as ChecklistApiResponse;
+        resolved = j.template ?? null;
+      }
+
+      setData((prev) => {
+        if (!prev) return prev;
+        return { ...prev, template: resolved ?? prev.template, suggestedTemplate: false };
+      });
+      setAnswers({});
+      setOpenSections(new Set(resolved?.sections.map((s) => s.id) ?? []));
+      setSavedAt(null);
+      setNextAction(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    }
   }
 
   if (loading) {
@@ -185,6 +236,75 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
                 Última atualização: {new Date(savedAt).toLocaleString("pt-BR")}
               </span>
             ) : null}
+            <div className="mt-1">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button type="button" size="sm" variant="outline">
+                    Trocar roteiro
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Escolher roteiro de entrevista</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-2">
+                    {savedTemplates && savedTemplates.length > 0 ? (
+                      <>
+                        <p className="text-xs font-medium text-muted-foreground">Modelos salvos</p>
+                        {savedTemplates.slice(0, 10).map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => void changeTemplate(t.id)}
+                            className="rounded-md border border-white/10 bg-zinc-900/40 p-3 text-left hover:bg-white/5"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium">{t.title}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  {t.scope === "WORKSPACE" ? "Escritório" : "Meu"}{" "}
+                                  {t.domain ? `· ${t.domain}` : ""} · atualizado{" "}
+                                  {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
+                                </p>
+                              </div>
+                              <Badge variant={t.id === template.id ? "default" : "outline"} className="text-[10px]">
+                                {t.id === template.id ? "Atual" : "Selecionar"}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))}
+                        <div className="h-px bg-white/10" />
+                      </>
+                    ) : null}
+
+                    <p className="text-xs font-medium text-muted-foreground">Modelos padrão</p>
+                    {templates.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => void changeTemplate(t.id)}
+                        className="rounded-md border border-white/10 bg-zinc-900/40 p-3 text-left hover:bg-white/5"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{t.label}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {t.area.join(" · ")} · v{t.version}
+                            </p>
+                          </div>
+                          <Badge variant={t.id === template.id ? "default" : "outline"} className="text-[10px]">
+                            {t.id === template.id ? "Atual" : "Selecionar"}
+                          </Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Trocar o roteiro não apaga o caso, mas as respostas desta aba serão reiniciadas para o roteiro selecionado.
+                  </p>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </div>
       </Card>
@@ -331,7 +451,7 @@ function FieldBlock({
         {field.required ? <span className="text-rose-300">*</span> : null}
         {field.blocker ? (
           <Badge variant="outline" className="ml-1 border-rose-500/30 text-[10px] text-rose-200">
-            blocker
+            crítico
           </Badge>
         ) : null}
       </label>
