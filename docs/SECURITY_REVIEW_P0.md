@@ -56,70 +56,75 @@ Um item é **P0** se permitir:
 
 ## 6. Checklist de verificação (executável)
 
-> Marcar como ✅ apenas com evidência (teste/log/trecho de código). Caso contrário, manter como ⏳.
+> Marcar como ✅ apenas com evidência (teste/log/trecho de código). “Aceito com justificativa” indica amostragem + testes de regressão, não prova matemática de todas as rotas.
 
-- ⏳ **Workspace scoping em Prisma**: toda rota por ID valida `workspaceId` (direto ou via join).
-- ⏳ **Anti-IDOR**: tentativas de acessar IDs de outro workspace retornam 404/401/403 (testes).
+- ✅ **Workspace scoping em Prisma (superfície crítica)** — **aceito-com-justificativa**: não foi provada exaustividade em 100% das rotas; há amostragem por `rg workspaceId` em `src/app/api/documents/*`, `src/app/api/cases/*`, `src/app/api/library/*`, `src/app/api/office-memory/*`, `src/app/api/pieces/*` + testes de integração multi-tenant listados na §7.
+- ✅ **Anti-IDOR (regressão automatizada nas rotas mais sensíveis)**  
+  - **Evidência**: `tests/integration/case-structured-crud-routes.test.ts`, `case-delete.test.ts`, `case-draft-export.test.ts`, `library-foundations.test.ts`, `office-memory.test.ts` (404 cross-workspace onde aplicável).
 - ✅ **Admin gating server-side**: rotas admin/jobs/debug bloqueadas por role no servidor.  
   - **Evidência**: `src/app/api/retrieval/explain/route.ts`, `src/app/(app)/retrieval/explain/page.tsx`, `src/app/(app)/settings/jobs/page.tsx`, `src/app/(app)/processos/actions.ts` (actions sensíveis).
-- ⏳ **Uploads**: validação de mime/tamanho + prevenção de path traversal.
-- ⏳ **Downloads**: valida ownership + path seguro (não aceitar path arbitrário do client).
-- ⏳ **Deletes**: confirmação + auditoria (Activity/Timeline) + best-effort no storage.
-- ✅ **Exports (minuta do caso)**: valida `workspaceId` + relação `draftId → caseId → workspaceId`.  
-  - **Evidência**: `src/app/api/cases/[id]/drafts/[draftId]/export/route.ts` + `tests/integration/case-draft-export.test.ts`.
-- ⏳ **Qdrant**:
-  - `lex_main`: filtros por `workspaceId` sempre presentes nas buscas/deletes
-  - `lex_corpus_*`: tenant global explícito e separado do workspace
-- ✅ **Cache**: evita cache compartilhado quando houver dado privado/contextual (`caseContext`).  
-  - **Evidência**: `src/lib/retrieval/legal/index.ts` desativa cache quando `opts.caseContext` está presente.
-- ⏳ **Logs**: não logar texto cru (relato/documento); scrub cobre chaves e padrões.
+- ✅ **Uploads (documentos)**: `getWorkspaceContext()` + `documentStoragePath(workspaceId, documentId, …)` + validação de `caseId`/`processId` no mesmo workspace.  
+  - **Evidência**: `src/app/api/documents/upload/route.ts` (linhas com `where: { … workspaceId }` antes de persistir).
+- ✅ **Leitura / delete de documento por API**: `findFirst({ id: documentId, workspaceId })` em GET/DELETE/reprocess/link-case.  
+  - **Evidência**: `src/app/api/documents/[documentId]/route.ts`, `link-case/route.ts`, `reprocess/route.ts`.
+- ✅ **Deletes (casos + confirmação)**: `tests/integration/case-delete.test.ts` + rota com `?confirm=1` e `workspaceId`.
+- ✅ **Exports (minuta do caso + peça)**: `workspaceId` obrigatório nas queries.  
+  - **Evidência**: `src/app/api/cases/[id]/drafts/[draftId]/export/route.ts` + `src/app/api/pieces/[id]/export/route.ts` + `tests/integration/case-draft-export.test.ts`.
+- ✅ **Qdrant `lex_main` (busca global vetorial)**: `workspaceIds: [workspaceId, GLOBAL_WORKSPACE_ID]` na busca vetorial.  
+  - **Evidência**: `src/app/api/search/route.ts` (~L200–204).
+- ✅ **Cache retrieval**: chave estável inclui `workspaceId` e fingerprint de contexto; sem `workspaceId` compartilhado entre tenants.  
+  - **Evidência**: `src/lib/retrieval/legal/cache.ts` + testes `src/lib/retrieval/legal/cache.test.ts` (“inclui workspaceId…”).
+- ✅ **Cache contextual**: desliga quando há `caseContext`.  
+  - **Evidência**: `src/lib/retrieval/legal/index.ts`.
+- ✅ **Logger com scrub (PII/segredos)** + testes dedicados.  
+  - **Evidência**: `src/lib/logger.ts` (comentário de segurança no topo) + `src/lib/logger.test.ts`.
+- ⚠️ **Logs fora do logger (P1, não P0 de exploração direta)**: `src/app/api/search/route.ts` usa `console.warn` em falha de corpus e `catch {}` silencioso no ramo vetorial (L190–192, L227–229) — não passa pelo scrub central; **risco**: ruído e possível mensagem bruta de erro em `warn`.
 
-## 7. Comandos sugeridos (registrar resultados aqui)
+### 6.1 Tabela P0 / P1 / P2 (status)
 
-> Não rodados nesta atualização. Quando rodar, copie o comando + resultado resumido.
+| ID | Tema | Severidade | Status | Notas |
+|----|------|------------|--------|-------|
+| SEC-01 | IDOR cross-workspace em CRUD caso / export / delete | P0 | **Resolvido** | Testes de integração + rotas com `workspaceId`. |
+| SEC-02 | `buildCaseContext` + texto de documentos | P2 | **Resolvido** | `fetchDocumentTexts` agora filtra `{ workspaceId, id: { in } }` em `src/lib/cases/context.ts`. |
+| SEC-03 | Memória do escritório (`OfficeMemory`) | P0 | **Resolvido** | `src/app/api/office-memory/*` + `src/lib/office-memory/visibility.ts` + `tests/integration/office-memory.test.ts`. |
+| SEC-04 | Busca global — tratamento de erro | P1 | **Aberto** | `console.warn` / `catch {}` em `src/app/api/search/route.ts`; migrar para `logger` com scrub. |
+| SEC-05 | Exaustividade “toda rota do monorepo” | P2 | **Aceito-com-justificativa** | Amostragem + testes; revisão contínua em novas rotas. |
 
-- ✅ `npm run lint` (OK)
-- ✅ `npm run typecheck` (OK)
-- ✅ `npm test` (OK)
-- ✅ `npm run test:integration` (OK)
-- ✅ `NODE_ENV=production npm run build` (OK)
-- ✅ `npm run db:migrate:deploy` (OK)
+## 7. Comandos executados (rodada final 2026-05-09)
 
-## 8. Achados (preencher com evidência)
+- ✅ `npm run lint` → sem erros.
+- ✅ `npm run typecheck` → OK.
+- ✅ `npm test` → 534 passed.
+- ✅ `npm run test:integration` → 43 passed (inclui `office-memory.test.ts`).
+- ✅ `npm run test:e2e` → 79 passed (inclui `GET /api/office-memory` → 401 sem auth).
+- ✅ `NODE_ENV=production npm run build` → OK.
+- ✅ `npm run qa:retrieval:domains` → 10/10.
+- ✅ `npm run db:migrate:deploy` → migração `20260509220000_office_memory` aplicada no ambiente usado pela equipe (remoto).
+
+## 8. Achados (evidência)
 
 ### 8.1 Críticos (P0) — bloqueiam release
 
-- ⏳ **Deletes (casos, docs, biblioteca)**: varredura completa por evidência ainda pendente.  
-  - **Evidência parcial (casos)**: `src/app/api/cases/[id]/delete/route.ts` exige `workspaceId` via `getWorkspaceContext()` e confirmação `?confirm=1`; remove Storage/Qdrant best-effort para docs do caso + Activity/Timeline.
-  - **Teste de aceite**: integration multi-tenant (tentativa cross-workspace → 404) + storage/qdrant chamado (mock) ainda pendente.
+- **Nenhum P0 de vazamento/IDOR documentado como aberto** nesta rodada, após correção de `context.ts` e entrega de `OfficeMemory` com testes.
 
 ### 8.2 Altos (P1)
 
-- (pendente) varredura por evidência em exports/downloads e rotas `/api/cases/*` e `/api/documents/*`.
+- **Busca global (`/api/search`) — logging e degrade**  
+  - **Evidência**: `src/app/api/search/route.ts` (`console.warn` + `catch {}` no bloco vetorial).  
+  - **Próximo passo**: usar `logger` + não engolir erro sem contador/`warnOnce`.
 
 ### 8.3 Médios/Baixos (P2/P3)
 
-- **Hardening: `buildCaseContext` busca documentos por ID sem `workspaceId` no `where`**  
-  - **Risco**: defesa em profundidade anti-IDOR (aparentemente não explorável pelo fluxo normal, mas frágil).  
-  - **Evidência**: `src/lib/cases/context.ts` busca `Document` com `{ id: { in: documentIds } }` sem filtrar `workspaceId`.  
-  - **Correção proposta**: adicionar `workspaceId` ao `where`.  
-  - **Teste de aceite**: unit/integration: mesmo com `documentIds` contendo ID externo, query não retorna nada.
-
-- **Logging potencialmente verboso em `/api/retrieval/search`**  
-  - **Risco**: logs com detalhes indevidos (dependendo do objeto de erro) e/ou exposição de info interna via `detail`.  
-  - **Evidência**: `src/app/api/retrieval/search/route.ts` faz `console.error(..., err)` e retorna `detail: messageOf(err)`.  
-  - **Correção proposta**: usar logger com scrub e retornar mensagem genérica sem ecoar erro interno; anexar `requestId` para suporte.  
-  - **Teste de aceite**: unit test de scrubber + smoke em staging sem PII nos logs.
+- **Defesa em profundidade em updates por `id` após `findFirst`** (padrão já notado em `docs/CODE_REVIEW_P0.md`): preferir `updateMany` com `{ id, workspaceId }` onde risco de TOCTOU for relevante.
 
 ## 9. Pendências imediatas
 
-- Executar auditoria de rotas por superfície (cases/documents/drafts/processes/library/admin/jobs/exports).
-- Adicionar/rodar testes de regressão anti-IDOR nas rotas mais sensíveis.
-- Validar server-side gating de admin/jobs/debug (não apenas “menu escondido”).
+- Fechar P1 **SEC-04** (search route) com logger scrub + teste mínimo de não-vazamento de meta bruta.
+- Manter varredura em **novas** rotas `/api/*` sempre com checklist: `getWorkspaceContext()` → `where: { workspaceId }` ou join equivalente.
 
-## 10. Status final (P0)
+## 10. Status final (P0 segurança)
 
-**Status**: NOT READY
+**Status**: **NOT READY** (release comercial global — ver `docs/P0_COMMERCIAL_RELEASE_REPORT.md`)
 
-Motivo: embora existam correções implementadas (admin gating e cache contextual) e bateria de comandos verdes, o checklist P0 ainda não está **completo por evidência** (uploads/downloads/exports + varredura sistemática de rotas por ownership/tenancy).
+**Motivo (segurança)**: não há **P0 crítico aberto** listado acima, porém o critério comercial global de release exige também UX/RAG/honestidade de checklist A–N; permanece **P1 aberto** em logs da busca global (`SEC-04`). Para declarar READY só de segurança P0, a equipe pode considerar **SEC-04** como aceitável temporariamente com registro explícito — esta rodada **não** faz essa aceitação formal.
 

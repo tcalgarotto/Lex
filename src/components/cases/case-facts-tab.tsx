@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { CaseDataOriginButton } from "@/components/cases/case-data-origin";
+import { parseMetadataJson } from "@/lib/cases/data-origin-meta";
 
 const CATEGORY_TONE: Record<string, string> = {
   data: "border-blue-500/30 text-blue-200 bg-blue-500/5",
@@ -21,8 +23,12 @@ const CATEGORY_TONE: Record<string, string> = {
 type FactMeta = { source?: string; status?: string; confidence?: number };
 
 function readMeta(f: CaseFact): FactMeta {
-  void f;
-  return {};
+  const m = parseMetadataJson(f.metadataJson);
+  return {
+    source: m.source,
+    status: m.status,
+    confidence: m.confidence,
+  };
 }
 
 export function CaseFactsTab({ facts }: { facts: CaseFact[] }) {
@@ -274,7 +280,13 @@ export function CaseFactsTab({ facts }: { facts: CaseFact[] }) {
                         conf {Number(displayConfidence).toFixed(2)}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <CaseDataOriginButton
+                        kind="fact"
+                        metadataJson={f.metadataJson}
+                        confidence={f.confidence}
+                        createdAt={f.createdAt}
+                      />
                       <Button type="button" size="sm" variant="ghost" onClick={() => beginEdit(f)} disabled={isPending}>
                         Editar
                       </Button>

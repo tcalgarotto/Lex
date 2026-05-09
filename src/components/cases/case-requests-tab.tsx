@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { CaseDataOriginButton } from "@/components/cases/case-data-origin";
+import { parseMetadataJson } from "@/lib/cases/data-origin-meta";
 
 const KIND_LABEL: Record<string, { label: string; tone: string }> = {
   MAIN: { label: "Principal", tone: "border-indigo-500/30 text-indigo-200 bg-indigo-500/5" },
@@ -21,9 +23,8 @@ const KIND_LABEL: Record<string, { label: string; tone: string }> = {
 
 type RequestMeta = { source?: string; status?: string; confidence?: number };
 function readMeta(r: CaseRequest): RequestMeta {
-  const m = r.metadataJson as RequestMeta | null | undefined;
-  if (!m || typeof m !== "object") return {};
-  return m;
+  const m = parseMetadataJson(r.metadataJson);
+  return { source: m.source, status: m.status, confidence: m.confidence };
 }
 
 function Select({
@@ -310,7 +311,12 @@ export function CaseRequestsTab({ requests }: { requests: CaseRequest[] }) {
                         conf {Number(displayConfidence).toFixed(2)}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <CaseDataOriginButton
+                        kind="request"
+                        metadataJson={r.metadataJson}
+                        createdAt={r.createdAt}
+                      />
                       <Button type="button" size="sm" variant="ghost" onClick={() => beginEdit(r)} disabled={isPending}>
                         Editar
                       </Button>

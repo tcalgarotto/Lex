@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { CaseDataOriginButton } from "@/components/cases/case-data-origin";
+import { parseMetadataJson } from "@/lib/cases/data-origin-meta";
 
 const SEVERITY_TONE: Record<string, { tone: string; icon: typeof ShieldAlert }> = {
   CRITICAL: { tone: "border-rose-500/40 text-rose-300 bg-rose-500/10", icon: ShieldAlert },
@@ -29,9 +31,8 @@ const KIND_LABEL: Record<string, string> = {
 
 type RiskMeta = { source?: string; status?: string; confidence?: number };
 function readMeta(r: CaseRisk): RiskMeta {
-  const m = r.metadataJson as RiskMeta | null | undefined;
-  if (!m || typeof m !== "object") return {};
-  return m;
+  const m = parseMetadataJson(r.metadataJson);
+  return { source: m.source, status: m.status, confidence: m.confidence };
 }
 
 function Select({
@@ -367,7 +368,12 @@ export function CaseRisksTab({ risks }: { risks: CaseRisk[] }) {
                         conf {Number(displayConfidence).toFixed(2)}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <CaseDataOriginButton
+                        kind="risk"
+                        metadataJson={r.metadataJson}
+                        createdAt={r.createdAt}
+                      />
                       <Button type="button" size="sm" variant="ghost" onClick={() => beginEdit(r)} disabled={isPending}>
                         Editar
                       </Button>
