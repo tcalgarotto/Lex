@@ -10,13 +10,12 @@ import {
   ArrowRight,
   Briefcase,
   CheckCircle2,
+  ClipboardCopy,
   ClipboardList,
   FileText,
-  GitBranch,
-  Activity,
+  Search,
   Shield,
   Sparkles,
-  Upload,
 } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
@@ -31,44 +30,98 @@ const STEPS = [
     title: "Crie um caso",
     href: "/cases/new",
     icon: Briefcase,
-    body: "Cole 1-2 parágrafos com fatos, partes e pedidos. O Lex extrai automaticamente partes (autor/réu, CPF/CNPJ, ente público), fatos numerados, pedidos e tribunal-alvo. Tudo determinístico, sem LLM no caminho crítico.",
+    body: "Use um dos relatos fictícios abaixo. Dê preferência a “Relato livre” para ver extração automática ou “Entrevista guiada” para roteiro estruturado.",
   },
   {
     id: 2,
-    title: "Rode estratégia",
-    href: "/strategy",
-    icon: GitBranch,
-    body: "Cole sua consulta jurídica (ex.: 'boa-fé objetiva art. 422 CC'). Você verá Trust UX overview (confiança, divergência, força argumentativa), Research Engine (teses dominantes, divergências, precedentes líderes), reasoning tree e timeline jurídica.",
+    title: "Estruture o caso",
+    href: "/cases",
+    icon: Sparkles,
+    body: "No caso, revise/edite Partes, Fatos, Pedidos e Riscos (inline). O objetivo é deixar o caso auditável antes de gerar peça.",
   },
   {
     id: 3,
-    title: "Gere a minuta",
+    title: "Pesquise o direito (com fonte)",
     href: "/cases",
-    icon: FileText,
-    body: "No caso criado, clique 'Gerar minuta'. Lex monta peça Markdown estruturada (Endereçamento → Partes → Fatos → Direito → Pedidos → Tutela → Provas → Valor). Cada artigo do 'Direito' é ancorado em chunks normativos do corpus.",
+    icon: Search,
+    body: "Na aba “Pesquisa jurídica” do caso, rode as queries sugeridas. Confirme que cada resultado mostra fonte + trecho e que você consegue salvar fundamento no caso.",
   },
   {
     id: 4,
-    title: "Rode review",
+    title: "Gere a minuta",
     href: "/cases",
-    icon: Shield,
-    body: "Botão 'Rodar review' no caso. Checklist de 8 critérios (estrutura, grounding, pedido principal, urgência, fatos, normas revogadas, divergência, issues abertas) com score 0..1 e veredicto humano.",
+    icon: FileText,
+    body: "Gere a minuta no caso. Confirme que a seção “Do direito” usa apenas fundamentos com fonte/trecho (sem fundamento inventado).",
   },
   {
     id: 5,
-    title: "Visite o cockpit",
-    href: "/cockpit",
-    icon: Activity,
-    body: "Timeline jurídica viva — alertas (mudança jurisprudencial, tese enfraquecida, risco crescente), integrações conectadas e notificações operacionais.",
+    title: "Rode o review",
+    href: "/cases",
+    icon: Shield,
+    body: "Rode o review no caso. Confirme score 0..1 e que reprova: peça sem fonte, placeholders, inconsistências e lacunas relevantes.",
   },
   {
     id: 6,
-    title: "Faça upload de documento",
-    href: "/processos",
-    icon: Upload,
-    body: "Crie um processo, faça upload de PDF (até 50MB). O Lex roda OCR + chunking + embedding em background via Inngest, sem travar a UI.",
+    title: "Exporte (se aplicável)",
+    href: "/editor",
+    icon: ClipboardCopy,
+    body: "No editor/peça, valide ações de export/cópia e confirme que o sistema não promete “pronto para protocolo” quando houver lacunas/risco.",
   },
 ];
+
+const SENTINEL_JOURNEYS = [
+  {
+    id: "creche",
+    label: "Creche (Educação infantil)",
+    relato:
+      "Autora: Ana Silva 111.222.333-44\nRéu: Município X\n\nCriança de 4 anos sem vaga em creche pública. Pedido de matrícula imediata. Urgência por risco de perda de trabalho da mãe e desenvolvimento da criança.",
+    queries: [
+      "vaga em creche direito da criança",
+      "educação infantil em creche dever do Estado art. 208 IV",
+    ],
+    expect: ["Art. 208", "Art. 205", "Art. 227"],
+  },
+  {
+    id: "medicamento",
+    label: "Medicamento (Direito à saúde)",
+    relato:
+      "Autora: Joana 111.222.333-44\nRéu: Estado Y\n\nPaciente com prescrição médica para medicamento de alto custo. SUS negou fornecimento. Pedido de fornecimento imediato com urgência.",
+    queries: ["direito à saúde dever do Estado", "SUS fornecimento de medicamento art 196"],
+    expect: ["Art. 196", "Art. 198"],
+  },
+  {
+    id: "banco",
+    label: "Banco (Consumidor / cobrança indevida)",
+    relato:
+      "Autor: Carlos 111.222.333-44\nRéu: Banco Z\n\nCobrança indevida em cartão de crédito apesar de contestação. Pedido de suspensão da cobrança e indenização.",
+    queries: ["defesa do consumidor constituição", "cobrança indevida relação de consumo fundamentos"],
+    expect: ["Art. 170", "Art. 5"],
+  },
+  {
+    id: "contrato",
+    label: "Contrato (boa-fé / inadimplemento)",
+    relato:
+      "Autor: Maria Souza 111.222.333-44\nRéu: Empresa ABC Ltda\n\nContrato de prestação de serviços. A ré deixou de prestar o serviço. Pedido de rescisão e ressarcimento com urgência para cessar cobrança.",
+    queries: ["ato jurídico perfeito direito adquirido", "boa-fé objetiva contrato (base constitucional)"],
+    expect: ["Art. 5"],
+  },
+  {
+    id: "concurso",
+    label: "Concurso (Administração Pública)",
+    relato:
+      "Autor: Pedro 111.222.333-44\nRéu: Estado/Órgão Público\n\nCandidato aprovado dentro das vagas. Administração não nomeou. Pedido de nomeação e posse.",
+    queries: ["concurso público princípios da administração pública", "legalidade impessoalidade moralidade publicidade eficiência art 37"],
+    expect: ["Art. 37"],
+  },
+  {
+    id: "locacao",
+    label: "Locação (Moradia / mínimo existencial)",
+    relato:
+      "Autora: Paula 111.222.333-44\nRéu: Locador\n\nAmeaça de despejo e discussão sobre pagamentos. Pedido de tutela para manter posse até decisão.",
+    queries: ["direitos sociais moradia art 6", "acesso à justiça lesão ou ameaça a direito art 5"],
+    expect: ["Art. 6", "Art. 5"],
+  },
+] as const;
 
 const QUESTIONS = [
   "O que ficou claro? Quais partes da UI fazem sentido sem explicação?",
@@ -92,19 +145,18 @@ export default async function TestGuidePage() {
             <ClipboardList className="size-3.5" /> Primeiro teste com advogado
           </div>
           <h1 className="text-2xl font-semibold leading-tight">
-            Bem-vindo ao Lex — copiloto jurídico operacional
+            Como testar o Lex (P0 comercial)
           </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Esse roteiro guia 6 passos de avaliação real. Tudo o que o Lex faz é
-            explicável: cada resposta carrega URNs, chunks e traceIds para auditar.
-            <strong className="text-foreground"> Não substitui revisão humana </strong>—
-            toda minuta exige conferência antes de protocolo.
+            Use as 6 jornadas sentinela (abaixo) para validar o fluxo caso-cêntrico de ponta a ponta:
+            caso → estrutura editável → pesquisa jurídica com fonte → minuta → review → export.
+            <strong className="text-foreground"> AI_REASONING ≠ LEGAL_TRUTH.</strong> Base ausente deve virar lacuna explícita.
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">Auditável</Badge>
             <Badge variant="outline">Multi-tenant</Badge>
             <Badge variant="outline">Determinístico</Badge>
-            <Badge variant="outline">Sem agente autônomo</Badge>
+            <Badge variant="outline">Sem fundamento inventado</Badge>
           </div>
         </header>
 
@@ -119,7 +171,7 @@ export default async function TestGuidePage() {
 
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="size-3.5" /> 6 passos
+            <Sparkles className="size-3.5" /> 6 passos (fluxo)
           </h2>
           <ol className="space-y-3">
             {STEPS.map((s) => (
@@ -147,6 +199,40 @@ export default async function TestGuidePage() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            <ClipboardCopy className="size-3.5" /> 6 jornadas sentinela (copie e cole)
+          </h2>
+          <div className="grid gap-3">
+            {SENTINEL_JOURNEYS.map((j) => (
+              <Card key={j.id} className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{j.label}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Queries sugeridas: {j.queries.join(" · ")} · Esperado: {j.expect.join(", ")}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(j.relato);
+                    }}
+                  >
+                    <ClipboardCopy className="mr-2 size-4" />
+                    Copiar relato
+                  </Button>
+                </div>
+                <pre className="mt-3 whitespace-pre-wrap rounded-md border border-white/10 bg-zinc-950/40 p-3 text-xs text-muted-foreground">
+                  {j.relato}
+                </pre>
+              </Card>
+            ))}
+          </div>
         </section>
 
         <section className="space-y-3">
