@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, Plus, FileText, ShieldAlert } from "lucide-react";
-import type { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
+import { CaseCardActions } from "@/components/cases/case-card-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -75,9 +75,7 @@ export default async function CasesListPage({ searchParams }: { searchParams?: P
   );
 }
 
-type CaseRow = Prisma.CaseGetPayload<{
-  include: { _count: { select: { facts: true; requests: true; risks: true; drafts: true } } };
-}>;
+type CaseRow = Awaited<ReturnType<typeof listCases>>[number];
 
 function CaseCard({ c }: { c: CaseRow }) {
   return (
@@ -100,13 +98,16 @@ function CaseCard({ c }: { c: CaseRow }) {
             <p className="line-clamp-2 text-xs text-muted-foreground">{c.summary}</p>
           ) : null}
         </div>
-        <Link
-          href={`/cases/${c.id}`}
-          aria-label={`Abrir caso ${c.title}`}
-          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <ArrowRight className="size-4" />
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/cases/${c.id}`}
+            aria-label={`Abrir caso ${c.title}`}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ArrowRight className="size-4" />
+          </Link>
+          <CaseCardActions caseId={c.id} caseTitle={c.title} archived={Boolean(c.archivedAt)} />
+        </div>
       </div>
       <dl className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-muted-foreground">
         <Stat label="Fatos" value={c._count.facts} />
