@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProcessVirtualList } from "@/components/processes/process-virtual-list";
 import { createProcessAndRedirect } from "@/app/(app)/processos/actions";
-import { formatCnj } from "@/lib/cnj";
+import { CnjInput } from "@/components/processes/cnj-input";
 
 export default async function ProcessosPage({
   searchParams,
@@ -50,15 +50,12 @@ export default async function ProcessosPage({
             <form action={createProcessAndRedirect} className="space-y-3">
               <div className="space-y-1">
                 <Label htmlFor="number">Número CNJ</Label>
-                <Input
+                <CnjInput
                   id="number"
                   name="number"
                   required
                   placeholder="0000000-00.0000.0.00.0000"
                   inputMode="numeric"
-                  onBlur={(e) => {
-                    e.currentTarget.value = formatCnj(e.currentTarget.value);
-                  }}
                 />
               </div>
               <div className="space-y-1">
