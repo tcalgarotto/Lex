@@ -97,5 +97,5 @@
 ## 12. Pull Request
 
 - **Branch**: `p0-commercial-sprint-2026-05-09`
-- **URL de comparação (após push)**: `https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09`
-- **PR**: criar com `gh pr create` após o commit desta rodada (número do PR preenchido no GitHub após criação).
+- **PR #10**: https://github.com/tcalgarotto/Lex/pull/10
+- **Compare**: https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09
