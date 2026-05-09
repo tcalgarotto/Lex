@@ -116,6 +116,7 @@
     "@types/node": "^22.15.17",
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
+    "@vercel/analytics": "^2.0.1",
     "ai": "^4.3.16",
     "autoprefixer": "^10.4.21",
     "cheerio": "^1.2.0",

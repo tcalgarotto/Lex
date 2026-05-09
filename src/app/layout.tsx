@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${mono.variable} min-h-screen font-sans antialiased`}>
         <Providers>{children}</Providers>
         <Toaster richColors theme="dark" position="top-center" />
+        <Analytics />
       </body>
     </html>
   );
