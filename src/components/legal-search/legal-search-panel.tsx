@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Loader2, AlertTriangle, Pin } from "lucide-react";
+import { Search, Loader2, AlertTriangle, Pin, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface SearchBase {
   key: string;
@@ -181,9 +182,11 @@ function Body({
 }) {
   if (state.kind === "idle") {
     return (
-      <Card className="p-6 text-center text-sm text-muted-foreground">
-        Pesquise por artigo, tema ou fundamento jurídico.
-      </Card>
+      <EmptyState
+        icon={<BookOpen className="size-5" />}
+        title="Pesquise legislação e fundamentos"
+        description="Digite um artigo, tema ou trecho jurídico. Exemplos: devido processo legal, art. 5º LV, contraditório, ampla defesa."
+      />
     );
   }
   if (state.kind === "loading") {
@@ -206,12 +209,11 @@ function Body({
   }
   if (state.kind === "empty") {
     return (
-      <Card className="p-6 text-center text-sm">
-        <p>Nenhum resultado encontrado.</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Tente outro termo, simplifique a query ou troque o escopo da busca.
-        </p>
-      </Card>
+      <EmptyState
+        icon={<Search className="size-5" />}
+        title="Nenhum resultado encontrado"
+        description="Tente outro termo, simplifique a busca ou troque o escopo. A base disponível inclui Constituição Federal e ADCT."
+      />
     );
   }
 

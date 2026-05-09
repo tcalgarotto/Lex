@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ScrollText, Sparkles } from "lucide-react";
+import { ScrollText } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -42,18 +42,13 @@ export default async function PiecesIndexPage() {
         </header>
 
         {pieces.length === 0 ? (
-          <Card className="p-10 text-center">
-            <ScrollText className="mx-auto mb-2 size-6 text-violet-300" />
-            <p className="text-base font-medium">Nenhuma peça gerada ainda</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Crie um caso, envie documentos e gere a estratégia para começar.
-            </p>
-            <Button asChild className="mt-4" size="sm">
-              <Link href="/cases">
-                <Sparkles className="mr-1 size-3" /> Ir para Casos
-              </Link>
-            </Button>
-          </Card>
+          <EmptyState
+            icon={<ScrollText className="size-5" />}
+            title="Nenhuma peça gerada ainda"
+            description="Crie um caso, envie documentos e gere a estratégia para começar a redação."
+            action={{ label: "Ir para Casos", href: "/cases" }}
+            fullHeight
+          />
         ) : (
           <ul className="space-y-2">
             {pieces.map((p) => (

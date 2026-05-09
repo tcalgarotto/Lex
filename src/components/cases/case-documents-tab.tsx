@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, RefreshCcw, Unlink } from "lucide-react";
+import { ExternalLink, FileText, RefreshCcw, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   deriveDocumentDisplayStatus,
   type DocumentDisplayKind,
@@ -69,22 +70,20 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
 
   if (documents.length === 0) {
     return (
-      <div className="space-y-4">
-        <Card className="p-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Nenhum documento vinculado a este caso ainda.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Envie uma petição, despacho, contrato ou prova para começar.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <DocumentUploadButton caseId={caseId} label="Enviar documento para este caso" />
-            <Button asChild variant="ghost" size="sm">
-              <Link href={`/documentos?unlinked=1`}>Vincular existente</Link>
-            </Button>
-          </div>
-        </Card>
-      </div>
+      <EmptyState
+        icon={<FileText className="size-5" />}
+        title="Nenhum documento neste caso"
+        description="Envie uma petição, despacho, contrato ou prova — ou vincule um documento que já está no escritório."
+        secondaryAction={{
+          label: "Vincular existente",
+          href: "/documentos?unlinked=1",
+          variant: "outline",
+        }}
+      >
+        <div className="mt-4 flex justify-center">
+          <DocumentUploadButton caseId={caseId} label="Enviar documento para este caso" />
+        </div>
+      </EmptyState>
     );
   }
 

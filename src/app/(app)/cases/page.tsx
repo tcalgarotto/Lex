@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { listCases } from "@/lib/cases/repository";
 
@@ -45,7 +46,13 @@ export default async function CasesListPage() {
         </header>
 
         {cases.length === 0 ? (
-          <EmptyState />
+          <EmptyState
+            icon={<FileText className="size-5" />}
+            title="Nenhum caso ainda"
+            description="Cole o relato do cliente e o Lex extrai partes, fatos, pedidos, riscos e a estratégia inicial."
+            action={{ label: "Criar primeiro caso", href: "/cases/new" }}
+            fullHeight
+          />
         ) : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {cases.map((c) => (
@@ -55,25 +62,6 @@ export default async function CasesListPage() {
         )}
       </div>
     </AppShell>
-  );
-}
-
-function EmptyState() {
-  return (
-    <Card className="flex flex-col items-center gap-3 p-8 text-center">
-      <FileText className="size-8 text-muted-foreground" />
-      <div className="space-y-1">
-        <h3 className="font-medium">Nenhum caso ainda</h3>
-        <p className="text-sm text-muted-foreground">
-          Cole o relato do cliente e o Lex extrai partes, fatos, pedidos, riscos e a estratégia inicial.
-        </p>
-      </div>
-      <Button asChild>
-        <Link href="/cases/new" className="inline-flex items-center gap-2">
-          <Plus className="size-4" /> Criar primeiro caso
-        </Link>
-      </Button>
-    </Card>
   );
 }
 

@@ -1,178 +1,207 @@
 # UX Flow Audit — Lex (Caso-centric)
 
-> Documento vivo de auditoria do fluxo UX do Lex. Atualizado em **2026-05-08 (P1 + Hotfix Gemini)**.
+> Documento vivo da auditoria UX do Lex. Última revisão: **2026-05-08 — P0 + P1 + P2 + Hotfix Gemini**.
 
-## 1. Visão geral
+## 1. Diagnóstico
 
-Lex foi reposicionado como uma plataforma jurídica centrada no objeto `Caso`. A jornada
-oficial passa a ser:
+O Lex acumulou módulos técnicos avançados (RAG nacional, ingest pipeline, integrações com tribunais, cockpit, retrieval explicável, editor de peças, cases workflow), mas a UX estava fragmentada:
 
-```
-Criar/abrir caso  →  Enviar documentos  →  Acompanhar processamento
-        →  Ver fatos/partes/pedidos/riscos  →  Pesquisar legislação (RAG)
-        →  Gerar estratégia  →  Gerar peça  →  Revisar/exportar
-```
+- 31 rotas funcionais com nomenclatura técnica (`/retrieval`, `/cockpit`, `/biblioteca`, `/strategy`, `/jobs`).
+- Nenhum **objeto central** unificando a jornada — `Process`, `Document`, `Case`, `LegalPiece`, `LegalNorm` viviam em silos.
+- Documentos travados em `PARSING`/`CHUNKING`/`EMBEDDING` apareciam como "em processamento" indefinidamente.
+- Buscas globais retornavam vazio sem feedback (4 estados ausentes).
+- Sidebar misturava operação real (Casos) com debug interno (Retrieval, Jobs IA).
+- O usuário advogado não tinha um caminho claro: "criar caso → enviar documentos → pesquisar direito → gerar estratégia → gerar peça".
 
-Este documento registra:
+**Decisão estrutural:** o objeto **`Caso`** vira o centro da experiência, sem migração destrutiva e sem quebrar `/processos` legado.
 
-- O que foi entregue em **P0** e **P1**.
-- Os bloqueios encontrados pela auditoria independente do Gemini (2026-05-08).
-- As correções aplicadas (causa raiz, arquivos, comandos, resultados).
-- O status final de release.
+## 2. Rotas mapeadas (antes × depois)
 
-## 2. P0 — Estabilizar a jornada mínima (concluído)
-
-| Item | Status | Detalhes |
+| Categoria | Antes | Depois |
 | --- | --- | --- |
-| `/biblioteca` redirect | ✅ | redirect puro para `/pesquisa-juridica?scope=legislacao` (`src/app/(app)/biblioteca/page.tsx` + `error.tsx`). |
-| Migration `add_case_relations` | ✅ | `Case.processId?`, `Document.caseId?`, `CaseLegalSource`. Aplicada com `prisma migrate deploy` (não destrutiva). |
-| `deriveDocumentDisplayStatus` + travados | ✅ | PT-BR, status `Travado` derivado em runtime via `updatedAt` (15min PARSING/CHUNKING, 20min EMBEDDING). |
-| Reprocess seguro | ✅ | Limpa só `DocumentChunk` do doc + pontos `lex_main` filtrados por `documentId` + `workspaceId`. **Nunca toca `lex_corpus_norms`.** |
-| `/cases/[id]` em 6 abas | ✅ | Visão geral · Documentos · Fatos & Partes · Pesquisa jurídica · Estratégia & Peças · Atividade. |
-| `/documentos` | ✅ | Lista do workspace com status, caso vinculado, ações reprocessar/vincular/abrir. |
-| `/api/documents/[id]/link-case` | ✅ | POST para vincular/desvincular doc → caso. |
-| `/pesquisa-juridica` + `/api/retrieval/search` | ✅ | UI amigável + endpoint sem métricas técnicas. |
-| `/busca` com 4 estados | ✅ | loading · empty · no-results · error. Filtros de escopo. |
+| **Centro da jornada** | `/processos` (técnico, primeiro item) | `/cases` (primeiro item) · `/cases/[id]` em 6 abas |
+| **Documentos do escritório** | espalhados em `/processos/[id]/documentos` | `/documentos` (lista única) + integração no caso |
+| **Pesquisa jurídica** | `/biblioteca` (catálogo bruto) + `/retrieval` (debug) | `/pesquisa-juridica` (UI amigável) |
+| **Peças** | `/editor/[id]` direto | `/editor` (índice) → `/editor/[id]` |
+| **Busca global** | `/busca` retornando array vazio | `/busca` agregada (Workspace + Legal) com 4 estados |
+| **Legado preservado** | — | `/processos`, `/strategy`, `/cockpit`, `/retrieval/explain` continuam funcionais (em "Avançado") |
+| **Redirects** | — | `/biblioteca` → `/pesquisa-juridica?scope=legislacao` · `/retrieval` → `/pesquisa-juridica` |
 
-## 3. P1 — Polish da jornada (concluído)
+## 3. Problemas identificados (12)
 
-| Item | Status | Detalhes |
-| --- | --- | --- |
-| Sidebar refatorada | ✅ | Primary: Início, Casos, Documentos, Pesquisa jurídica, Peças, Processamentos, Equipe, Configurações. Avançado colapsável: Cockpit, Laboratório, Retrieval (debug), Jobs IA, Admin, Guia. |
-| Página `/editor` index | ✅ | Lista `LegalPiece` do workspace com link para `/editor/[pieceId]`. |
-| Dashboard "Próximas ações" | ✅ | `src/lib/dashboard/next-actions.ts` + `NextActionsCard`. 6 categorias (travados, sem caso, casos sem estratégia, peças em rascunho, base disponível, etc.). |
-| Upload com `caseId` | ✅ | `/api/documents/upload` aceita `caseId` opcional + valida workspace. `DocumentUploadButton` reutilizável. |
-| `/cases/[id]` polido | ✅ | Visão geral com próximos passos clicáveis (`onGoToTab`), pesquisa embutida, checklist de estratégia, ações pinar/desafixar fundamento. |
-| `/api/cases/[id]/legal-sources` | ✅ | POST/GET/DELETE. Idempotente via `P2002`. |
+1. `/biblioteca` confundia legislação oficial com documentos do usuário.
+2. Nenhuma rota explícita para "documentos do escritório".
+3. Documentos travados não eram detectáveis pela UI.
+4. Reprocesso podia teoricamente apagar pontos do corpus oficial (Qdrant).
+5. `Case` não tinha vínculo com `Process` legado nem com `Document`.
+6. `/cases/[id]` tinha 11 abas técnicas (drift de escopo).
+7. `/busca` retornava vazio silenciosamente.
+8. Sidebar misturava ferramentas de admin/dev com produto.
+9. Dashboard sem "próximas ações" — só mostrava métricas técnicas.
+10. Upload exigia passar por `/processos` mesmo quando o usuário já estava no contexto de caso.
+11. Pesquisa jurídica sem forma de "pinar" um fundamento ao caso.
+12. Sem `not-found` específico do app — usuário caía em página crua.
 
-## 4. Auditoria independente Gemini (2026-05-08)
+## 4. Decisões tomadas
 
-Resumo do `docs/reports/GEMINI_FULL_AUDIT_2026_05_08.md`:
-
-- **Nota geral:** 8.5/10
-- **Pontos fortes:** Multi-tenancy, RAG (15/15 QA), pipeline de ingest robusto, separação corpus oficial vs. workspace.
-- **Bloqueios P0:**
-  1. `npm test` falhando em `src/lib/parsers/extract-text.test.ts` (esperado `PDF_NO_TEXT`, recebido `OCR_NOT_AVAILABLE`) + unhandled error do `tesseract.js` worker.
-  2. `NODE_ENV=production npm run build` falhando com `ENOENT: no such file or directory, rename .next/export/500.html -> .next/server/pages/500.html`.
-- **Itens P1/P2 reportados:** jargão técnico no front (Retrieval/Grounding/Sparse/Dense), sidebar `Processamentos` vs título `Processos`, enums sem tradução, `CaseLegalSource` sem `workspaceId` direto. **Não tratados nesta rodada por escopo (sem novas features, sem corpus, sem RAG).**
-
-## 5. Hotfix Gemini — Correções aplicadas
-
-### 5.1 Causa raiz do teste PDF/OCR
-
-`src/lib/parsers/extract-text.ts` decidia se OCR estava ativo apenas com base em
-`process.env.OCR_PROVIDER`. O `.env` local do projeto (e o ambiente do Gemini)
-tinha `OCR_PROVIDER=tesseract` exportado, então:
-
-1. Em teste, o blank.pdf não tem texto → cai no caminho de OCR.
-2. `tesseract.js` é invocado com um buffer de PDF (não-imagem) → retorna
-   `Error attempting to read image` em um Worker assíncrono.
-3. `extractPdfText` captura via `try/catch` e lança `OCR_NOT_AVAILABLE`.
-4. O Worker do Tesseract emite o erro **depois** que a Promise principal já
-   resolveu, gerando um *unhandled error* que vaza para o vitest.
-
-Resultado: `extract-text.test.ts` esperando `PDF_NO_TEXT` recebia
-`OCR_NOT_AVAILABLE` quando o ambiente exportava `OCR_PROVIDER`.
-
-#### Correção
-
-`src/lib/parsers/extract-text.ts`:
-
-- OCR fica explicitamente desabilitado em `NODE_ENV=test` ou `VITEST=true`,
-  independentemente de `OCR_PROVIDER`. Em produção, comportamento permanece
-  inalterado.
-- Quem precisar testar o caminho de OCR mocka `tesseract.js` diretamente.
-
-```ts
-const ocrProviderRaw = String(process.env["OCR_PROVIDER"] ?? "").toLowerCase();
-const isTestEnv = process.env["NODE_ENV"] === "test" || process.env["VITEST"] === "true";
-const ocrEnabled = ocrProviderRaw === "tesseract" && !isTestEnv;
-```
-
-Verificação:
-
-```bash
-OCR_PROVIDER=tesseract npm test -- src/lib/parsers/extract-text.test.ts  # ✅ 6/6
-OCR_PROVIDER=tesseract npm test                                          # ✅ 482/482
-```
-
-### 5.2 Causa raiz do build `ENOENT 500.html`
-
-O Next 15.3 com `output: "standalone"` move artefatos de
-`.next/export/<page>.html` → `.next/server/pages/<page>.html` ao final da fase
-de geração estática. Quando o diretório `.next` já contém **resíduo de uma
-build anterior** (build interrompida, mistura de `dev` + `build`, ou pasta
-`.next/export` órfã), o rename falha com `ENOENT` porque o arquivo de origem
-já foi consumido — ou não foi recriado.
-
-Esse comportamento **não reproduz num diretório limpo**: nas 3 builds locais
-após `rm -rf .next` o ENOENT nunca apareceu e `500.html` ficou em
-`.next/server/pages/500.html` como esperado.
-
-#### Correção
-
-`package.json`:
-
-- Novo script `clean` que remove `.next` de forma idempotente.
-- `build` passa a chamar `npm run clean` antes de `prisma generate && next build`.
-  Garante build determinístico em CI/Vercel sem mascarar problema real (o
-  fix é apenas higiene de cache, não desativa lint/typecheck/etc.).
-
-```json
-"clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
-"build": "npm run clean && prisma generate && next build",
-```
-
-Verificação:
-
-```bash
-rm -rf .next && NODE_ENV=production npm run build  # ✅ build OK
-ls .next/server/pages/500.html                     # ✅ presente
-ls .next/export                                    # ✅ não existe (consumido)
-```
-
-### 5.3 Higiene adicional
-
-- `.gitignore`: adicionado `*.traineddata` (artefatos de Tesseract baixados em
-  runtime/CI não devem entrar no repo).
-
-## 6. Validação completa
-
-| Comando | Resultado |
+| Decisão | Motivo |
 | --- | --- |
-| `npm run lint` | ✅ No ESLint warnings or errors |
-| `npm run typecheck` | ✅ tsc clean |
-| `OCR_PROVIDER=tesseract npm test` | ✅ 482/482 (66 files) |
-| `npm run test:integration` | ✅ 25/25 (4 files) |
-| `NODE_ENV=production npm run build` | ✅ build limpo, 500.html no lugar |
+| `Case.processId? @unique` (1:1 opcional) | Ponte leve com `Process`, sem migração destrutiva. |
+| `Document.caseId?` + `@@index([caseId])` | Vínculo opcional sem quebrar `Process.documents`. |
+| Nova tabela `CaseLegalSource` | Persiste fundamentos pinados em pesquisa do caso. |
+| `/biblioteca` → redirect | Catálogo bruto não é caminho do usuário. |
+| `/cases/[id]` em **6 abas** (não 11) | Escopo enxuto; tabs internas reagrupadas. |
+| Status `Travado` derivado em runtime | Sem alterar enum `DocumentStatus` em prod. |
+| Reprocess Qdrant com filtro **estrito** (`lex_main` + `documentId` + `workspaceId`) | Garantia: nunca tocar `lex_corpus_norms`. |
+| OCR desligado em `NODE_ENV=test` | Testes determinísticos sem depender de `.env` local. |
+| `npm run build` chama `clean` antes | Resolve bug do Next 15.3 com `output:standalone` em builds incrementais sujos. |
 
-## 7. Status final
+## 5. Novo menu (Sidebar)
 
-- **Bloqueios Gemini (2):** corrigidos.
-- **Build de produção:** verde.
-- **Suíte unit + integration:** verde mesmo com `OCR_PROVIDER=tesseract`.
-- **Sem novas features**, sem alteração no corpus, sem alteração no pipeline RAG constitucional.
+### Primário
+1. **Início** (`/dashboard`)
+2. **Casos** (`/cases`)
+3. **Documentos** (`/documentos`)
+4. **Pesquisa jurídica** (`/pesquisa-juridica`)
+5. **Peças** (`/editor`)
+6. **Processamentos** (`/processos`)
+7. **Equipe** (`/settings/team`)
+8. **Configurações** (`/settings/perfil`)
 
-**Release ready: SIM** para o escopo P0+P1 + hotfix.
+### Avançado (colapsável)
+- Cockpit operacional (`/cockpit`)
+- Laboratório de estratégia (`/strategy`)
+- Retrieval (debug) (`/retrieval/explain`)
+- Jobs IA (`/settings/jobs`)
+- Administração (`/settings/admin`)
+- Guia de teste (`/test-guide`)
 
-### Pendências P2 (não tratadas nesta rodada — fora de escopo)
+## 6. Novo fluxo
 
-1. Substituir jargão técnico restante no front (Retrieval/Grounding/Sparse/
-   Dense/Intent/Cockpit/Pinado).
-2. Mapeadores de enum em PT-BR (`NormKind`, `CaseStatus`, `IntegrationStatus`,
-   `DocumentStatus`).
-3. Sincronizar rótulo da sidebar com título da página em `/processos`.
-4. Adicionar `workspaceId` em `CaseLegalSource` (defesa em profundidade).
-5. Avaliar paralelização do `/api/search` para reduzir os ~3s de latência
-   percebida em buscas globais.
-6. Empty states padronizados (`src/components/ui/empty-state.tsx`) e
-   `src/app/(app)/not-found.tsx`.
-7. Playwright `tests/e2e/ux-flow.spec.ts` cobrindo a jornada caso → upload →
-   pesquisa → estratégia → peça.
+```mermaid
+flowchart LR
+  Init[Início] --> Cases[Casos]
+  Cases --> CaseId[Caso X]
+  Docs[Documentos] -. vincular .-> CaseId
+  CaseId --> CaseDocs[Aba Documentos]
+  CaseId --> CaseFatos[Aba Fatos & Partes]
+  CaseId --> CaseResearch[Aba Pesquisa jurídica]
+  CaseResearch -. usar no caso .-> Pinned[CaseLegalSource]
+  CaseId --> CaseEst[Aba Estratégia & Peças]
+  CaseEst --> Editor[/editor/pieceId]
+  Init -. próximas ações .-> Travados[Documentos travados]
+  Init -. próximas ações .-> SemCase[Documentos sem caso]
+  Init -. próximas ações .-> SemEstrategia[Casos sem estratégia]
+```
 
-### Próximos passos recomendados
+**Jornada-tipo do advogado:**
 
-1. **Commit + push** das mudanças P0+P1+hotfix na main.
-2. Abrir P2 como nova rodada com foco exclusivo em terminologia/empty
-   states/e2e (sem mexer em RAG ou corpus).
-3. Manter `qa:search:legal` como gate de regressão antes de qualquer release.
+1. Vai em **Casos**, cria ou abre um caso.
+2. Em **Documentos** do caso, envia uma petição ou contrato (ou vincula um doc já no escritório).
+3. Acompanha o processamento (status display em PT-BR; alerta "Travado" se passar do threshold).
+4. Em **Fatos & Partes**, vê o intake estruturado (extraído via `intake.ts`, sem LLM no caminho crítico).
+5. Em **Pesquisa jurídica** do caso, busca legislação (CF, ADCT) e clica em **"Usar no caso"** para pinar fundamentos.
+6. Em **Estratégia & Peças**, dispara `/api/strategy/analyze` (já existente, aceita `caseId`) e gera minuta `LegalPiece`.
+7. Em **Atividade**, audita timeline (`CaseTimelineEvent`).
+
+## 7. Correções e entregas
+
+### P0 — Estabilizar a jornada mínima (9/9 ✅)
+- `/biblioteca` → redirect.
+- Migration `add_case_relations` (não destrutiva).
+- `deriveDocumentDisplayStatus` + `findStalledDocuments`.
+- Reprocess Qdrant com filtro estrito.
+- `/cases/[id]` em 6 abas.
+- `/documentos` (lista do workspace).
+- `/api/documents/[id]/link-case` (POST).
+- `/pesquisa-juridica` + `/api/retrieval/search` + `LegalSearchPanel`.
+- `/busca` com 4 estados (loading · empty · no-results · error).
+
+### P1 — Polish da jornada (5/5 ✅)
+- Sidebar refatorada (Primary + Avançado colapsável).
+- `/retrieval` → redirect para `/pesquisa-juridica` (`/retrieval/explain` continua admin).
+- Dashboard "Próximas ações" (6 categorias).
+- `/api/documents/upload` aceita `caseId`. `DocumentUploadButton` reutilizável.
+- `/api/cases/[id]/legal-sources` (POST/GET/DELETE).
+
+### P2 — Documentação e robustez (concluído)
+- `EmptyState` componente em `src/components/ui/empty-state.tsx` aplicado em `/cases`, `/documentos`, `/editor`, `/pesquisa-juridica` e nas tabs vazias do caso.
+- `(app)/not-found.tsx` com atalhos para Casos, Documentos e Pesquisa.
+- Este `UX_FLOW_AUDIT.md` (11 seções) + atualização do README com fluxo caso-cêntrico.
+- `tests/e2e/ux-flow.spec.ts` cobrindo as rotas principais sem auth.
+
+### Hotfix Gemini (auditoria 2026-05-08)
+- `extract-text.ts` desliga OCR em `NODE_ENV=test`/`VITEST=true`.
+- `package.json` ganha `clean` + `build` defensivo.
+- `.gitignore` para `*.traineddata` e `.cursor/plans/`.
+
+## 8. Redirects
+
+| De | Para | Tipo |
+| --- | --- | --- |
+| `/biblioteca` | `/pesquisa-juridica?scope=legislacao` | `redirect()` Server |
+| `/retrieval` | `/pesquisa-juridica` | `redirect()` Server |
+
+`/processos`, `/strategy`, `/cockpit`, `/retrieval/explain` permanecem **funcionais** (acessados via menu Avançado ou URL direta).
+
+## 9. Pendências e dívida técnica
+
+| Item | Severidade | Notas |
+| --- | --- | --- |
+| Substituir jargão restante (Retrieval/Grounding/Sparse/Dense/Intent/Cockpit/Pinado) | P2 | Audit Gemini sec. 6.3. |
+| Mapeadores PT-BR para enums (`NormKind`, `CaseStatus`, `IntegrationStatus`, `DocumentStatus`) | P2 | Pendente. |
+| Sincronizar rótulo da sidebar com título de página em `/processos` | P3 | Inconsistência menor. |
+| `workspaceId` direto em `CaseLegalSource` | P2 | Defesa em profundidade; hoje é via `case.workspaceId`. |
+| Otimizar `/api/search` (debounce/paralelização) | P2 | ~3s perceptível. |
+| `Document.caseId` sem `onDelete: Cascade` | P3 | Apontado no audit. Aceitável (preserva docs órfãos). |
+| Sidebar gating server-side por `MembershipRole` | P3 | Hoje é só visual; itens "dev" continuam acessíveis por URL. |
+| `src/lib/navigation.ts` dedicado | P3 | Hoje config inline em `app-sidebar.tsx`. |
+
+## 10. Riscos técnicos
+
+- **Migration em prod**: aplicada com `prisma migrate deploy` em Supabase. `Document` pode ter volume; índice criado em background suportado pelo Postgres.
+- **Reprocess Qdrant**: usa `documentId` indexado em `lex_main`. Verificar antes de cada deploy.
+- **`/api/search` performance**: `retrieveLegalContext` adiciona ~3s cold (warm 6ms). Cache LRU + Redis já implementado (chave inclui `corpusContentHash`).
+- **`CaseLegalSource`**: cascade delete + workspace scoping (validado via `case.workspaceId` no endpoint).
+- **OCR opcional**: produção mantém `OCR_PROVIDER=tesseract` opcional; tests sempre com OCR desligado.
+- **Build Next 15.3**: bug com `output:standalone` em builds incrementais mitigado pelo `clean` no `npm run build`.
+
+## 11. Como testar
+
+### Automação
+```bash
+npm run lint                       # ESLint clean
+npm run typecheck                  # tsc --noEmit
+OCR_PROVIDER=tesseract npm test    # 482/482 (66 files)
+npm run test:integration           # 25/25 (4 files)
+NODE_ENV=production npm run build  # build clean, 500.html no destino
+npm run test:e2e -- tests/e2e/02-auth-redirects.spec.ts  # 13/13
+npm run test:e2e -- tests/e2e/ux-flow.spec.ts            # cobre rotas centrais
+npm run qa:search:legal            # 15/15 QA jurídico
+```
+
+### QA manual (smoke da jornada caso-cêntrica)
+
+1. Login.
+2. **Casos** → criar caso novo.
+3. **Aba Documentos** → enviar PDF de petição. Acompanhar status (Enviado → Extraindo texto → ... → Pronto para busca).
+4. Se travar 15+ min → status muda para "Travado". Botão "Reprocessar" funciona.
+5. **Aba Fatos & Partes** → ver intake estruturado.
+6. **Aba Pesquisa jurídica** → buscar "devido processo legal". Clicar em "Usar no caso" no resultado relevante.
+7. Voltar à aba — fundamento pinado aparece.
+8. **Aba Estratégia & Peças** → checklist mostra próximos passos. Gerar minuta.
+9. **Aba Atividade** → eventos no timeline.
+10. **`/documentos`** → todos os documentos do workspace listados; filtro "Sem caso" funciona.
+11. **`/pesquisa-juridica`** → pesquisar sem caseId; sem botão "Usar no caso" (esperado).
+12. **`/biblioteca`** → redireciona para `/pesquisa-juridica?scope=legislacao`.
+13. **`/retrieval`** → redireciona para `/pesquisa-juridica`.
+14. **`/foo-bar-inexistente`** dentro do app → exibe `(app)/not-found.tsx` com atalhos.
+
+## 12. Status final (release readiness)
+
+- **P0 + P1 + P2:** entregues e validados.
+- **Hotfix Gemini:** aplicado.
+- **Suite automatizada:** verde (lint, typecheck, unit, integration, build, e2e auth-redirects + ux-flow).
+- **QA manual:** roteiro acima documentado para execução pelo time.
+
+**Release ready: SIM**, condicionado à execução do QA manual no ambiente de staging.

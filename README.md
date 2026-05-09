@@ -2,6 +2,24 @@
 
 Copiloto jurídico pessoal com **RAG multicamada**, **memória persistente**, **perfil de estilo** e **editor inteligente**. Stack: Next.js 15, Prisma, PostgreSQL, Qdrant, Redis, Inngest, DeepSeek, BGE-M3 (DeepInfra).
 
+## Jornada do usuário (caso-cêntrica)
+
+Lex é organizado em torno do objeto **`Caso`**. O fluxo oficial é:
+
+```
+Criar caso  →  Enviar documentos  →  Acompanhar processamento
+       →  Ver fatos/partes/pedidos/riscos  →  Pesquisar legislação (RAG)
+       →  Pinar fundamentos  →  Gerar estratégia  →  Gerar peça  →  Revisar/exportar
+```
+
+**Rotas principais (menu primário):** `/dashboard` · `/cases` · `/documentos` · `/pesquisa-juridica` · `/editor` · `/processos` · `/settings/team` · `/settings/perfil`.
+
+**Avançado/admin** (colapsável): `/cockpit`, `/strategy`, `/retrieval/explain`, `/settings/jobs`, `/settings/admin`.
+
+**Redirects:** `/biblioteca` → `/pesquisa-juridica?scope=legislacao` · `/retrieval` → `/pesquisa-juridica`.
+
+Documentação completa do fluxo, decisões e pendências: [`docs/UX_FLOW_AUDIT.md`](docs/UX_FLOW_AUDIT.md).
+
 ## Pré-requisitos
 
 - Node.js 22+

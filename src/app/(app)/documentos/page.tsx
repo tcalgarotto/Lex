@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, FileText } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
@@ -96,18 +97,19 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
         ) : null}
 
         {documents.length === 0 ? (
-          <Card className="p-10 text-center">
-            <p className="text-base font-medium">Nenhum documento ainda</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Envie uma petição, despacho, contrato ou prova para começar.
-            </p>
-            <div className="mt-4 flex justify-center">
+          <EmptyState
+            icon={<FileText className="size-5" />}
+            title="Nenhum documento ainda"
+            description="Envie uma petição, despacho, contrato ou prova para começar a análise jurídica."
+            fullHeight
+          >
+            <div className="mt-5 flex justify-center">
               <DocumentUploadButton
                 caseId={sp.caseId}
                 label={sp.caseId ? "Enviar primeiro documento ao caso" : "Enviar primeiro documento"}
               />
             </div>
-          </Card>
+          </EmptyState>
         ) : (
           <ul className="space-y-2">
             {documents.map((d) => {
