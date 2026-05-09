@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { MemoryKind } from "@prisma/client";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { getWorkspaceContext, requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
 
@@ -76,7 +76,7 @@ export async function triggerStyleRecomputeAction() {
 }
 
 export async function triggerCorpusReindexAction() {
-  await getWorkspaceContext();
+  await requirePermission("observabilityView");
   await inngest.send({ name: "lex/corpus.reindex", data: {} });
 }
 

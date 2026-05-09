@@ -159,12 +159,12 @@ export function CaseDraftsTab({ caseId, drafts }: Props) {
             </Badge>
             {meta.usedBrainContext ? (
               <Badge variant="outline" className="text-[10px] text-violet-300">
-                via Brain v{meta.brainVersion ?? "?"}
+                Contexto do caso aplicado
               </Badge>
             ) : null}
             {meta.usedPinnedSources && meta.usedPinnedSources > 0 ? (
               <Badge variant="outline" className="text-[10px] text-emerald-300">
-                {meta.usedPinnedSources} pinada(s)
+                {meta.usedPinnedSources} salvo(s) no caso
               </Badge>
             ) : null}
             <span className="text-[11px] text-muted-foreground">
@@ -274,13 +274,13 @@ function SidePanel({ current, meta }: { current: CaseDraft; meta: DraftMeta }) {
         </h4>
         {current.groundingChunkIds.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">
-            Nenhum fundamento ancorado — provável geração com retrieval vazio.
+            Nenhum fundamento consultado nesta versão.
           </p>
         ) : (
           <ul className="space-y-1 text-[11px] text-foreground/80">
             {current.groundingChunkIds.slice(0, 8).map((id) => (
-              <li key={id} className="font-mono">
-                <span className="opacity-60">chunk:</span> {id.slice(0, 12)}…
+              <li key={id}>
+                Fonte {id.slice(0, 8)}…
               </li>
             ))}
             {current.groundingChunkIds.length > 8 ? (

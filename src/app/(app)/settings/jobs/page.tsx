@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { triggerCorpusReindexAction } from "@/app/(app)/processos/actions";
 
 export default async function JobsPage() {
-  const { workspaceId } = await getWorkspaceContext();
+  const { workspaceId } = await requirePermission("observabilityView");
   const jobs = await prisma.jobRun.findMany({
     where: { workspaceId },
     orderBy: { updatedAt: "desc" },

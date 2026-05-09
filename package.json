@@ -55,6 +55,7 @@
     "corpus:stats-cf": "tsx --env-file=.env scripts/cf-corpus-stats.ts",
     "qa:search": "tsx --env-file=.env scripts/cf-retrieval-briefing.ts",
     "qa:search:legal": "tsx --env-file=.env scripts/cf-retrieval-briefing.ts",
+    "qa:retrieval:domains": "tsx --env-file=.env scripts/legal-retrieval-domains-qa.ts",
     "datajud:check": "tsx --env-file=.env scripts/datajud-check.ts",
     "datajud:dry-run": "tsx --env-file=.env scripts/datajud-check.ts -- --dry-run",
     "documents:audit": "tsx --env-file=.env scripts/documents-audit.ts",

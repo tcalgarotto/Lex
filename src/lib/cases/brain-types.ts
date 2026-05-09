@@ -17,6 +17,7 @@ export type ExtractedItemMeta = {
    */
   origin:
     | "input"
+    | "user_command"
     | "checklist"
     | "manual_note"
     | "rag"

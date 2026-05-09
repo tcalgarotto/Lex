@@ -28,10 +28,12 @@ import { getChatLanguageModel } from "@/lib/ai/llm";
 import { cacheGet, cacheSet } from "@/lib/redis";
 import { getLogger } from "@/lib/logger";
 import { runIntake } from "./intake";
+import { parseSlashCommands } from "./slash-commands";
 import { validateBrain } from "./brain-validator";
 import { computeProceduralReadiness } from "./readiness";
 import type {
   BrainFact,
+  BrainEvidence,
   BrainParty,
   BrainPartyRole,
   BrainRequest,
@@ -191,7 +193,116 @@ export async function consolidateCaseBrain(
 function preExtractHeuristic(
   input: BrainConsolidationInput,
 ): ReturnType<typeof validateBrain>["partial"] {
-  const intake = runIntake(input.rawInput || " ");
+  const { cleanedText, commands } = parseSlashCommands(input.rawInput || " ");
+  const intake = runIntake(cleanedText || " ");
+
+  const commandParties: BrainParty[] = [];
+  const commandFacts: BrainFact[] = [];
+  const commandRequests: BrainRequest[] = [];
+  const commandRisks: BrainRisk[] = [];
+  const commandEvidence: BrainEvidence[] = [];
+  const commandMissingDocuments: string[] = [];
+
+  for (const cmd of commands) {
+    const value = cmd.value.trim();
+    if (!value) continue;
+    switch (cmd.name) {
+      case "autora":
+      case "autor":
+        commandParties.push({
+          role: "assisted_party",
+          name: value,
+          sourceText: cmd.sourceText,
+          confidence: 0.98,
+          origin: "user_command",
+        });
+        break;
+      case "reu":
+      case "réu":
+        commandParties.push({
+          role: "opposing_party",
+          name: value,
+          sourceText: cmd.sourceText,
+          confidence: 0.98,
+          origin: "user_command",
+        });
+        break;
+      case "fato":
+        commandFacts.push({
+          text: value,
+          sourceText: cmd.sourceText,
+          confidence: 0.98,
+          origin: "user_command",
+          evidenceRefs: [],
+        });
+        break;
+      case "pedido":
+        commandRequests.push({
+          text: value,
+          kind: "MAIN",
+          sourceText: cmd.sourceText,
+          confidence: 0.98,
+          origin: "user_command",
+        });
+        break;
+      case "urgencia":
+        commandRequests.push({
+          text: value,
+          kind: "URGENCY",
+          sourceText: cmd.sourceText,
+          confidence: 0.98,
+          origin: "user_command",
+        });
+        break;
+      case "documento":
+        // Interpretação operacional: o usuário está anotando uma evidência/documento relevante.
+        // (Documentos "faltantes" continuam sendo inferidos/checados via brain/readiness.)
+        commandEvidence.push({
+          kind: "document",
+          ref: value,
+          sourceText: cmd.sourceText,
+          confidence: 0.95,
+          origin: "user_command",
+        });
+        break;
+      case "risco":
+        commandRisks.push({
+          title: value.slice(0, 80),
+          detail: value,
+          severity: "MEDIUM",
+          sourceText: cmd.sourceText,
+          confidence: 0.95,
+          origin: "user_command",
+        });
+        break;
+      case "observacao":
+        // Observação vira "missingDocuments" quando o usuário explicitamente lista uma pendência documental.
+        // Caso contrário, ela entra como risco informativo (não bloqueante).
+        if (/comprovante|laudo|negativa|declara[cç][aã]o|documento|certid[aã]o/i.test(value)) {
+          commandMissingDocuments.push(value);
+        } else {
+          commandRisks.push({
+            title: value.slice(0, 80),
+            detail: value,
+            severity: "LOW",
+            sourceText: cmd.sourceText,
+            confidence: 0.9,
+            origin: "user_command",
+          });
+        }
+        break;
+      case "prazo":
+      case "valor":
+        commandFacts.push({
+          text: `${cmd.name.toUpperCase()}: ${value}`,
+          sourceText: cmd.sourceText,
+          confidence: 0.98,
+          origin: "user_command",
+          evidenceRefs: [],
+        });
+        break;
+    }
+  }
 
   const parties: BrainParty[] = intake.parties.map((p) => ({
     role: roleFromIntake(p.role),
@@ -239,13 +350,13 @@ function preExtractHeuristic(
       kind: "OUTRO",
       rationale: "Pré-extract heurístico — definir após análise jurídica.",
     },
-    narrative: intake.summary ?? input.rawInput.slice(0, 600),
-    parties,
-    facts,
-    requests,
-    risks: [],
-    evidence,
-    missingDocuments: [],
+    narrative: intake.summary ?? cleanedText.slice(0, 600) ?? input.rawInput.slice(0, 600),
+    parties: [...commandParties, ...parties],
+    facts: [...commandFacts, ...facts],
+    requests: [...commandRequests, ...requests],
+    risks: [...commandRisks],
+    evidence: [...evidence, ...commandEvidence],
+    missingDocuments: [...commandMissingDocuments],
     suggestedFoundations: [],
     inconsistencies: [],
   };
@@ -519,6 +630,29 @@ export async function persistBrainEntities(args: {
 }) {
   const { caseId, brain, prisma } = args;
 
+  // Fatos — idempotência por prefixo do texto, append por ordinal
+  if (brain.facts.length > 0) {
+    const existing = await prisma.caseFact.findMany({
+      where: { caseId },
+      select: { id: true, text: true, ordinal: true },
+      orderBy: { ordinal: "asc" },
+    });
+    const existingTexts = new Set(existing.map((e) => e.text.slice(0, 200).toLowerCase()));
+    const startOrdinal = (existing.at(-1)?.ordinal ?? 0) + 1;
+    const toCreate = brain.facts
+      .filter((f) => !existingTexts.has(f.text.slice(0, 200).toLowerCase()))
+      .map((f, i) => ({
+        caseId,
+        ordinal: startOrdinal + i,
+        text: f.text,
+        dates: f.date ? [f.date] : [],
+        confidence: f.confidence,
+      }) satisfies Prisma.CaseFactCreateManyInput);
+    if (toCreate.length > 0) {
+      await prisma.caseFact.createMany({ data: toCreate });
+    }
+  }
+
   // Partes — upsert por hash de role+name
   if (brain.parties.length > 0) {
     const existing = await prisma.caseParty.findMany({
@@ -548,6 +682,9 @@ export async function persistBrainEntities(args: {
             ...(p.document ? { document: p.document } : {}),
           };
           const meta: Record<string, unknown> = {};
+          meta["origin"] = p.origin;
+          meta["sourceText"] = p.sourceText;
+          meta["confidence"] = p.confidence;
           if (p.contact) meta["phone"] = p.contact;
           if (p.address) meta["address"] = p.address;
           if (p.age !== undefined) meta["age"] = p.age;
@@ -576,6 +713,11 @@ export async function persistBrainEntities(args: {
         ordinal: startOrdinal + i,
         kind: brainRequestKindToPrisma(r.kind),
         text: r.text,
+        metadataJson: {
+          origin: r.origin,
+          sourceText: r.sourceText,
+          confidence: r.confidence,
+        } as Prisma.InputJsonValue,
       } satisfies Prisma.CaseRequestCreateManyInput));
     if (toCreate.length > 0) {
       await prisma.caseRequest.createMany({ data: toCreate });

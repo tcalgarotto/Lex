@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Plus, FileText, ShieldAlert, Sparkles } from "lucide-react";
+import { ArrowRight, Plus, FileText, ShieldAlert } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,19 +7,9 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { listCases } from "@/lib/cases/repository";
+import { caseStatusLabel } from "@/lib/cases/labels";
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  INTAKE: "Intake",
-  RESEARCH: "Pesquisa",
-  DRAFTING: "Drafting",
-  REVIEW: "Review",
-  READY: "Pronto",
-  FILED: "Protocolado",
-  CLOSED: "Encerrado",
-  ARCHIVED: "Arquivado",
-};
 
 export default async function CasesListPage() {
   const { workspaceId } = await getWorkspaceContext();
@@ -30,12 +20,9 @@ export default async function CasesListPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex items-center justify-between">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="size-3.5" /> Legal Workflow Automation
-            </div>
             <h1 className="text-2xl font-semibold">Casos</h1>
             <p className="text-sm text-muted-foreground">
-              Pipelines operacionais: intake estruturado, retrieval, drafting e review com auditoria total.
+              Organize atendimentos, documentos, fundamentos e peças em um só lugar — com histórico e rastreabilidade.
             </p>
           </div>
           <Button asChild>
@@ -49,7 +36,7 @@ export default async function CasesListPage() {
           <EmptyState
             icon={<FileText className="size-5" />}
             title="Nenhum caso ainda"
-            description="Cole o relato do cliente e o Lex extrai partes, fatos, pedidos, riscos e a estratégia inicial."
+            description="Crie um caso para organizar relato, documentos, partes, fatos, pedidos, riscos e próximas ações."
             action={{ label: "Criar primeiro caso", href: "/cases/new" }}
             fullHeight
           />
@@ -74,7 +61,7 @@ function CaseCard({ c }: { c: CaseRow }) {
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wide">
-              {STATUS_LABEL[c.status] ?? c.status}
+              {caseStatusLabel(c.status)}
             </Badge>
             {c.tribunalCode ? (
               <Badge variant="outline" className="text-[10px]">

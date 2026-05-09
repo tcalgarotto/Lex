@@ -206,13 +206,22 @@ export async function GET(req: Request) {
         if (!bypassDemo && isPollutedText(h.payload.chunkText)) continue;
         if (!bypassDemo && isPollutedCode(h.payload.sourceCode)) continue;
         const preview = h.payload.chunkText.slice(0, 80);
+        const href =
+          h.payload.processId && h.payload.documentId
+            ? `/processos/${h.payload.processId}/documentos/${h.payload.documentId}`
+            : h.payload.documentId
+              ? `/documentos`
+              : h.payload.pieceId
+                ? `/editor/${h.payload.pieceId}`
+                : undefined;
         hits.push({
           id: h.id,
-          type: "vetorial",
+          type: "trecho",
           title: preview + (h.payload.chunkText.length > 80 ? "…" : ""),
           subtitle: h.payload.sourceCode ?? h.payload.articleRef,
           excerpt: h.payload.chunkText.slice(0, 600),
           score: typeof h.score === "number" ? h.score : undefined,
+          ...(href ? { href } : {}),
         });
       }
     } catch {

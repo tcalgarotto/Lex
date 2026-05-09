@@ -58,4 +58,17 @@ describe("/api/search anti-pollution filters", () => {
   it("define MIN_CHUNK_CHARS para filtrar chunks muito curtos (caminho vetorial)", () => {
     expect(ROUTE_SRC).toMatch(/MIN_CHUNK_CHARS\s*=\s*\d+/);
   });
+
+  it("não expõe o tipo jargão 'vetorial' no payload", () => {
+    expect(ROUTE_SRC).not.toMatch(/type:\s*["']vetorial["']/);
+  });
+
+  it("inclui href quando há origem (documento/processo/peça)", () => {
+    // Garantia estrutural: hits de Qdrant (lex_main) devem ser navegáveis
+    // para a origem (documento/processo/peça). Sem isso vira "trecho solto".
+    expect(ROUTE_SRC).toMatch(/const href\s*=/);
+    expect(ROUTE_SRC).toMatch(/processos\/\$\{/);
+    expect(ROUTE_SRC).toMatch(/\/documentos/);
+    expect(ROUTE_SRC).toMatch(/\/editor\/\$\{/);
+  });
 });

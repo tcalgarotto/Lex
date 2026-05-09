@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { formatCnj } from "@/lib/cnj";
 
 type Mode = "raw" | "interview" | "document" | "existing_process" | "empty";
 
@@ -90,8 +91,8 @@ export default function NewCasePage() {
         setError("Informe um título descritivo para o caso.");
         return;
       }
-      if (processNumber.replace(/\D/g, "").length < 15) {
-        setError("Informe um número CNJ válido (mínimo 15 dígitos).");
+      if (processNumber.replace(/\D/g, "").length !== 20) {
+        setError("Informe um número CNJ válido (20 dígitos).");
         return;
       }
     }
@@ -367,8 +368,10 @@ function ExistingProcessForm({
         <Input
           value={processNumber}
           onChange={(e) => setProcessNumber(e.target.value)}
+          onBlur={() => setProcessNumber(formatCnj(processNumber))}
           placeholder="0000000-00.0000.0.00.0000"
           className="font-mono"
+          inputMode="numeric"
           data-testid="case-existing-cnj"
         />
       </div>
