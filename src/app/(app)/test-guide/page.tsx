@@ -21,6 +21,8 @@ import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { SentinelJourneysPanel } from "@/components/test-guide/sentinel-journeys-panel";
+import { RAG_SCOPE_REMINDER } from "@/lib/ui/product-terminology";
 
 export const dynamic = "force-dynamic";
 
@@ -69,67 +71,13 @@ const STEPS = [
   },
 ];
 
-const SENTINEL_JOURNEYS = [
-  {
-    id: "creche",
-    label: "Creche (Educação infantil)",
-    relato:
-      "Autora: Ana Silva 111.222.333-44\nRéu: Município X\n\nCriança de 4 anos sem vaga em creche pública. Pedido de matrícula imediata. Urgência por risco de perda de trabalho da mãe e desenvolvimento da criança.",
-    queries: [
-      "vaga em creche direito da criança",
-      "educação infantil em creche dever do Estado art. 208 IV",
-    ],
-    expect: ["Art. 208", "Art. 205", "Art. 227"],
-  },
-  {
-    id: "medicamento",
-    label: "Medicamento (Direito à saúde)",
-    relato:
-      "Autora: Joana 111.222.333-44\nRéu: Estado Y\n\nPaciente com prescrição médica para medicamento de alto custo. SUS negou fornecimento. Pedido de fornecimento imediato com urgência.",
-    queries: ["direito à saúde dever do Estado", "SUS fornecimento de medicamento art 196"],
-    expect: ["Art. 196", "Art. 198"],
-  },
-  {
-    id: "banco",
-    label: "Banco (Consumidor / cobrança indevida)",
-    relato:
-      "Autor: Carlos 111.222.333-44\nRéu: Banco Z\n\nCobrança indevida em cartão de crédito apesar de contestação. Pedido de suspensão da cobrança e indenização.",
-    queries: ["defesa do consumidor constituição", "cobrança indevida relação de consumo fundamentos"],
-    expect: ["Art. 170", "Art. 5"],
-  },
-  {
-    id: "contrato",
-    label: "Contrato (boa-fé / inadimplemento)",
-    relato:
-      "Autor: Maria Souza 111.222.333-44\nRéu: Empresa ABC Ltda\n\nContrato de prestação de serviços. A ré deixou de prestar o serviço. Pedido de rescisão e ressarcimento com urgência para cessar cobrança.",
-    queries: ["ato jurídico perfeito direito adquirido", "boa-fé objetiva contrato (base constitucional)"],
-    expect: ["Art. 5"],
-  },
-  {
-    id: "concurso",
-    label: "Concurso (Administração Pública)",
-    relato:
-      "Autor: Pedro 111.222.333-44\nRéu: Estado/Órgão Público\n\nCandidato aprovado dentro das vagas. Administração não nomeou. Pedido de nomeação e posse.",
-    queries: ["concurso público princípios da administração pública", "legalidade impessoalidade moralidade publicidade eficiência art 37"],
-    expect: ["Art. 37"],
-  },
-  {
-    id: "locacao",
-    label: "Locação (Moradia / mínimo existencial)",
-    relato:
-      "Autora: Paula 111.222.333-44\nRéu: Locador\n\nAmeaça de despejo e discussão sobre pagamentos. Pedido de tutela para manter posse até decisão.",
-    queries: ["direitos sociais moradia art 6", "acesso à justiça lesão ou ameaça a direito art 5"],
-    expect: ["Art. 6", "Art. 5"],
-  },
-] as const;
-
 const QUESTIONS = [
   "O que ficou claro? Quais partes da UI fazem sentido sem explicação?",
   "O que ficou confuso? Onde travou ou achou ambíguo?",
   "Qual feature pareceu mais útil?",
   "Qual feature pareceu arriscada/perigosa?",
   "A resposta jurídica parece confiável? Confiaria em apresentar para um cliente?",
-  "As fontes ajudam? Os chunks/URNs são suficientes para auditar?",
+  "As fontes ajudam? Os trechos citáveis e as referências legais são suficientes para auditar?",
   "O que falta para usar no escritório? (integrações, áreas, tribunais)",
   "Quais áreas jurídicas devemos priorizar?",
   "Quais tribunais/fontes são obrigatórios?",
@@ -151,6 +99,8 @@ export default async function TestGuidePage() {
             Use as 6 jornadas sentinela (abaixo) para validar o fluxo caso-cêntrico de ponta a ponta:
             caso → estrutura editável → pesquisa jurídica com fonte → minuta → review → export.
             <strong className="text-foreground"> AI_REASONING ≠ LEGAL_TRUTH.</strong> Base ausente deve virar lacuna explícita.
+            {" "}
+            {RAG_SCOPE_REMINDER}
           </p>
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">Auditável</Badge>
@@ -205,34 +155,7 @@ export default async function TestGuidePage() {
           <h2 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
             <ClipboardCopy className="size-3.5" /> 6 jornadas sentinela (copie e cole)
           </h2>
-          <div className="grid gap-3">
-            {SENTINEL_JOURNEYS.map((j) => (
-              <Card key={j.id} className="p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{j.label}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Queries sugeridas: {j.queries.join(" · ")} · Esperado: {j.expect.join(", ")}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(j.relato);
-                    }}
-                  >
-                    <ClipboardCopy className="mr-2 size-4" />
-                    Copiar relato
-                  </Button>
-                </div>
-                <pre className="mt-3 whitespace-pre-wrap rounded-md border border-white/10 bg-zinc-950/40 p-3 text-xs text-muted-foreground">
-                  {j.relato}
-                </pre>
-              </Card>
-            ))}
-          </div>
+          <SentinelJourneysPanel />
         </section>
 
         <section className="space-y-3">

@@ -103,7 +103,7 @@ export function CaseTabs({
 
   return (
     <Tabs value={tab} onValueChange={(v) => goTab(v as TabKey)}>
-      <TabsList className="flex flex-wrap gap-1">
+      <TabsList className="flex w-full min-w-0 flex-wrap gap-1 overflow-x-auto pb-0.5">
         <TabsTrigger value="overview">Visão geral</TabsTrigger>
         <TabsTrigger value="documents">Documentos · {c.documents.length}</TabsTrigger>
         <TabsTrigger value="facts">

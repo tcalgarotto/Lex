@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LIBRARY_BADGE_OPT_IN_SEARCH, RAG_SCOPE_REMINDER } from "@/lib/ui/product-terminology";
 import {
   Dialog,
   DialogContent,
@@ -360,7 +361,7 @@ function Body({
       <EmptyState
         icon={<BookOpen className="size-5" />}
         title="Pesquisa jurídica em camadas"
-        description="Combine legislação indexada, acervo do escritório, peças e (quando houver caso aberto) fundamentos já fixados. A jurisprudência vem em uma próxima onda."
+        description={`Combine legislação indexada, acervo do escritório, peças e (quando houver caso aberto) fundamentos já salvos no caso. ${RAG_SCOPE_REMINDER}`}
       />
     );
   }
@@ -516,7 +517,7 @@ function Body({
                       <MetaLine source={f.title} origin={f.origin} reason={f.reason} />
                       <div className="flex flex-wrap gap-1">
                         {f.optInRag ? (
-                          <Badge className="text-[10px]">Opt-in busca assistida</Badge>
+                          <Badge className="text-[10px]">{LIBRARY_BADGE_OPT_IN_SEARCH}</Badge>
                         ) : null}
                         {f.useAsModel ? (
                           <Badge variant="outline" className="text-[10px]">
