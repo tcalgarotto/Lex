@@ -9,6 +9,7 @@
  *     usuário, com filtros anti-poluição.
  */
 
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -20,7 +21,10 @@ import {
   shouldBypassDemoVisibility,
 } from "@/lib/corpus/source-visibility";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
+import { getLogger } from "@/lib/logger";
 import type { SearchHit } from "@/types/search";
+
+const log = getLogger("lex.api.search");
 
 const IS_PROD = process.env.NODE_ENV === "production";
 const MIN_CHUNK_CHARS = 60;
@@ -40,8 +44,13 @@ function isPollutedCode(code: string | null | undefined): boolean {
   return DEMO_TOKEN_REGEX.test(code);
 }
 
+function withRequestId(res: NextResponse, requestId: string): NextResponse {
+  res.headers.set("x-request-id", requestId);
+  return res;
+}
+
 export async function GET(req: Request) {
-  const { workspaceId } = await getWorkspaceContext();
+  const requestId = randomUUID();
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
   const limit = Math.min(20, Math.max(1, Number(searchParams.get("limit") ?? "12")));
@@ -51,13 +60,18 @@ export async function GET(req: Request) {
     isProduction: IS_PROD,
   });
   if (q.length < 2) {
-    return NextResponse.json({
-      hits: [] satisfies SearchHit[],
-      hadOfficialCorpus: false,
-      scope,
-      query: q,
-    });
+    return withRequestId(
+      NextResponse.json({
+        hits: [] satisfies SearchHit[],
+        hadOfficialCorpus: false,
+        scope,
+        query: q,
+      }),
+      requestId,
+    );
   }
+
+  const { workspaceId } = await getWorkspaceContext();
 
   const wantWorkspace = scope === "tudo" || ["casos", "documentos", "peças", "pecas"].includes(scope);
   const wantLegal = scope === "tudo" || scope === "legislação" || scope === "legislacao";
@@ -188,7 +202,14 @@ export async function GET(req: Request) {
         });
       }
     } catch (e) {
-      console.warn("[search] retrieveLegalContext falhou:", (e as Error).message);
+      log.warn("retrieveLegalContext failed (non-fatal)", {
+        requestId,
+        workspaceId,
+        queryLen: q.length,
+        scope,
+        wantLegal,
+        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+      });
     }
   }
 
@@ -224,15 +245,25 @@ export async function GET(req: Request) {
           ...(href ? { href } : {}),
         });
       }
-    } catch {
-      // Qdrant/embed opcional em dev
+    } catch (e) {
+      log.warn("vector search failed (non-fatal)", {
+        requestId,
+        workspaceId,
+        queryLen: q.length,
+        scope,
+        wantWorkspace,
+        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+      });
     }
   }
 
-  return NextResponse.json({
-    hits: hits.slice(0, limit),
-    hadOfficialCorpus,
-    scope,
-    query: q,
-  });
+  return withRequestId(
+    NextResponse.json({
+      hits: hits.slice(0, limit),
+      hadOfficialCorpus,
+      scope,
+      query: q,
+    }),
+    requestId,
+  );
 }

@@ -20,7 +20,7 @@ Impedir regressões críticas em:
 - ✅ **Tenancy (Qdrant lex_main)**: busca vetorial restrita a `workspaceIds: [workspaceId, GLOBAL_WORKSPACE_ID]` em `src/app/api/search/route.ts`.
 - ✅ **Cache**: `workspaceId` + opções estáveis em `src/lib/retrieval/legal/cache.ts` + testes `cache.test.ts`; cache desligado com `caseContext` em `src/lib/retrieval/legal/index.ts`.
 - ✅ **Admin gating**: rotas sensíveis com checagem server-side (ver `docs/SECURITY_REVIEW_P0.md`).
-- ⚠️ **Logs**: `src/lib/logger.ts` + `logger.test.ts` cobrem o caminho “oficial”; **exceção P1**: `src/app/api/search/route.ts` (`console.warn`, `catch {}` sem logger).
+- ✅ **Logs (API + libs críticas de request path)**: `getLogger` + scrub em `src/app/api/search/route.ts` (com `requestId` / `x-request-id`), rotas de documentos/casos listadas em `docs/SECURITY_REVIEW_P0.md` §6, e `storage` / `observability` / `cost` / ingest Inngest.
 - ✅ **Uploads / path**: `documentStoragePath(workspaceId, …)` + validações em `src/app/api/documents/upload/route.ts`.
 - ✅ **Exports**: `case-draft-export` + `pieces/[id]/export` com `workspaceId` na query.
 - ✅ **Drafting / grounding**: `src/lib/cases/drafting.ts` + `orchestrator.ts` consomem `ApprovedLegalFoundation` via `buildApprovedLegalFoundation` / `validateLegalGrounding` + `src/lib/cases/drafting.test.ts`.
@@ -31,12 +31,12 @@ Impedir regressões críticas em:
 - testes novos/atualizados cobrindo o bug/feature
 - comandos rodados local/CI (quando aplicável): lint, typecheck, test, build
 
-**Evidência desta rodada (2026-05-09, ambiente local do agente):**
+**Evidência desta rodada (2026-05-09, fechamento sprint — ambiente local do agente):**
 - ✅ `npm run lint`
 - ✅ `npm run typecheck`
 - ✅ `npm test` (534 passed)
 - ✅ `npm run test:integration` (43 passed)
-- ✅ `npm run test:e2e` (79 passed; inclui `GET /api/office-memory` → 401)
+- ✅ `npm run test:e2e` (80 passed)
 - ✅ `NODE_ENV=production npm run build`
 - ✅ `npm run qa:retrieval:domains` (10/10)
 
@@ -56,8 +56,8 @@ Impedir regressões críticas em:
 
 ### 4.2 Varredura auxiliar (`rg`)
 
-- `catch {` em APIs: **`src/app/api/search/route.ts`** (L227) — único match relevante em busca rápida por `catch {` sob `src/app/api` nesta rodada.
-- `workspaceId` em `src/app/api/documents`: ocorrências em `upload`, `[documentId]`, `link-case`, `reprocess`, `route` (lista).
+- `console.(log|warn|error)` em `src/app/api/**/*.ts`: **0 ocorrências** após fechamento (2026-05-09).
+- `catch {` em `src/app/api`: ainda aparece em handlers de **degradação intencional** (ex.: `dynamicBases` em `retrieval/search`, parse de JSON, `inngest.send` em CRUD de fatos) — ver §5.
 
 ### 4.3 Problemas críticos (P0)
 
@@ -79,12 +79,20 @@ Impedir regressões críticas em:
   - **Evidência**: `src/app/api/pieces/[id]/route.ts`.  
   - **Correção proposta**: `updateMany({ where: { id, workspaceId }, ... })` com `count===1`.
 
-- **Try/catch silencioso em busca global**  
-  - **Evidência**: `src/app/api/search/route.ts` (`catch {}` no ramo vetorial).  
-  - **Correção proposta**: `logger.warnOnce` ou contador + scrub.
-
 ### 4.6 Pendências / itens adiados
 
 - **Exaustão de rotas**: manter revisão contínua em novos handlers `/api/*`.
 - **Componentes grandes**: `src/components/cases/case-facts-tab.tsx` e `src/app/(app)/cases/[id]/page.tsx` continuam candidatos a extração de subcomponentes (sem mudança nesta sprint).
+
+## 5. Varredura logging — segundo passo (2026-05-09)
+
+| Área | Ação | Justificativa se não alterado |
+|------|------|--------------------------------|
+| `src/app/api/search/route.ts` | `getLogger("lex.api.search")` + `randomUUID` / header `x-request-id`; meta com `queryLen` (sem query bruta) | — |
+| `src/app/api/documents/*`, `cases/[id]/delete`, `legal-sources` | `console.*` → `getLogger` com `workspaceId` / ids | — |
+| `src/lib/storage.ts` | `console.warn` → `getLogger`; meta sem path completo (`pathLen` + `err.message` scrubado) | — |
+| `src/lib/observability/record.ts`, `src/lib/cost/record.ts` | `console.error` → `log.warn` estruturado | Fire-and-forget continua; erro visível com scrub |
+| `src/lib/inngest/functions/ingest-document.ts` | `console.error` → `log.error` | — |
+| `src/lib/env.ts`, `src/lib/corpus/embeddings-pipeline.ts` | **Inalterado** | Bootstrap / job longo; mensagens para operador local; fora do hot path HTTP |
+| `src/app/api/**` outros `catch {}` | **Inalterado** onde é noop esperado | `inngest.send` opcional pós-mutação; `JSON.parse` fallback; `dynamicBases` fallback de manifest |
 

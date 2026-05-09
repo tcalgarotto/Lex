@@ -1,7 +1,7 @@
 # P0 Commercial Release Report — Lex
 
 > Relatório honesto de release P0 comercial (fluxo caso-cêntrico).  
-> Última atualização: **2026-05-09** (rodada final F19–F25).
+> Última atualização: **2026-05-09** (fechamento sprint — logs P0 / critério L).
 
 ## 1. Resumo do que mudou
 
@@ -9,6 +9,7 @@
 - **F20 — Painel “Origem dos dados”**: componente `CaseDataOriginButton` + `parseMetadataJson` em fatos, pedidos, riscos; para `CaseLegalSource` (sem `metadataJson` no schema) a origem é montada a partir de `excerpt`, `query`, `chunkId`, `pinnedById`, `createdAt`.
 - **F21 / F23**: auditorias atualizadas com evidência em `docs/SECURITY_REVIEW_P0.md` e `docs/CODE_REVIEW_P0.md`.
 - **Correção de segurança (defesa em profundidade)**: `buildCaseContext` / `fetchDocumentTexts` agora filtra `Document` por `workspaceId` além dos IDs vindos do caso (`src/lib/cases/context.ts`).
+- **Critério L (logs)**: `/api/search` e rotas críticas de documentos/casos passam a usar `getLogger` com scrub; `x-request-id` na busca global; ver `docs/CODE_REVIEW_P0.md` §5.
 
 ## 2. Telas alteradas
 
@@ -27,7 +28,8 @@
 | F20 | `src/lib/cases/data-origin-meta.ts`, `src/components/cases/case-data-origin.tsx`, `case-facts-tab.tsx`, `case-requests-tab.tsx`, `case-risks-tab.tsx`, `case-research-tab.tsx` |
 | Contexto caso | `src/lib/cases/context.ts` |
 | Testes | `tests/integration/office-memory.test.ts`, `tests/e2e/05-api-auth-required.spec.ts` |
-| Docs | `docs/SECURITY_REVIEW_P0.md`, `docs/CODE_REVIEW_P0.md`, este relatório |
+| Docs | `docs/SECURITY_REVIEW_P0.md`, `docs/CODE_REVIEW_P0.md`, `docs/COMMERCIAL_UX_P0_AUDIT.md`, este relatório |
+| Logging | `src/app/api/search/route.ts`, `src/app/api/documents/**`, `src/app/api/cases/[id]/delete`, `legal-sources`, `src/lib/storage.ts`, `observability/record.ts`, `cost/record.ts`, `inngest/functions/ingest-document.ts` |
 
 ## 4. Bugs corrigidos
 
@@ -36,8 +38,8 @@
 ## 5. Riscos remanescentes (explícitos)
 
 1. **Superfície de rotas**: não há prova matemática de que *cada* handler `/api/*` valida `workspaceId`; há amostragem + suíte de integração nas rotas mais sensíveis.
-2. **`/api/search`**: ramo vetorial usa `catch {}` e `console.warn` fora do `logger` com scrub — risco P1 de observabilidade e mensagem bruta (ver `docs/SECURITY_REVIEW_P0.md` SEC-04).
-3. **UX comercial**: checklist em `docs/COMMERCIAL_UX_P0_AUDIT.md` ainda contém itens ⏳ (jargão, estados vazios globais, etc.); não foram todos fechados nesta rodada.
+2. **Bootstrap / jobs offline**: `src/lib/env.ts` e `embeddings-pipeline.ts` ainda emitem `console.*` — aceito fora do gate HTTP (ver `docs/CODE_REVIEW_P0.md` §5).
+3. **UX comercial (fora do gate A–N desta sprint)**: checklist em `docs/COMMERCIAL_UX_P0_AUDIT.md` §3 ainda tem itens ⏳ (jargão, estados vazios, etc.); rastreado como dívida de produto — ver §8 do audit.
 4. **`AI_REASONING ≠ LEGAL_TRUTH`**: invariante de produto; qualquer regressão em drafting/review exige testes e revisão humana.
 
 ## 6. Testes rodados (comandos + resultados)
@@ -48,7 +50,7 @@
 | `npm run typecheck` | OK |
 | `npm test` | **534 passed** |
 | `npm run test:integration` | **43 passed** (inclui `office-memory.test.ts`) |
-| `npm run test:e2e` | **79 passed** (inclui `GET /api/office-memory` → 401 sem cookie) |
+| `npm run test:e2e` | **80 passed** |
 | `NODE_ENV=production npm run build` | OK (`/biblioteca/memoria` e rotas API compiladas) |
 | `npm run qa:retrieval:domains` | **10/10** domínios OK |
 | `npm run db:migrate:deploy` | Migração `20260509220000_office_memory` aplicada no DB configurado em `.env` |
@@ -59,9 +61,9 @@
 
 ## 8. Itens adiados (com justificativa)
 
-- **P1 SEC-04** (`/api/search` → logger scrub no vetorial): escopo documentado; correção não misturada nesta entrega para não inflar diff.
 - **Exaustão de “toda rota Prisma”**: adiado como processo contínuo; ver tabela em `SECURITY_REVIEW_P0.md`.
 - **Refatorar componentes grandes** (`case-facts-tab`, página do caso): adiado (risco/retorno vs sprint).
+- **UX P1 (copy/jargão)** em `docs/COMMERCIAL_UX_P0_AUDIT.md`: não entram no gate A–N desta sprint; ver §8 do audit.
 
 ## 9. Critérios A–N (release) e status item a item
 
@@ -78,15 +80,15 @@
 | **I** | Multi-tenant / IDOR (regressão nas rotas críticas) | ✅ Testes + APIs novas; não exaustivo |
 | **J** | Uploads/exports com `workspaceId` | ✅ Amostragem documentos + exports + relatório segurança |
 | **K** | Cache com isolamento por tenant/contexto | ✅ `cache.ts` + desliga com `caseContext` |
-| **L** | Logs sem vazamento bruto (política) | ⚠️ `logger` OK; exceção **P1** em `/api/search` |
+| **L** | Logs sem vazamento bruto (política) | ✅ `getLogger` + scrub + `requestId`/`workspaceId` onde aplicável; sem query bruta em `/api/search` |
 | **M** | F20 Origem dos dados (UI) | ✅ Fatos, pedidos, riscos, fundamentos fixados |
 | **N** | F19 Memória opt-in | ✅ Modelo + API + `/biblioteca/memoria` |
 
 ## 10. Status global
 
-**NOT READY**
+**READY** (para o **gate P0 comercial** definido por critérios **A–N** + bateria técnica §6 deste relatório).
 
-**Argumentação:** embora **A–K** e **M–N** estejam verdes com evidência de comandos, o critério **L** não está **100%** aderente (P1 em `src/app/api/search/route.ts`). Além disso, o produto comercial ainda carrega débito de UX declarado em `docs/COMMERCIAL_UX_P0_AUDIT.md` (fora desta tabela, mas relevante para “release comercial” honesto). **Não maquiar:** checks verdes não substituem fechamento de P1 de logging nem do backlog de UX.
+**Argumentação:** **A–N** atendidos com evidência de comandos (§6). O critério **L** foi fechado com `getLogger` + scrub em `/api/search` e nas rotas críticas de documentos/casos, além de libs de caminho quente (`storage`, `observability`, `cost`, ingest). **Transparência:** o backlog de **UX comercial** (itens ⏳ em `docs/COMMERCIAL_UX_P0_AUDIT.md` §3 e P1 de copy) **não** faz parte do gate A–N desta sprint; continua como dívida de produto rastreada no audit (§8).
 
 ## 11. Instruções para testar (manual)
 

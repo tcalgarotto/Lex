@@ -1,5 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.observability");
 
 export function recordObservabilityLog(data: {
   workspaceId: string;
@@ -26,5 +29,9 @@ export function recordObservabilityLog(data: {
         errorMessage: data.errorMessage ?? undefined,
       },
     })
-    .catch((e) => console.error("[observability] record failed", e));
+    .catch((e) => {
+      log.warn("observability record failed (non-fatal)", {
+        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+      });
+    });
 }

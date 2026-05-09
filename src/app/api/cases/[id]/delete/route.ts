@@ -4,8 +4,11 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { removeDocumentBuffer } from "@/lib/storage";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
+import { getLogger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+
+const log = getLogger("lex.api.cases.delete");
 
 /**
  * DELETE /api/cases/[id]/delete?confirm=1
@@ -43,19 +46,21 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
       await getQdrantVectorStore().deleteByDocumentId(d.id, d.workspaceId);
     } catch (err) {
-      console.warn("[case.delete] Qdrant delete falhou (não-fatal)", {
+      log.warn("qdrant delete failed (non-fatal)", {
+        workspaceId,
         caseId,
         documentId: d.id,
-        err: err instanceof Error ? err.message : String(err),
+        err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
       });
     }
     try {
       await removeDocumentBuffer(d.storagePath);
     } catch (err) {
-      console.warn("[case.delete] Storage remove falhou (não-fatal)", {
+      log.warn("storage remove failed (non-fatal)", {
+        workspaceId,
         caseId,
         documentId: d.id,
-        err: err instanceof Error ? err.message : String(err),
+        err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
       });
     }
   }
