@@ -1,19 +1,25 @@
 import Link from "next/link";
 import { ArrowRight, Plus, FileText, ShieldAlert } from "lucide-react";
+import type { Prisma } from "@prisma/client";
 import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 
 export const dynamic = "force-dynamic";
 
-export default async function CasesListPage() {
+export default async function CasesListPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { workspaceId } = await getWorkspaceContext();
-  const cases = await listCases(workspaceId, { take: 20 });
+  const sp = (await searchParams) ?? {};
+  const qRaw = typeof sp["q"] === "string" ? sp["q"] : Array.isArray(sp["q"]) ? sp["q"][0] : "";
+  const q = qRaw?.trim() || null;
+  const archived = sp["archived"] === "1";
+  const cases = await listCases(workspaceId, { take: 30, q, includeArchived: archived });
 
   return (
     <AppShell title="Casos">
@@ -31,6 +37,23 @@ export default async function CasesListPage() {
             </Link>
           </Button>
         </header>
+
+        <Card className="p-3">
+          <form className="flex flex-wrap items-center gap-2" action="/cases">
+            <Input
+              name="q"
+              defaultValue={qRaw}
+              placeholder="Buscar por título, resumo ou CNJ…"
+              className="h-9 w-full sm:w-[420px]"
+            />
+            <Button type="submit" variant="secondary" size="sm">
+              Buscar
+            </Button>
+            <Button asChild type="button" variant={archived ? "secondary" : "outline"} size="sm">
+              <Link href={archived ? "/cases" : "/cases?archived=1"}>{archived ? "Mostrando arquivados" : "Ver arquivados"}</Link>
+            </Button>
+          </form>
+        </Card>
 
         {cases.length === 0 ? (
           <EmptyState
@@ -52,7 +75,9 @@ export default async function CasesListPage() {
   );
 }
 
-type CaseRow = Awaited<ReturnType<typeof listCases>>[number];
+type CaseRow = Prisma.CaseGetPayload<{
+  include: { _count: { select: { facts: true; requests: true; risks: true; drafts: true } } };
+}>;
 
 function CaseCard({ c }: { c: CaseRow }) {
   return (

@@ -95,11 +95,32 @@ export async function GET(req: Request) {
   const { workspaceId } = await getWorkspaceContext();
   const url = new URL(req.url);
   const statusParam = url.searchParams.get("status");
+  const q = (url.searchParams.get("q") ?? "").trim() || null;
+  const hasProcessParam = url.searchParams.get("hasProcess");
+  const hasDocsParam = url.searchParams.get("hasDocuments");
+  const hasDraftsParam = url.searchParams.get("hasDrafts");
+  const includeArchived = url.searchParams.get("archived") === "1";
+
+  const parseBool = (v: string | null): boolean | null => {
+    if (v === null) return null;
+    if (v === "1" || v.toLowerCase() === "true") return true;
+    if (v === "0" || v.toLowerCase() === "false") return false;
+    return null;
+  };
+
   const status = statusParam && Object.values(CaseStatus).includes(statusParam as CaseStatus)
     ? (statusParam as CaseStatus)
     : null;
   const take = Math.min(50, Math.max(1, Number(url.searchParams.get("take") ?? "20")));
-  const cases = await listCases(workspaceId, { take, status });
+  const cases = await listCases(workspaceId, {
+    take,
+    status,
+    q,
+    hasProcess: parseBool(hasProcessParam),
+    hasDocuments: parseBool(hasDocsParam),
+    hasDrafts: parseBool(hasDraftsParam),
+    includeArchived,
+  });
   return NextResponse.json({ cases });
 }
 

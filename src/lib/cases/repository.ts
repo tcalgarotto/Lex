@@ -135,13 +135,47 @@ export async function getCaseById(workspaceId: string, caseId: string) {
 
 export async function listCases(
   workspaceId: string,
-  opts: { take?: number; status?: CaseStatus | null } = {},
+  opts: {
+    take?: number;
+    status?: CaseStatus | null;
+    q?: string | null;
+    hasProcess?: boolean | null;
+    hasDocuments?: boolean | null;
+    hasDrafts?: boolean | null;
+    includeArchived?: boolean;
+  } = {},
 ) {
   const take = Math.min(50, Math.max(1, opts.take ?? 20));
   return prisma.case.findMany({
     where: {
       workspaceId,
+      deletedAt: null,
+      ...(opts.includeArchived ? {} : { archivedAt: null }),
       ...(opts.status ? { status: opts.status } : {}),
+      ...(opts.q
+        ? {
+            OR: [
+              { title: { contains: opts.q, mode: "insensitive" } },
+              { summary: { contains: opts.q, mode: "insensitive" } },
+              { processNumber: { contains: opts.q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+      ...(typeof opts.hasProcess === "boolean"
+        ? opts.hasProcess
+          ? { processNumber: { not: null } }
+          : { processNumber: null }
+        : {}),
+      ...(typeof opts.hasDocuments === "boolean"
+        ? opts.hasDocuments
+          ? { documents: { some: { deletedAt: null, ...(opts.includeArchived ? {} : { archivedAt: null }) } } }
+          : { documents: { none: { deletedAt: null } } }
+        : {}),
+      ...(typeof opts.hasDrafts === "boolean"
+        ? opts.hasDrafts
+          ? { drafts: { some: {} } }
+          : { drafts: { none: {} } }
+        : {}),
     },
     orderBy: { updatedAt: "desc" },
     take,
@@ -149,6 +183,40 @@ export async function listCases(
       _count: {
         select: { facts: true, requests: true, risks: true, drafts: true },
       },
+    },
+  });
+}
+
+export async function archiveCase(args: { workspaceId: string; caseId: string; userId?: string }) {
+  await ensureCaseInWorkspace(args.workspaceId, args.caseId);
+  await prisma.case.update({
+    where: { id: args.caseId },
+    data: { archivedAt: new Date() },
+  });
+  await prisma.caseTimelineEvent.create({
+    data: {
+      caseId: args.caseId,
+      kind: CaseTimelineKind.NOTE,
+      message: "Caso arquivado.",
+      ...(args.userId ? { userId: args.userId } : {}),
+      payloadJson: { action: "case.archived" } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+export async function restoreCase(args: { workspaceId: string; caseId: string; userId?: string }) {
+  await ensureCaseInWorkspace(args.workspaceId, args.caseId);
+  await prisma.case.update({
+    where: { id: args.caseId },
+    data: { archivedAt: null },
+  });
+  await prisma.caseTimelineEvent.create({
+    data: {
+      caseId: args.caseId,
+      kind: CaseTimelineKind.NOTE,
+      message: "Caso restaurado do arquivo.",
+      ...(args.userId ? { userId: args.userId } : {}),
+      payloadJson: { action: "case.restored" } as Prisma.InputJsonValue,
     },
   });
 }
