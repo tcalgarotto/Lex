@@ -57,6 +57,7 @@
 | `NODE_ENV=production npm run build` | OK (`/biblioteca/memoria` e rotas API compiladas) |
 | `npm run qa:retrieval:domains` | **10/10** domínios OK |
 | `npm run db:migrate:deploy` | Migração `20260509220000_office_memory` aplicada no DB configurado em `.env` |
+| Bateria pós-`5949777` | Reexecutada na mesma ordem (lint → … → `qa:retrieval:domains`); **535** unit, **43** integration, **80** e2e, build e QA **10/10** OK. |
 
 ## 7. Falhas encontradas
 
