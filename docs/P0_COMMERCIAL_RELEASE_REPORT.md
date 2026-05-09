@@ -16,6 +16,11 @@
 
 - **F10 (parcial)**: export de **minuta do caso** em **DOCX/PDF/Markdown** via endpoint dedicado com validação obrigatória `workspaceId/caseId/draftId` + teste de integração multi-tenant.
 
+- **F11 (parcial)**: base de **soft delete** e filtros iniciais em **Casos**.
+  - **DB**: `archivedAt/deletedAt` em `Case`, `Document`, `LegalPiece` (migração aplicada).
+  - **UI**: `/cases` ganhou busca simples + alternância para ver arquivados.
+  - **API**: arquivar/restaurar (`POST/DELETE /api/cases/[id]/archive`) e exclusão definitiva com confirmação (`DELETE /api/cases/[id]/delete?confirm=1`) com validação por `workspaceId` e limpeza best-effort (Qdrant + Storage) de documentos vinculados.
+
 ## 2. Fluxo final (produto)
 
 Novo caso → relato livre / entrevista guiada → estrutura editável (partes/fatos/pedidos/riscos) → documentos → pesquisa jurídica confiável → estratégia → peça → revisão → export → processo judicial (CNJ) se houver.
@@ -65,7 +70,7 @@ Novo caso → relato livre / entrevista guiada → estrutura editável (partes/f
 
 ## 9. Itens adiados
 
-- **F11–F13**: Biblioteca real, separação Documento/Peça/Biblioteca e fluxo completo de soft delete + exclusão definitiva ainda não implementados nesta branch.
+- **F11–F13**: Biblioteca real, separação Documento/Peça/Biblioteca e fluxo completo (UI) de arquivar/restaurar/excluir definitivo por entidade ainda pendentes (F11 iniciou apenas base + casos).
 - **F15–F20**: Jobs em Admin (cobertura total), Pesquisa Jurídica como busca avançada com filtros completos, Dashboard final comercial, Memória opt-in multi-escopo e painel “Origem dos dados” ainda pendentes.
 - **F21–F23**: auditorias completas por evidência (uploads/downloads/exports + PII/logs/perf/caches) ainda pendentes.
 

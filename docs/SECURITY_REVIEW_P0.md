@@ -65,7 +65,8 @@ Um item é **P0** se permitir:
 - ⏳ **Uploads**: validação de mime/tamanho + prevenção de path traversal.
 - ⏳ **Downloads**: valida ownership + path seguro (não aceitar path arbitrário do client).
 - ⏳ **Deletes**: confirmação + auditoria (Activity/Timeline) + best-effort no storage.
-- ⏳ **Exports**: valida `workspaceId` + relação `draftId → caseId → workspaceId`; não inclui anexos de outro workspace.
+- ✅ **Exports (minuta do caso)**: valida `workspaceId` + relação `draftId → caseId → workspaceId`.  
+  - **Evidência**: `src/app/api/cases/[id]/drafts/[draftId]/export/route.ts` + `tests/integration/case-draft-export.test.ts`.
 - ⏳ **Qdrant**:
   - `lex_main`: filtros por `workspaceId` sempre presentes nas buscas/deletes
   - `lex_corpus_*`: tenant global explícito e separado do workspace
@@ -88,23 +89,9 @@ Um item é **P0** se permitir:
 
 ### 8.1 Críticos (P0) — bloqueiam release
 
-- **Admin gating ausente em `/api/retrieval/explain` e `/retrieval/explain`**  
-  - **Risco**: bypass de debug avançado por URL; superfície expõe trace/argumentos e aumenta risco de vazamento indireto.  
-  - **Evidência**: `src/app/api/retrieval/explain/route.ts` (handler sem role/permission) e `src/app/(app)/retrieval/explain/page.tsx` (página acessível por URL, chama a API).  
-  - **Correção proposta**: exigir role/permission no servidor (page-level + API). Considerar forçar `useCache=false` nessa rota.  
-  - **Teste de aceite**: integration/e2e: usuário não-OWNER recebe 403/404 ao acessar `/retrieval/explain` e `GET /api/retrieval/explain`.
-
-- **Jobs/ações sensíveis expostas em `/settings/jobs` sem role server-side**  
-  - **Risco**: qualquer usuário autenticado pode acionar jobs/ações com side-effect (custo/DoS/instabilidade).  
-  - **Evidência**: `src/app/(app)/settings/jobs/page.tsx` usa `getWorkspaceContext()` e expõe action `triggerCorpusReindexAction` via `<form action=...>`.  
-  - **Correção proposta**: exigir role/permission no servidor (page-level e action).  
-  - **Teste de aceite**: e2e/integration: não-OWNER não acessa a página e não consegue executar a action (403/404).
-
-- **Cache de retrieval não separa `workspaceId`/`caseContext` (risco LGPD cross-tenant)**  
-  - **Risco**: poluição/leak via cache (especialmente quando `rewrite` usa `CaseBrain.problem` no contexto).  
-  - **Evidência**: `src/lib/retrieval/legal/cache.ts` key não inclui `workspaceId` nem hash de `caseContext`; `/api/retrieval/search` passa `caseContext` quando há `caseId`; `src/lib/retrieval/legal/rewrite.ts` concatena `ctx.problem`.  
-  - **Correção proposta**: incluir `workspaceId` + hash de `caseContext` na chave **ou** bypass de cache quando houver `caseContext`/`mustInclude`.  
-  - **Teste de aceite**: integration multi-tenant: mesma `q` em workspaces diferentes não pode compartilhar cache/rewrites/trace.
+- ⏳ **Deletes (casos, docs, biblioteca)**: varredura completa por evidência ainda pendente.  
+  - **Evidência parcial (casos)**: `src/app/api/cases/[id]/delete/route.ts` exige `workspaceId` via `getWorkspaceContext()` e confirmação `?confirm=1`; remove Storage/Qdrant best-effort para docs do caso + Activity/Timeline.
+  - **Teste de aceite**: integration multi-tenant (tentativa cross-workspace → 404) + storage/qdrant chamado (mock) ainda pendente.
 
 ### 8.2 Altos (P1)
 
