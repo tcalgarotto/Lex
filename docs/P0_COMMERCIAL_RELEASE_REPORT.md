@@ -1,7 +1,7 @@
 # P0 Commercial Release Report — Lex
 
 > Relatório honesto de release P0 comercial (fluxo caso-cêntrico).  
-> Última atualização: **2026-05-09** (fechamento sprint — logs P0 / critério L).
+> Última atualização: **2026-05-09** (fechamento sprint + rodada RSC/UX P1; commits `32abc3b`, `5949777`).
 
 ## 1. Resumo do que mudou
 
@@ -34,6 +34,9 @@
 ## 4. Bugs corrigidos
 
 - **IDOR em profundidade no contexto do caso**: leitura de texto de documentos para RAG/drafting ignorava `workspaceId` no `findMany` de `Document` — corrigido para `{ workspaceId, id: { in: documentIds } }`.
+- **`/processos` quebrava em runtime (RSC)**: `async` page usava `onBlur` em `<Input>` — **corrigido em `32abc3b`** com `CnjInput` (client) em `src/components/processes/cnj-input.tsx`.
+- **`/test-guide` com o mesmo padrão**: botão “Copiar relato” em Server Component — corrigido em `5949777` com `SentinelJourneysPanel` + dados em `lib/test-guide/sentinel-journeys.ts`.
+- **Anti-regressão RSC**: `src/lib/rsc-app-route-handlers-guard.test.ts` (Vitest) varre `src/app/**/{page,layout,not-found,error}.tsx` sem `"use client"` e falha se houver `onBlur`/`onClick`/… em JSX.
 
 ## 5. Riscos remanescentes (explícitos)
 
@@ -48,7 +51,7 @@
 |---------|-------------------------|
 | `npm run lint` | OK (sem warnings) |
 | `npm run typecheck` | OK |
-| `npm test` | **534 passed** |
+| `npm test` | **535 passed** (inclui guard RSC `rsc-app-route-handlers-guard.test.ts`) |
 | `npm run test:integration` | **43 passed** (inclui `office-memory.test.ts`) |
 | `npm run test:e2e` | **80 passed** (revalidado após UX P1) |
 | `NODE_ENV=production npm run build` | OK (`/biblioteca/memoria` e rotas API compiladas) |
@@ -71,7 +74,7 @@
 |----------|-------------|--------|
 | **A** | Lint | ✅ `npm run lint` |
 | **B** | Typecheck | ✅ `npm run typecheck` |
-| **C** | Testes unitários | ✅ `npm test` (534) |
+| **C** | Testes unitários | ✅ `npm test` (535) |
 | **D** | Testes integração | ✅ `npm run test:integration` (43) |
 | **E** | E2E | ✅ `npm run test:e2e` (80) |
 | **F** | Build produção | ✅ `NODE_ENV=production npm run build` |
@@ -86,7 +89,7 @@
 
 ## 10. Status global
 
-**READY + UX P1 (parcial)** — **READY** mantém-se para o **gate P0 comercial** (**A–N** + bateria §6). Após o fechamento do gate, a rodada **UX P1** em `6edf8e8` fechou a maioria dos itens listados em `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2 (tabela §5.2.1), sem regressão de lint/typecheck/test/integration/e2e/build.
+**READY + UX P1 (parcial)** — **READY** mantém-se para o **gate P0 comercial** (**A–N** + bateria §6). Rodadas pós-gate: `6edf8e8` (copy/fluxo P1), `32abc3b` (CNJ client em `/processos`), `5949777` (guard Vitest + `/test-guide` + mapa mínimo de terminologia + tabs). Maioria dos itens §5.2 do audit fechada; §3 amplo ainda parcial (ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1).
 
 **Argumentação:** **A–N** atendidos com evidência de comandos (§6). O critério **L** foi fechado na sprint anterior com `getLogger` + scrub. **Transparência:** o checklist amplo §3 do audit (todas as telas, tabs 1366×768, estados vazios globais) permanece **parcialmente** ⏳; ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1.
 
@@ -102,8 +105,9 @@
 - **PR #10**: https://github.com/tcalgarotto/Lex/pull/10
 - **Compare**: https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09
 
-## 13. Pós-READY — UX P1 (`6edf8e8`)
+## 13. Pós-READY — UX P1 + hardening RSC (`6edf8e8`, `32abc3b`, `5949777`)
 
-- **Objetivo**: aproximar o produto da linguagem e do fluxo do advogado (sem reabrir gate A–N).
-- **Entregas**: ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2.1 e §7 (comandos reexecutados após o commit).
-- **Arquivos tocados (resumo)**: `busca/page.tsx`, `pesquisa-juridica/page.tsx`, `legal-search-panel.tsx`, `case-overview-tab.tsx`, `processos/page.tsx`, `case-drafts-tab.tsx`, `case-research-tab.tsx`, `case-actions.tsx`, `orchestrator.ts`, `legal-sources/route.ts`, `cases/page.tsx`.
+- **Objetivo**: linguagem/fluxo de advogado **e** evitar crash de Server Component por handler JSX (build não substitui smoke de RSC).
+- **Entregas**: ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2.1 (tabela atualizada) e §7.
+- **Arquivos (rodada `6edf8e8`)**: `busca/page.tsx`, `pesquisa-juridica/page.tsx`, `legal-search-panel.tsx`, `case-overview-tab.tsx`, `processos/page.tsx`, `case-drafts-tab.tsx`, `case-research-tab.tsx`, `case-actions.tsx`, `orchestrator.ts`, `legal-sources/route.ts`, `cases/page.tsx`.
+- **Arquivos (rodada `32abc3b` + `5949777`)**: `cnj-input.tsx`, `rsc-app-route-handlers-guard.test.ts`, `lib/test-guide/sentinel-journeys.ts`, `components/test-guide/sentinel-journeys-panel.tsx`, `test-guide/page.tsx`, `lib/ui/product-terminology.ts`, `case-tabs.tsx`.
