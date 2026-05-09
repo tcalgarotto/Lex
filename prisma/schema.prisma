@@ -238,6 +238,13 @@ model Document {
   totalChunks     Int?
   processedChunks Int?
   indexedAt       DateTime?
+  /**
+   * F11 — Soft delete: arquivar/restaurar + excluir definitivo.
+   * - archivedAt: ocultar da UI padrão, mantendo histórico.
+   * - deletedAt: marcação para exclusão definitiva (API remove storage + chunks).
+   */
+  archivedAt      DateTime?
+  deletedAt       DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -250,6 +257,8 @@ model Document {
   @@index([caseId])
   @@index([status])
   @@index([workspaceId, updatedAt])
+  @@index([workspaceId, archivedAt])
+  @@index([workspaceId, deletedAt])
 }
 
 model DocumentChunk {
@@ -308,6 +317,8 @@ model LegalPiece {
    * Metadados de geração (fontes, confiança, avisos) para painel do editor.
    */
   aiMetaJson  Json?
+  archivedAt  DateTime?
+  deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -315,6 +326,8 @@ model LegalPiece {
 
   @@index([workspaceId])
   @@index([processId])
+  @@index([workspaceId, archivedAt])
+  @@index([workspaceId, deletedAt])
 }
 
 model MemoryEntry {
@@ -982,6 +995,8 @@ model Case {
    */
   processId     String?    @unique
   metadataJson  Json?
+  archivedAt    DateTime?
+  deletedAt     DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -1004,6 +1019,8 @@ model Case {
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])
   @@index([tribunalCode])
+  @@index([workspaceId, archivedAt])
+  @@index([workspaceId, deletedAt])
 }
 
 model CaseFact {
