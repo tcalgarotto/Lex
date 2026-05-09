@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   BookOpen,
   CheckCircle2,
+  FileDown,
 } from "lucide-react";
 import type { CaseDraft } from "@prisma/client";
 import { Card } from "@/components/ui/card";
@@ -95,6 +96,11 @@ export function CaseDraftsTab({ caseId, drafts }: Props) {
     } catch {
       setError("Não foi possível copiar para a área de transferência.");
     }
+  }
+
+  function download(format: "docx" | "pdf" | "md") {
+    const url = `/api/cases/${caseId}/drafts/${current.id}/export?format=${format}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function handleSave() {
@@ -205,6 +211,33 @@ export function CaseDraftsTab({ caseId, drafts }: Props) {
                     <Copy className="mr-1 size-3" /> Copiar
                   </>
                 )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => download("docx")}
+                className="h-7 px-2 text-xs"
+                title="Baixar DOCX"
+              >
+                <FileDown className="mr-1 size-3" /> DOCX
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => download("pdf")}
+                className="h-7 px-2 text-xs"
+                title="Baixar PDF"
+              >
+                <FileDown className="mr-1 size-3" /> PDF
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => download("md")}
+                className="h-7 px-2 text-xs"
+                title="Baixar Markdown"
+              >
+                <FileDown className="mr-1 size-3" /> MD
               </Button>
             </div>
           </header>
