@@ -78,7 +78,11 @@ Um item é **P0** se permitir:
   - **Evidência**: `src/lib/retrieval/legal/index.ts`.
 - ✅ **Logger com scrub (PII/segredos)** + testes dedicados.  
   - **Evidência**: `src/lib/logger.ts` (comentário de segurança no topo) + `src/lib/logger.test.ts`.
-- ⚠️ **Logs fora do logger (P1, não P0 de exploração direta)**: `src/app/api/search/route.ts` usa `console.warn` em falha de corpus e `catch {}` silencioso no ramo vetorial (L190–192, L227–229) — não passa pelo scrub central; **risco**: ruído e possível mensagem bruta de erro em `warn`.
+- ✅ **Logs em `/api/search` (busca global)**: falhas de `retrieveLegalContext` e do ramo vetorial (embed/Qdrant) usam `getLogger("lex.api.search")` com `requestId`, `workspaceId`, `queryLen`, `scope` e erro estruturado — **sem** texto bruto da query nos metadados; respostas incluem header `x-request-id`.  
+  - **Evidência**: `src/app/api/search/route.ts`.
+- ✅ **Logs em rotas sensíveis de documentos/casos**: substituídos `console.*` diretos por `getLogger` nos handlers de upload, reprocess, link-case, delete de documento, delete de caso, legal-sources.  
+  - **Evidência**: arquivos sob `src/app/api/documents/*`, `src/app/api/cases/[id]/delete`, `legal-sources`.
+- ✅ **Libs server-side críticas**: `removeDocumentBuffer` (`src/lib/storage.ts`), `recordObservabilityLog`, `recordCostEntry`, falha ao persistir FAILED no ingest Inngest — passam por logger com scrub.
 
 ### 6.1 Tabela P0 / P1 / P2 (status)
 
@@ -87,16 +91,16 @@ Um item é **P0** se permitir:
 | SEC-01 | IDOR cross-workspace em CRUD caso / export / delete | P0 | **Resolvido** | Testes de integração + rotas com `workspaceId`. |
 | SEC-02 | `buildCaseContext` + texto de documentos | P2 | **Resolvido** | `fetchDocumentTexts` agora filtra `{ workspaceId, id: { in } }` em `src/lib/cases/context.ts`. |
 | SEC-03 | Memória do escritório (`OfficeMemory`) | P0 | **Resolvido** | `src/app/api/office-memory/*` + `src/lib/office-memory/visibility.ts` + `tests/integration/office-memory.test.ts`. |
-| SEC-04 | Busca global — tratamento de erro | P1 | **Aberto** | `console.warn` / `catch {}` em `src/app/api/search/route.ts`; migrar para `logger` com scrub. |
+| SEC-04 | Busca global — tratamento de erro / logs | P1 | **Resolvido** | `getLogger` + meta scrubada em `src/app/api/search/route.ts` (2026-05-09). |
 | SEC-05 | Exaustividade “toda rota do monorepo” | P2 | **Aceito-com-justificativa** | Amostragem + testes; revisão contínua em novas rotas. |
 
-## 7. Comandos executados (rodada final 2026-05-09)
+## 7. Comandos executados (fechamento 2026-05-09)
 
 - ✅ `npm run lint` → sem erros.
 - ✅ `npm run typecheck` → OK.
 - ✅ `npm test` → 534 passed.
 - ✅ `npm run test:integration` → 43 passed (inclui `office-memory.test.ts`).
-- ✅ `npm run test:e2e` → 79 passed (inclui `GET /api/office-memory` → 401 sem auth).
+- ✅ `npm run test:e2e` → 80 passed.
 - ✅ `NODE_ENV=production npm run build` → OK.
 - ✅ `npm run qa:retrieval:domains` → 10/10.
 - ✅ `npm run db:migrate:deploy` → migração `20260509220000_office_memory` aplicada no ambiente usado pela equipe (remoto).
@@ -109,22 +113,21 @@ Um item é **P0** se permitir:
 
 ### 8.2 Altos (P1)
 
-- **Busca global (`/api/search`) — logging e degrade**  
-  - **Evidência**: `src/app/api/search/route.ts` (`console.warn` + `catch {}` no bloco vetorial).  
-  - **Próximo passo**: usar `logger` + não engolir erro sem contador/`warnOnce`.
+- **(SEC-04 encerrado)** — ver §6 e tabela SEC-04.
 
 ### 8.3 Médios/Baixos (P2/P3)
 
 - **Defesa em profundidade em updates por `id` após `findFirst`** (padrão já notado em `docs/CODE_REVIEW_P0.md`): preferir `updateMany` com `{ id, workspaceId }` onde risco de TOCTOU for relevante.
+- **`src/lib/env.ts` / `src/lib/corpus/embeddings-pipeline.ts`**: ainda usam `console.*` para bootstrap e jobs de corpus — **aceito-com-justificativa** (fora do caminho de request HTTP típico; ver `docs/CODE_REVIEW_P0.md` §5).
 
 ## 9. Pendências imediatas
 
-- Fechar P1 **SEC-04** (search route) com logger scrub + teste mínimo de não-vazamento de meta bruta.
 - Manter varredura em **novas** rotas `/api/*` sempre com checklist: `getWorkspaceContext()` → `where: { workspaceId }` ou join equivalente.
+- Opcional: alinhar `env.ts` / pipelines longos ao `getLogger` para consistência total de observabilidade.
 
 ## 10. Status final (P0 segurança)
 
-**Status**: **NOT READY** (release comercial global — ver `docs/P0_COMMERCIAL_RELEASE_REPORT.md`)
+**Status**: **READY** para o **gate de segurança/logs P0** descrito neste documento (critério L e SEC-04 fechados com evidência em código + bateria §7 verde).
 
-**Motivo (segurança)**: não há **P0 crítico aberto** listado acima, porém o critério comercial global de release exige também UX/RAG/honestidade de checklist A–N; permanece **P1 aberto** em logs da busca global (`SEC-04`). Para declarar READY só de segurança P0, a equipe pode considerar **SEC-04** como aceitável temporariamente com registro explícito — esta rodada **não** faz essa aceitação formal.
+**Nota de produto**: melhorias de UX comercial (jargão, labels, etc.) seguem em `docs/COMMERCIAL_UX_P0_AUDIT.md` e não reabrem P0 de segurança aqui.
 

@@ -1,5 +1,8 @@
 import { getSupabaseEnv } from "@/lib/env";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.storage");
 
 export async function uploadDocumentBuffer(params: {
   path: string;
@@ -35,8 +38,11 @@ export async function removeDocumentBuffer(path: string): Promise<void> {
   const admin = createSupabaseAdminClient();
   const { error } = await admin.storage.from(env.STORAGE_BUCKET_DOCUMENTS).remove([path]);
   if (error) {
-    // Storage costuma devolver erro se o objeto não existe — loga e segue.
-    console.warn("[storage] remove falhou (não-fatal)", { path, error: error.message });
+    // Storage costuma devolver erro se o objeto não existe — loga e segue (sem path bruto).
+    log.warn("storage remove failed (non-fatal)", {
+      pathLen: path.length,
+      err: { message: error.message },
+    });
   }
 }
 

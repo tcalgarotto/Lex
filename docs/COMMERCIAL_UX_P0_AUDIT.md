@@ -262,4 +262,10 @@ Usar o roteiro em `docs/UX_FLOW_AUDIT.md` e registrar aqui quaisquer becos sem s
 - ✅ `npm run test:integration -- --run tests/integration/case-structured-crud-routes.test.ts` (4/4 OK)
 - ✅ `npx prisma migrate deploy` (OK; aplicou `20260509132000_casefact_metadata_json`)
 - ⚠️ `npx prisma migrate dev --create-only --name add_case_fact_metadata` (FALHOU por drift; ver log no terminal)
+- ✅ Fechamento sprint (2026-05-09): `npm run lint`, `npm run typecheck`, `npm test` (534), `npm run test:integration` (43), `npm run test:e2e` (80), `NODE_ENV=production npm run build`, `npm run qa:retrieval:domains` (10/10) — todos OK no ambiente do agente.
+
+## 8. P1 — status final após fechamento de logs (2026-05-09)
+
+- **Gate de segurança / observabilidade (critério L, alinhado ao release P0)**: **fechado**. A busca global (`/api/search`) e rotas críticas de documentos/casos passaram a usar `getLogger` com scrub, `requestId` e metadados sem texto bruto da query do usuário. Detalhes: `docs/SECURITY_REVIEW_P0.md` e `docs/CODE_REVIEW_P0.md` §5.
+- **P1 de copy, jargão e polimento de UI listados na seção “P1 (melhorias)” acima**: permanecem **abertos** como melhoria de produto comercial; **não** reabrem o gate de logs/segurança desta sprint.
 

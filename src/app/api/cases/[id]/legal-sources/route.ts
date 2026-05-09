@@ -3,6 +3,9 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.api.cases.legal-sources");
 
 /**
  * Persistência de fundamentos jurídicos pinados em um caso.
@@ -67,7 +70,11 @@ export async function POST(
         { status: 409 },
       );
     }
-    console.error("[legal-sources] POST error", err);
+    log.error("POST pin failed", {
+      workspaceId,
+      caseId: id,
+      err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+    });
     return NextResponse.json({ error: "Erro ao pinar fundamento" }, { status: 500 });
   }
 }

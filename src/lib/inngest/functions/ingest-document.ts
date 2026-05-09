@@ -3,11 +3,14 @@ import { randomUUID } from "node:crypto";
 import { DocumentStatus, LegalLayer } from "@prisma/client";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
+import { getLogger } from "@/lib/logger";
 import { downloadDocumentBuffer } from "@/lib/storage";
 import { chunkLegalText } from "@/lib/parsers/legal-chunker";
 import { embedTexts } from "@/lib/ai/embeddings";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { sha256Hex } from "@/lib/util/content-hash";
+
+const log = getLogger("lex.inngest.ingest-document");
 
 const BATCH = 16;
 
@@ -32,7 +35,10 @@ async function failDocument(
       },
     });
   } catch (e) {
-    console.error("[ingest-document] failed to persist FAILED status", e);
+    log.error("failed to persist FAILED status", {
+      documentId,
+      err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+    });
   }
   const err = new NonRetriableError(reason);
   if (cause !== undefined) {

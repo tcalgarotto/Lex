@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.api.documents.link-case");
 
 /**
  * Vincula (ou desvincula) um documento a um Case do mesmo workspace.
@@ -80,7 +83,12 @@ export async function POST(
         },
       })
       .catch((err) => {
-        console.error("[link-case] timeline event failed (non-fatal)", err);
+        log.warn("timeline event failed (non-fatal)", {
+          workspaceId,
+          caseId,
+          documentId: doc.id,
+          err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+        });
       });
   }
 

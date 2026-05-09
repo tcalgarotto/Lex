@@ -6,6 +6,9 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.api.documents.upload");
 
 export const runtime = "nodejs";
 
@@ -106,7 +109,11 @@ export async function POST(req: Request) {
   try {
     await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
   } catch (e) {
-    console.error("Inngest send failed", e);
+    log.warn("inngest send failed (non-fatal)", {
+      workspaceId,
+      documentId: doc.id,
+      err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+    });
   }
 
   await prisma.activity.create({
@@ -129,7 +136,12 @@ export async function POST(req: Request) {
         },
       })
       .catch((err) => {
-        console.error("[upload] timeline event failed (non-fatal)", err);
+        log.warn("timeline event failed (non-fatal)", {
+          workspaceId,
+          caseId,
+          documentId: doc.id,
+          err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+        });
       });
   }
 

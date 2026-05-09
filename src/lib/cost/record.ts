@@ -1,6 +1,9 @@
 import type { CostCategory, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { estimateLlmCostUsd } from "@/lib/cost/estimate";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.cost");
 
 export function recordCostEntry(data: {
   workspaceId: string;
@@ -37,5 +40,9 @@ export function recordCostEntry(data: {
         metaJson: data.metaJson ?? undefined,
       },
     })
-    .catch((e) => console.error("[cost] record failed", e));
+    .catch((e) => {
+      log.warn("cost record failed (non-fatal)", {
+        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+      });
+    });
 }

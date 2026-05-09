@@ -4,6 +4,9 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.api.documents.reprocess");
 
 /**
  * Reprocessar um documento:
@@ -52,16 +55,21 @@ export async function POST(
   try {
     await getQdrantVectorStore().deleteByDocumentId(doc.id, doc.workspaceId);
   } catch (err) {
-    console.error("[reprocess] Qdrant delete falhou (não-fatal)", {
+    log.warn("qdrant delete failed (non-fatal)", {
+      workspaceId,
       documentId: doc.id,
-      err: err instanceof Error ? err.message : String(err),
+      err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
     });
   }
 
   try {
     await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
   } catch (e) {
-    console.error("Inngest send failed", e);
+    log.warn("inngest send failed (non-fatal)", {
+      workspaceId,
+      documentId: doc.id,
+      err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+    });
   }
 
   await prisma.activity.create({
