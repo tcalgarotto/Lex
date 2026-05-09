@@ -104,7 +104,7 @@ Checklist (marcar ✅ apenas com evidência):
   - **Agente responsável**: `product-ux-legal-workflow-agent` + `code-review-refactor-agent`  
   - **Teste de aceite**: clicar no item no dashboard e cair no caso correto, com a seção de estratégia visível.
 
-- ✅ **Timeline usava “Pesquisa jurisprudencial” (base errada → quebra confiança)** — **fechado** (`7a7af85`)  
+- ✅ **Timeline usava “Pesquisa jurisprudencial” (base errada → quebra confiança)** — **fechado** (`6edf8e8`)  
   - **Problema**: o Lex sugeria “jurisprudência” mesmo quando a base principal é legislação.  
   - **Correção aplicada**: `src/lib/cases/orchestrator.ts` — mensagem neutra `Pesquisa jurídica automática iniciada (acervo indexado)`.  
   - **Teste de aceite**: aba Atividade não exibe mais “jurisprudencial” nesse evento; `npm test` inclui `orchestrator.test.ts`.
@@ -206,7 +206,7 @@ Checklist (marcar ✅ apenas com evidência):
   - **Agente responsável**: `product-ux-legal-workflow-agent` + `design-system-frontend-polish-agent`  
   - **Teste de aceite**: clicar CTA e conseguir vincular sem perder o caso (ou voltar em 1 clique).
 
-#### P1 — fechamento desta rodada (`7a7af85`)
+#### P1 — fechamento desta rodada (`6edf8e8`)
 
 | Item (§5.2) | Status | Evidência |
 |-------------|--------|-----------|
@@ -274,13 +274,13 @@ Usar o roteiro em `docs/UX_FLOW_AUDIT.md` e registrar aqui quaisquer becos sem s
 - ✅ `npx prisma migrate deploy` (OK; aplicou `20260509132000_casefact_metadata_json`)
 - ⚠️ `npx prisma migrate dev --create-only --name add_case_fact_metadata` (FALHOU por drift; ver log no terminal)
 - ✅ Fechamento sprint (2026-05-09): `npm run lint`, `npm run typecheck`, `npm test` (534), `npm run test:integration` (43), `npm run test:e2e` (80), `NODE_ENV=production npm run build`, `npm run qa:retrieval:domains` (10/10) — todos OK no ambiente do agente.
-- ✅ **Rodada UX P1 (pós-READY, mesmo dia)**: `npm run lint`, `npm run typecheck`, `npm test` (534), `npm run test:integration` (43), `npm run test:e2e` (80), `NODE_ENV=production npm run build` — OK após alterações de copy/UX em `7a7af85`.
+- ✅ **Rodada UX P1 (pós-READY, mesmo dia)**: `npm run lint`, `npm run typecheck`, `npm test` (534), `npm run test:integration` (43), `npm run test:e2e` (80), `NODE_ENV=production npm run build` — OK após alterações de copy/UX em `6edf8e8`.
 
 ## 8. P1 — status (atualizado pós-gate A–N)
 
 ### 8.1 Fechamento da lista P1 (copy, fluxo, labels)
 
-- Tabela e evidências em **§5.2 “P1 — fechamento desta rodada”** (`7a7af85`).
+- Tabela e evidências em **§5.2 “P1 — fechamento desta rodada”** (`6edf8e8`).
 - **Gate A–N**: **não reaberto**; alterações são só camada de produto (strings, labels, deep-link, mapeamento de enums na UI).
 - **Pendência explícita**: checklist amplo §3 (tabs em 1366×768, “onde estou” em **todas** as telas, estados vazios globais, RAG limitation em toda superfície) continua **dívida** — ver itens ⏳ em §3; próxima rodada pode usar `design-system-frontend-polish-agent` com screenshots.
 

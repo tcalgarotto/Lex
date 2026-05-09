@@ -86,7 +86,7 @@
 
 ## 10. Status global
 
-**READY + UX P1 (parcial)** — **READY** mantém-se para o **gate P0 comercial** (**A–N** + bateria §6). Após o fechamento do gate, a rodada **UX P1** em `7a7af85` fechou a maioria dos itens listados em `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2 (tabela §5.2.1), sem regressão de lint/typecheck/test/integration/e2e/build.
+**READY + UX P1 (parcial)** — **READY** mantém-se para o **gate P0 comercial** (**A–N** + bateria §6). Após o fechamento do gate, a rodada **UX P1** em `6edf8e8` fechou a maioria dos itens listados em `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2 (tabela §5.2.1), sem regressão de lint/typecheck/test/integration/e2e/build.
 
 **Argumentação:** **A–N** atendidos com evidência de comandos (§6). O critério **L** foi fechado na sprint anterior com `getLogger` + scrub. **Transparência:** o checklist amplo §3 do audit (todas as telas, tabs 1366×768, estados vazios globais) permanece **parcialmente** ⏳; ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1.
 
@@ -102,7 +102,7 @@
 - **PR #10**: https://github.com/tcalgarotto/Lex/pull/10
 - **Compare**: https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09
 
-## 13. Pós-READY — UX P1 (`7a7af85`)
+## 13. Pós-READY — UX P1 (`6edf8e8`)
 
 - **Objetivo**: aproximar o produto da linguagem e do fluxo do advogado (sem reabrir gate A–N).
 - **Entregas**: ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2.1 e §7 (comandos reexecutados após o commit).
