@@ -13,6 +13,7 @@
 import { NormKind, type NormJurisdiction } from "@prisma/client";
 import { classifyLegalQuery, type QueryClassification } from "@/lib/legal/query-classifier";
 import { extractCitations } from "@/lib/corpus/citations";
+import { normalizeArticleRef } from "./article-ref";
 
 export type LegalIntent = {
   classification: QueryClassification;
@@ -112,7 +113,9 @@ export function classifyLegalIntent(rawQuery: string): LegalIntent {
 
   const articleRefs = Array.from(
     new Set(
-      [...rawQuery.matchAll(ARTICLE_RE)].map((m) => `Art. ${m[1]!.replace(/^0+/, "")}`),
+      [...rawQuery.matchAll(ARTICLE_RE)]
+        .map((m) => normalizeArticleRef(`Art. ${m[1]}`))
+        .filter((r): r is string => r !== null),
     ),
   );
   if (articleRefs.length > 0) signals.push("article_ref");

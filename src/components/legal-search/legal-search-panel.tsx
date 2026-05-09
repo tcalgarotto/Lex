@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Loader2, AlertTriangle, Pin, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface SearchBase {
   key: string;
@@ -19,6 +26,8 @@ interface SearchBase {
 interface SearchResult {
   id: string;
   text: string;
+  /** F3 — trecho relevante recortado pelo backend (default 320 chars). */
+  snippet?: string;
   articleRef: string | null;
   hierarchy: string | null;
   score: number;
@@ -57,6 +66,7 @@ export function LegalSearchPanel({
   embeddedCaseId?: string;
 } = {}) {
   const sp = useSearchParams();
+  const router = useRouter();
   const initialQ = sp?.get("q") ?? "";
   const scope = sp?.get("scope") ?? "tudo";
   const caseId = embeddedCaseId ?? sp?.get("caseId") ?? null;
@@ -115,6 +125,10 @@ export function LegalSearchPanel({
         throw new Error(`HTTP ${res.status}`);
       }
       setPinned((s) => new Set(s).add(r.id));
+      // F1: pin instantâneo — quando embutido em /cases/[id], o router
+      // refresh garante que a aba "Fundamentos do caso" reflita a adição
+      // sem reload manual.
+      if (embeddedCaseId) router.refresh();
     } catch (e) {
       setPinError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -240,7 +254,30 @@ function Body({
                       {r.norm.kind}
                     </Badge>
                   </div>
-                  <p className="text-sm leading-relaxed">{r.text}</p>
+                  <p className="text-sm leading-relaxed">{r.snippet ?? r.text}</p>
+                  {r.snippet && r.snippet !== r.text ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-[11px] text-violet-300 underline-offset-2 hover:underline"
+                        >
+                          Ver artigo completo
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle className="text-sm">
+                            {r.norm.identifier ?? r.norm.title}
+                            {r.articleRef ? ` — ${r.articleRef}` : ""}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="max-h-[60vh] overflow-auto whitespace-pre-wrap text-sm leading-relaxed">
+                          {r.text}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : null}
                   {r.hierarchy ? (
                     <p className="text-[11px] text-muted-foreground">{r.hierarchy}</p>
                   ) : null}
@@ -257,7 +294,11 @@ function Body({
                       onClick={() => onPin(r)}
                     >
                       <Pin className="mr-1 size-3" />
-                      {isPinned ? "Usado" : isPinning ? "Pinando…" : "Usar no caso"}
+                      {isPinned
+                        ? "No caso"
+                        : isPinning
+                          ? "Adicionando…"
+                          : "Adicionar ao caso"}
                     </Button>
                   ) : null}
                 </div>

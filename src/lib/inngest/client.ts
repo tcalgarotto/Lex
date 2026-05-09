@@ -113,3 +113,35 @@ export type CorpusIngestCfEvent = {
     skipEmbed?: boolean;
   };
 };
+
+/**
+ * F2 — Recomputa o Case Brain de forma assíncrona.
+ *
+ * Disparado:
+ *   - após `POST /api/cases` (criação);
+ *   - após `Document.status = INDEXED` quando vinculado a um caso;
+ *   - após `POST /api/cases/[id]/checklist` (F2.1);
+ *   - manualmente via `POST /api/cases/[id]/brain`.
+ *
+ * Idempotente via cache por hash (ver `consolidateCaseBrain`).
+ */
+export type CaseBrainConsolidateEvent = {
+  name: "lex/case.brain";
+  data: {
+    caseId: string;
+    /** Origem do disparo, útil para auditoria. */
+    source?: "create" | "document_indexed" | "checklist" | "manual";
+  };
+};
+
+/**
+ * F4.5 — Hook pós-INDEXED para detectar inconsistências entre documento
+ * e caso (Levenshtein nomes/cidade/idade/CPF/datas).
+ */
+export type DocumentConsistencyCheckEvent = {
+  name: "lex/document.consistency-check";
+  data: {
+    documentId: string;
+    caseId: string;
+  };
+};

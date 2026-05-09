@@ -29,6 +29,8 @@ import { summarizeProcessMemory } from "@/lib/inngest/functions/update-memory";
 import { corpusSync } from "@/lib/inngest/functions/corpus-sync";
 import { corpusIngestNorm } from "@/lib/inngest/functions/corpus-ingest-norm";
 import { ingestConstitution } from "@/lib/inngest/functions/ingest-constitution";
+import { consolidateCaseBrainFn } from "@/lib/inngest/functions/consolidate-case-brain";
+import { checkDocumentConsistencyFn } from "@/lib/inngest/functions/check-document-consistency";
 import { getLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -46,6 +48,8 @@ const handlers = serve({
     corpusSync,
     corpusIngestNorm,
     ingestConstitution,
+    consolidateCaseBrainFn,
+    checkDocumentConsistencyFn,
   ],
 });
 

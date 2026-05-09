@@ -25,6 +25,8 @@
     "qdrant:migrate-hybrid:dry": "tsx --env-file=.env scripts/qdrant-migrate-hybrid.ts -- --dry-run",
     "qdrant:reindex-sparse": "tsx --env-file=.env scripts/qdrant-reindex-sparse.ts",
     "corpus:reindex:minimal": "tsx --env-file=.env scripts/corpus-reindex-minimal.ts",
+    "corpus:rechunk:articles": "tsx --env-file=.env scripts/corpus-rechunk-articles.ts",
+    "corpus:rechunk:articles:dry": "tsx --env-file=.env scripts/corpus-rechunk-articles.ts -- --dry-run",
     "redis:check": "tsx --env-file=.env scripts/redis-check.ts",
     "corpus:sync": "tsx --env-file=.env scripts/corpus-sync.ts",
     "corpus:seed": "tsx --env-file=.env scripts/corpus-seed.ts",

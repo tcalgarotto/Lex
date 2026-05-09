@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Sparkles, Calendar, Building2, Hash } from "lucide-react";
+import { Sparkles, Calendar, Building2, Hash, Clock } from "lucide-react";
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -8,19 +8,27 @@ import { getCaseById } from "@/lib/cases/repository";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
 import { CaseActions } from "@/components/cases/case-actions";
 import { CaseTabs } from "@/components/cases/case-tabs";
+import { caseStatusLabel, isCasePreProcessual } from "@/lib/cases/labels";
+import type { ProceduralReadiness } from "@/lib/cases/brain-types";
+
+function readReadiness(metadataJson: unknown): ProceduralReadiness | null {
+  if (!metadataJson || typeof metadataJson !== "object") return null;
+  const m = metadataJson as { brain?: { proceduralReadiness?: unknown } };
+  const r = m.brain?.proceduralReadiness;
+  if (!r || typeof r !== "object") return null;
+  const x = r as Partial<ProceduralReadiness>;
+  if (typeof x.score !== "number" || typeof x.status !== "string") return null;
+  return {
+    score: x.score,
+    status: x.status as ProceduralReadiness["status"],
+    blockers: Array.isArray(x.blockers) ? x.blockers : [],
+    missingDocuments: Array.isArray(x.missingDocuments) ? x.missingDocuments : [],
+    nextBestAction: typeof x.nextBestAction === "string" ? x.nextBestAction : "",
+    rationale: typeof x.rationale === "string" ? x.rationale : "",
+  };
+}
 
 export const dynamic = "force-dynamic";
-
-const STATUS_LABEL: Record<string, string> = {
-  INTAKE: "Intake",
-  RESEARCH: "Pesquisa",
-  DRAFTING: "Drafting",
-  REVIEW: "Review",
-  READY: "Pronto",
-  FILED: "Protocolado",
-  CLOSED: "Encerrado",
-  ARCHIVED: "Arquivado",
-};
 
 export default async function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,15 +37,25 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
   if (!c) notFound();
 
   const tribunal = c.tribunalCode ? getTribunal(c.tribunalCode) : null;
+  const preProcessual = isCasePreProcessual(c);
+  const readiness = readReadiness(c.metadataJson);
 
   return (
     <AppShell title={c.title}>
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wide">
-              {STATUS_LABEL[c.status] ?? c.status}
+            <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+              {caseStatusLabel(c.status)}
             </Badge>
+            {preProcessual ? (
+              <Badge
+                variant="outline"
+                className="border-violet-500/40 bg-violet-500/10 text-[10px] text-violet-200"
+              >
+                <Clock className="mr-1 size-3" /> Pré-processual
+              </Badge>
+            ) : null}
             {tribunal ? (
               <Badge variant="outline" className="text-[10px]">
                 <Building2 className="mr-1 size-3" /> {tribunal.code} · {tribunal.name}
@@ -65,16 +83,17 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
                 <p className="max-w-3xl text-sm text-muted-foreground">{c.summary}</p>
               ) : null}
             </div>
-            <CaseActions caseId={c.id} />
+            <CaseActions caseId={c.id} readiness={readiness} />
           </div>
         </header>
 
         <CaseTabs caseData={c} />
 
         <Card className="p-4 text-xs text-muted-foreground">
-          <strong className="text-foreground">Auditável por design.</strong> Todas as gerações (intake,
-          retrieval, drafting, review) ficam registradas na timeline do caso, com referências cruzadas a
-          chunks normativos, traceIds e usuário responsável.
+          <strong className="text-foreground">Auditável por design.</strong> Todas as ações no caso —
+          coleta inicial, pesquisa de fundamentos, geração e revisão de peças — ficam registradas
+          na aba Atividade, com referências cruzadas aos fundamentos normativos consultados e ao
+          usuário responsável.
         </Card>
       </div>
     </AppShell>

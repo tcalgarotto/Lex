@@ -742,6 +742,12 @@ model LegalChunk {
    * Versão do esquema do chunker (lineage).
    */
   chunkerVersion String                   @default("v2")
+  /**
+   * F3.5 — Quando este chunk é "filho" (inciso/§/alínea recortados de um
+   * artigo longo pelo chunker v3), aponta para o chunk-pai (o artigo
+   * inteiro). null para chunks-pai e v2.
+   */
+  parentChunkId  String?
   metadataJson   Json?
   createdAt      DateTime                 @default(now())
   /**
@@ -904,6 +910,12 @@ enum CaseRiskKind {
   MISSING_GROUNDING
   WEAK_ARGUMENT
   PROCEDURAL_GAP
+  /**
+   * F4.5 — Inconsistência detectada entre dados do brain e dados extraídos
+   * de documentos (nomes, CPF, datas, idades, cidade). Atribui evidência
+   * com chunk(s) de origem.
+   */
+  DOCUMENT_INCONSISTENCY
   OTHER
 }
 
@@ -924,6 +936,9 @@ enum CaseTimelineKind {
   RISK_FLAGGED
   STATUS_CHANGED
   NOTE
+  STRATEGY_GENERATED
+  BRAIN_GENERATED
+  DOCUMENT_INCONSISTENCY
 }
 
 /**
@@ -1069,6 +1084,12 @@ model CaseRisk {
    * URNs envolvidas.
    */
   evidenceNormUrns String[]         @default([])
+  /**
+   * F4.5 — Metadata extra (ex.: documentId/documentName/evidence/suggestion
+   * para riscos do tipo DOCUMENT_INCONSISTENCY). Mantém auditabilidade sem
+   * inflar campos relacionais.
+   */
+  metadataJson     Json?
   resolvedAt       DateTime?
   resolvedById     String?
   createdAt        DateTime         @default(now())

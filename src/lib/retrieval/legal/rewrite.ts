@@ -12,6 +12,7 @@
  */
 
 import type { LegalIntent } from "./intent";
+import { expandTopicAliases } from "./topic-aliases";
 
 const STOPWORDS_PT = new Set([
   "a", "as", "o", "os", "um", "uma", "uns", "umas",
@@ -60,8 +61,19 @@ const ALIASES: Array<{ pattern: RegExp; canonical: string; synonyms: string[] }>
   },
 ];
 
+export type RewriteContext = {
+  /** Áreas detectadas pelo CaseBrain (ex.: ["Educação", "Infância"]). */
+  areas?: string[];
+  /** Resumo do problema do caso (alimenta expansão temática). */
+  problem?: string;
+};
+
 /** Produz queries reformuladas: (1) original, (2) com aliases canônicos, (3) com sinônimos extras. */
-export function rewriteLegalQuery(rawQuery: string, intent?: LegalIntent): string[] {
+export function rewriteLegalQuery(
+  rawQuery: string,
+  intent?: LegalIntent,
+  ctx?: RewriteContext,
+): string[] {
   const variants = new Set<string>();
   const original = rawQuery.trim();
   if (!original) return [];
@@ -93,6 +105,28 @@ export function rewriteLegalQuery(rawQuery: string, intent?: LegalIntent): strin
   // Variação 4: se intent traz article refs, adiciona à frase
   if (intent && intent.articleRefs.length > 0) {
     variants.add(`${canonical} ${intent.articleRefs.join(" ")}`);
+  }
+
+  // Variação 5 (F3): expansão temática a partir do brain.areas/problem.
+  if (ctx) {
+    const expansions = expandTopicAliases({
+      text: [original, ctx.problem ?? ""].join(" "),
+      areas: ctx.areas ?? [],
+    });
+    if (expansions.length > 0) {
+      variants.add(`${canonical} ${expansions.slice(0, 6).join(" ")}`);
+    }
+  }
+
+  // Variação 6 (F3 QA creche): queries sobre educação infantil sem número de artigo
+  // na frase — ancoram explicitamente ao Art. 208 IV para não perder recall para
+  // ADCT Art. 81/56 (confusão histórica no briefing).
+  const EDU_INFANTIL_CRECHE =
+    /\b(creche|educa[cç][aã]o\s+infantil|ber[cç][aá]rio|pr[ée]-?\s*escola|vaga\s+em\s+creche|menor\s+de\s*5\s*anos)\b/i;
+  if (EDU_INFANTIL_CRECHE.test(original) && !/\bart\.?\s*208\b/i.test(original)) {
+    variants.add(
+      `${canonical} Art. 208 IV educação infantil creche berçário pré-escola dever do Estado`,
+    );
   }
 
   return Array.from(variants);

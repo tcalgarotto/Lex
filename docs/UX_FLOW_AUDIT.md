@@ -1,6 +1,6 @@
 # UX Flow Audit — Lex (Caso-centric)
 
-> Documento vivo da auditoria UX do Lex. Última revisão: **2026-05-08 — P0 + P1 + P2 + Hotfix Gemini**.
+> Documento vivo da auditoria UX do Lex. Última revisão: **2026-05-09 — P0 + P1 + P2 + Hotfix Gemini + QA Manual Creche (F0 do Case Brain Refactor)**.
 
 ## 1. Diagnóstico
 
@@ -205,3 +205,104 @@ npm run qa:search:legal            # 15/15 QA jurídico
 - **QA manual:** roteiro acima documentado para execução pelo time.
 
 **Release ready: SIM**, condicionado à execução do QA manual no ambiente de staging.
+
+## 13. QA manual — inconsistências encontradas em caso real (creche Camboriú)
+
+> Simulação de atendimento jurídico pré-processual feita após P0+P1+P2 entregues. Cliente fictícia: **Ana Paula da Silva**, mãe de Lara (4 anos), Camboriú/SC, sem vaga em creche municipal. Objetivo: gerar peça (Mandado de Segurança ou ação de obrigação de fazer). O QA encontrou **18 inconsistências** entre UX e inteligência jurídica, descritas abaixo com evidência por arquivo:linha, severidade e fase de correção do **Lex Case Brain Refactor**.
+
+### Tabela de problemas
+
+| # | Problema | Evidência (arquivo:linha) | Severidade | Fase |
+| --- | --- | --- | --- | --- |
+| 1 | `CaseLegalSource` (fundamentos pinados) **nunca entra na minuta**: `draftWorkflow` constrói query a partir de `summary + facts + requests` e ignora `case.legalSources`. | [`src/lib/cases/orchestrator.ts:71-77`](../src/lib/cases/orchestrator.ts) | P0 | F4 |
+| 2 | `isLikelyRequest` usa `lower.includes("requer")` → "A **requerida** não compareceu" vira pedido. Causa raiz de "fato virou pedido". | [`src/lib/cases/intake.ts:218-221`](../src/lib/cases/intake.ts) | P0 | F2 (intake) |
+| 3 | `renderLaw` consome top-12 do retrieval sem filtro contextual. Como corpus é só CF/ADCT, qualquer query distante puxa **ADCT Art. 95** como fundamento. | [`src/lib/cases/drafting.ts:139-178`](../src/lib/cases/drafting.ts) | P0 | F4 |
+| 4 | `runReview` só checa cabeçalhos `## I.`-`## V.`, ignora `_Partes a qualificar._`, `[Juízo competente]`, `R$ ____`. Aprova peça vazia com **score 1.00**. | [`src/lib/cases/review.ts:74-99`](../src/lib/cases/review.ts) | P0 | F6 |
+| 5 | `CaseParty.document` (CPF/CNPJ) renderizado em texto puro, sem máscara nem toggle. | [`src/components/cases/case-parties-tab.tsx:35-38`](../src/components/cases/case-parties-tab.tsx) | P1 | F1 |
+| 6 | CTAs "Pesquisar fundamentos" e "Gerar estratégia" no Overview tiram usuário do caso (linkam `/pesquisa-juridica` e `/strategy`). Mesma coisa com "Atualizar estratégia" em Strategy & Peças. | [`case-overview-tab.tsx:218-229`](../src/components/cases/case-overview-tab.tsx) · [`case-strategy-pieces-tab.tsx:68-73`](../src/components/cases/case-strategy-pieces-tab.tsx) | P0 | F1 |
+| 7 | Pin não atualiza lista de "Fundamentos do caso" sem reload manual: `legal-search-panel.tsx` faz POST + `setState` local mas não chama `router.refresh()` (unpin chama). | [`src/components/legal-search/legal-search-panel.tsx:98-123`](../src/components/legal-search/legal-search-panel.tsx) | P1 | F1 |
+| 8 | Não existe `DELETE /api/documents/[id]` — só `GET`. Documento errado fica preso no caso. | [`src/app/api/documents/[documentId]/route.ts:5-54`](../src/app/api/documents/[documentId]/route.ts) | P0 | F1 |
+| 9 | Chunker v2 produz 1 chunk por artigo. Art. 5º (gigante, ~5KB) vira chunk único; inciso/§ entram como buffer no acumulador (último visto sobrescreve refs). Boost de inciso nunca aplica. | [`src/lib/corpus/legal-chunker-v2.ts:187-240`](../src/lib/corpus/legal-chunker-v2.ts) | P1 | F3.5 |
+| 10 | `articleRef` no intent vem como `Art. 5` (sem `º`), mas chunks têm `Art. 5º`. Boost 1.15 nunca aplica → ranking degradado para qualquer query com número de artigo. | [`intent.ts:113-116`](../src/lib/retrieval/legal/intent.ts) · [`cf-semantic-parser.ts:146-150`](../src/lib/corpus/providers/cf-semantic-parser.ts) | P1 | F3 |
+| 11 | `/api/retrieval/search` aceita `caseId` mas só ecoa — não usa para contextualizar query nem filtrar resultados. | [`src/app/api/retrieval/search/route.ts:62-71`](../src/app/api/retrieval/search/route.ts) | P1 | F3 |
+| 12 | Status enum (`DRAFTING`, `READY`, `INDEXED`) exibido raw em `case-drafts-tab` e header da página. | [`case-drafts-tab.tsx:18-47`](../src/components/cases/case-drafts-tab.tsx) · [`page.tsx:14-23`](../src/app/(app)/cases/[id]/page.tsx) | P1 | F1 |
+| 13 | Header da página de caso fala literalmente em "retrieval, drafting, review" e "chunks normativos". Timeline mostra `retrieval: {N} chunks`. | [`page.tsx:74-77`](../src/app/(app)/cases/[id]/page.tsx) · [`case-timeline-tab.tsx:54-57`](../src/components/cases/case-timeline-tab.tsx) | P1 | F1 |
+| 14 | Não existe **Case Brain**: caso não tem narrativa, área, autoridade provável, problema jurídico, objetivo extraídos. Cada workflow rebusca informação do zero. | n/a (ausência) | P0 | F2 |
+| 15 | `renderUrgency` cita `art. 300 CPC` e `art. 7º Lei 12.016/2009` hard-coded mesmo quando o corpus não tem essas normas → peça simula citar fonte que não foi consultada. | [`src/lib/cases/drafting.ts:213-218`](../src/lib/cases/drafting.ts) | P0 | F4.1 |
+| 16 | Não existe **Document-Case Consistency Checker**: documento de outro cliente vinculado ao caso passa silenciosamente. | n/a (ausência) | P1 | F4.5 |
+| 17 | `case-drafts-tab` mostra markdown como `<pre>` ou texto bruto; **sem preview formatado, sem editor, sem salvar versão**. Advogado precisa baixar e reescrever fora do sistema. | [`case-drafts-tab.tsx`](../src/components/cases/case-drafts-tab.tsx) | P0 | F5 |
+| 18 | `/cases/new` exige relato narrativo único; sem opção de "entrevista guiada", "enviar documento", "processo existente" ou "caso vazio". Cliente raramente chega com relato estruturado. | [`src/app/(app)/cases/new/page.tsx:33-37`](../src/app/(app)/cases/new/page.tsx) | P0 | F1.5 + F2.1 |
+
+### Roteiro do QA simulado
+
+1. Criei caso novo com texto **incompleto** (estilo cliente real): "Dra., minha filha Lara está sem creche. Eu fui na prefeitura e mandaram esperar."
+2. Sistema criou caso com título genérico e nenhuma parte. Tab Fatos & Partes mostrou apenas a frase como "fato".
+3. Tentei pesquisar "vaga em creche" — top-3 retornou Art. 81 e Art. 56 do ADCT como principais. Art. 208 IV (educação infantil em creche) ficou no top-7.
+4. Pinei manualmente Art. 208 IV e Art. 205. CTA da pesquisa me jogou para `/pesquisa-juridica?caseId=...` (saí do caso).
+5. Voltei para o caso. Pinned não apareceu até dar reload.
+6. Cliquei em "Gerar minuta". Resultado:
+   - Endereçamento `[Juízo competente]`.
+   - Partes: `_Partes a qualificar._` (sem Ana Paula nem Lara, mesmo com nomes no relato).
+   - Fundamentação: ADCT Art. 95 (irrelevante) + outros chunks aleatórios. Art. 208 IV (pinned) ausente.
+   - Pedido cominatório com `R$ ____`.
+   - `renderUrgency` citou "art. 300 do CPC" — mas corpus não tem CPC.
+7. Cliquei em "Rodar review". Resultado: **score 1.00 — Pronta para protocolo**. Critério de placeholder não existe.
+8. Sem opção de editar a minuta dentro do sistema. Sem prontidão processual visível. Sem checklist guiando o que faltava perguntar à cliente.
+
+### Complementos pós-simulação de atendimento real
+
+A simulação revelou **4 lacunas estruturais** que vão além da lista dos 18 problemas técnicos. Ficam mapeadas como complementos obrigatórios do Case Brain Refactor:
+
+1. **Cliente não relata caso de forma estruturada.** Sistema precisa de **checklist guiado** ("Constitucional — vaga em creche" como primeiro template) que ajude o advogado a transformar relato incompleto em estrutura jurídica utilizável. → **F2.1**.
+2. **Necessidade de prontidão processual.** Painel do caso precisa mostrar "Prontidão processual: NN%" com `blockers`, `missingDocuments`, `nextBestAction`. Botão "Gerar peça" bloqueado em `insuficiente`. → **F2.2**.
+3. **Risco de citar normas fora do RAG.** Drafting v2 precisa de **`getCorpusManifest()`** + **`assertCitationAllowed()`** para nunca citar CPC/ECA/LDB/Lei 12.016/CDC/CC ou jurisprudência como fonte recuperada enquanto não estão no corpus. Esses fundamentos viram bloco "VII. Lacunas de complementação". → **F4.1**.
+4. **Distinção entre caso pré-processual e processo judicial.** `/cases/new` precisa de 5 modos (relato livre · entrevista guiada · enviar documento · processo existente · caso vazio). Campos CNJ/vara/tribunal só em "processo existente" ou "marcado como protocolado". Painel mostra badge "Pré-processual — ainda sem número CNJ" quando aplicável. → **F1.5**.
+
+### Mapeamento problema → fase
+
+| Fase | Problemas endereçados |
+| --- | --- |
+| F0 | Esta seção (governança/auditoria) |
+| F1 | #5 (PII), #6 (CTAs), #7 (pin instantâneo), #8 (DELETE doc), #12 (status PT-BR), #13 (jargão técnico) |
+| F1.5 | #18 (5 modos no Novo Caso) + complemento 4 (Caso ≠ Processo) |
+| F2 | #2 (intake `\b...\b`), #14 (Case Brain LLM-first auditável) |
+| F2.1 | complemento 1 (checklist guiado) |
+| F2.2 | complemento 2 (prontidão processual) |
+| F3 | #10 (articleRef normalize), #11 (caseId no retrieval) |
+| F3.5 | #9 (re-chunk controlado) |
+| F4 | #1 (pinned na minuta), #3 (filtro contextual), #15 (renderUrgency condicional) |
+| F4.1 | complemento 3 (RAG Limitation Guard) — também reforça #15 |
+| F4.5 | #16 (Consistency Checker) |
+| F5 | #17 (preview/edit/save) |
+| F6 | #4 (review detecta placeholders) |
+| F7 | testes + docs (CASE_BRAIN.md, DRAFTING_REVIEW_FLOW.md) |
+
+## 14. Status final do Lex Case Brain Refactor
+
+> Fechamento da auditoria após execução completa de F0..F7.
+
+| Fase | Status | Notas |
+| --- | --- | --- |
+| F0 — auditoria QA creche | ✅ entregue | Esta seção (governança) + 18 problemas mapeados. |
+| F1 — UX dentro do caso | ✅ entregue | PII mascarada, CTAs in-place, pin instantâneo, DELETE doc, jargão removido. |
+| F1.5 — Caso × Processo | ✅ entregue | `/cases/new` com 5 modos. Status `Pré-processual` visível. |
+| F2 — Case Brain v1 | ✅ entregue | LLM-first auditável, cache por inputHash, Inngest hooks. |
+| F2.1 — Entrevista guiada | ✅ entregue | Registry de checklists, primeiro template (creche). |
+| F2.2 — Prontidão processual | ✅ entregue | `ReadinessCard` + bloqueio do botão "Gerar peça". |
+| F3 — Pesquisa contextual | ✅ entregue | `articleRef` normalize, snippet, query expansion via brain. |
+| F3.5 — Re-chunk controlado | ✅ entregue | Chunker v3 inciso/§-aware + `parentChunkId`. |
+| F4 — Drafting v2 | ✅ entregue | `buildCaseContext`, `mustInclude`, ADCT filter, header escolhe rito. |
+| F4.1 — RAG Limitation Guard | ✅ entregue | `getCorpusManifest`, `decideCitationSync`, "Bases não disponíveis" na UI. |
+| F4.5 — Consistency Checker | ✅ entregue | Levenshtein + Inngest hook + UI alerta no overview. |
+| F5 — Draft Workspace | ✅ entregue | Preview/Editar (react-markdown), PATCH cria nova versão, painel Lacunas + Fontes. Export DOCX/PDF documentado P+1. |
+| F6 — Review v2 | ✅ entregue | Critérios placeholders/parties_qualified/request_classification/pinned_sources_used/consistency_alerts. Verdict honesto + tooltip. |
+| F7 — Tests + docs | ✅ entregue | +44 testes unitários (526 total). `CASE_BRAIN.md` e `DRAFTING_REVIEW_FLOW.md` publicados. |
+
+### Métricas
+
+- **Suite de testes:** 526 testes unitários (482 → 526), 100% verde.
+- **Typecheck:** 0 erros.
+- **Endpoints novos:** `POST /api/cases/[id]/brain`, `GET/POST /api/cases/[id]/checklist`, `PATCH /api/cases/[id]/drafts/[draftId]`.
+- **Tabelas alteradas:** `LegalChunk` (`parentChunkId`), `CaseRisk` (`metadataJson`), enum `CaseTimelineKind` (3 novos), enum `CaseRiskKind` (`DOCUMENT_INCONSISTENCY`).
+- **Funções Inngest novas:** `consolidateCaseBrain`, `checkDocumentConsistency`.
+

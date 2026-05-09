@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, FileText, Search, Sparkles, ScrollText, AlertTriangle } from "lucide-react";
+import { ArrowRight, FileText, Search, Sparkles, ScrollText, AlertTriangle, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { deriveDocumentDisplayStatus } from "@/lib/documents/status-display";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
+import { CaseProgressBar } from "./case-progress";
+import { ReadinessCard } from "./case-readiness-card";
+import { isCasePreProcessual, PRE_PROCESSUAL_MESSAGE } from "@/lib/cases/labels";
+import type { ProceduralReadiness } from "@/lib/cases/brain-types";
 import type {
   Case,
   CaseDraft,
@@ -14,6 +18,7 @@ import type {
   CaseLegalSource,
   CaseParty,
   CaseRequest,
+  CaseReview,
   CaseRisk,
   Document,
   Process,
@@ -25,6 +30,7 @@ type CaseOverview = Case & {
   requests: CaseRequest[];
   risks: CaseRisk[];
   drafts: CaseDraft[];
+  reviews: CaseReview[];
   legalSources: CaseLegalSource[];
   documents: Pick<Document, "id" | "originalName" | "status" | "updatedAt">[];
   process: Pick<Process, "id" | "number" | "title" | "tribunal" | "vara"> | null;
@@ -32,12 +38,7 @@ type CaseOverview = Case & {
 
 interface CaseOverviewTabProps {
   caseData: CaseOverview;
-  /**
-   * Permite ao componente pai sinalizar a aba alvo. As âncoras (#docs,
-   * #facts, #research, #strategy) funcionam dentro das `<TabsTrigger>` do
-   * Radix se o pai trocar `defaultValue`. Para evitar acoplar ao Radix,
-   * este callback simplesmente seleciona a aba via id (definido no page).
-   */
+  /** Callback do pai para trocar de aba (usado pelos CTAs do overview). */
   onGoToTab?: (tab: "documents" | "facts" | "research" | "strategy") => void;
 }
 
@@ -50,6 +51,49 @@ interface NextStep {
     | { kind: "link"; href: string };
 }
 
+function readBrainNarrative(metadataJson: unknown): string | null {
+  if (!metadataJson || typeof metadataJson !== "object") return null;
+  const m = metadataJson as { brain?: { narrative?: unknown } };
+  if (!m.brain || typeof m.brain !== "object") return null;
+  const n = m.brain.narrative;
+  return typeof n === "string" && n.trim().length > 0 ? n : null;
+}
+
+type DocInconsistency = {
+  kind: string;
+  description: string;
+  evidence?: string;
+};
+
+function readInconsistencies(metadataJson: unknown): DocInconsistency[] {
+  if (!metadataJson || typeof metadataJson !== "object") return [];
+  const m = metadataJson as { brain?: { inconsistencies?: unknown } };
+  const list = m.brain?.inconsistencies;
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((x): x is DocInconsistency =>
+      !!x && typeof x === "object" && typeof (x as DocInconsistency).description === "string",
+    )
+    .slice(0, 6);
+}
+
+function readProceduralReadiness(metadataJson: unknown): ProceduralReadiness | null {
+  if (!metadataJson || typeof metadataJson !== "object") return null;
+  const m = metadataJson as { brain?: { proceduralReadiness?: unknown } };
+  const r = m.brain?.proceduralReadiness;
+  if (!r || typeof r !== "object") return null;
+  const x = r as Partial<ProceduralReadiness>;
+  if (typeof x.score !== "number" || typeof x.status !== "string") return null;
+  return {
+    score: x.score,
+    status: x.status as ProceduralReadiness["status"],
+    blockers: Array.isArray(x.blockers) ? x.blockers : [],
+    missingDocuments: Array.isArray(x.missingDocuments) ? x.missingDocuments : [],
+    nextBestAction: typeof x.nextBestAction === "string" ? x.nextBestAction : "",
+    rationale: typeof x.rationale === "string" ? x.rationale : "",
+  };
+}
+
 export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps) {
   const docsReady = c.documents.filter((d) => d.status === "INDEXED").length;
   const docsStalled = c.documents.filter(
@@ -59,6 +103,13 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
   const hasRequests = c.requests.length > 0;
   const hasResearch = c.legalSources.length > 0;
   const hasDraft = c.drafts.length > 0;
+  const preProcessual = isCasePreProcessual(c);
+  const narrative = readBrainNarrative(c.metadataJson);
+  const readiness = readProceduralReadiness(c.metadataJson);
+  const inconsistencies = readInconsistencies(c.metadataJson);
+  const docInconsistencyRisks = c.risks.filter(
+    (r) => r.kind === "DOCUMENT_INCONSISTENCY" && !r.resolvedAt,
+  );
 
   const steps: NextStep[] = [];
   if (docsStalled > 0) {
@@ -96,13 +147,13 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
   }
   if (hasFacts && hasRequests && !hasDraft) {
     steps.push({
-      label: "Gerar estratégia inicial e primeira minuta",
+      label: "Gerar estratégia inicial e primeira peça",
       tone: "info",
-      action: { kind: "link", href: `/strategy?caseId=${c.id}` },
+      action: { kind: "tab", target: "strategy" },
     });
   } else if (hasDraft) {
     steps.push({
-      label: "Revisar última minuta gerada",
+      label: "Revisar última peça gerada",
       tone: "info",
       action: { kind: "tab", target: "strategy" },
     });
@@ -115,8 +166,54 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
 
   return (
     <div className="space-y-4">
-      {c.summary ? (
+      {preProcessual ? (
+        <Card className="border-violet-500/30 bg-violet-500/5 p-3 text-xs text-violet-100">
+          <p className="leading-relaxed">{PRE_PROCESSUAL_MESSAGE}</p>
+        </Card>
+      ) : null}
+
+      {narrative ? (
+        <Card className="p-4 text-sm leading-relaxed">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Narrativa do caso
+          </p>
+          <p className="text-foreground/90">{narrative}</p>
+        </Card>
+      ) : c.summary ? (
         <Card className="p-4 text-sm leading-relaxed text-muted-foreground">{c.summary}</Card>
+      ) : null}
+
+      <CaseProgressBar caseData={c} />
+
+      {readiness ? <ReadinessCard readiness={readiness} /> : null}
+
+      {docInconsistencyRisks.length > 0 || inconsistencies.length > 0 ? (
+        <Card className="border-amber-500/40 bg-amber-500/5 p-3">
+          <div className="flex items-center gap-2 text-amber-200">
+            <AlertTriangle className="size-4" />
+            <p className="text-xs font-semibold uppercase tracking-wide">
+              Inconsistências entre caso e documentos ({Math.max(docInconsistencyRisks.length, inconsistencies.length)})
+            </p>
+          </div>
+          <ul className="mt-2 space-y-1 text-xs text-amber-100/90">
+            {(docInconsistencyRisks.length > 0
+              ? docInconsistencyRisks.slice(0, 4).map((r) => ({
+                  kind: r.kind,
+                  description: `${r.title}: ${r.detail}`,
+                }))
+              : inconsistencies.slice(0, 4)
+            ).map((i, idx) => (
+              <li key={`${i.kind}-${idx}`} className="leading-snug">
+                <span className="font-mono text-[10px] uppercase opacity-75">{i.kind}</span>{" "}
+                — {i.description}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-amber-200/70">
+            Revise antes de gerar a peça — divergências de nome, CPF, data ou número de processo
+            podem invalidar a minuta.
+          </p>
+        </Card>
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -137,7 +234,7 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
         <StatBlock
           label="Pesquisa & Peças"
           value={`${c.legalSources.length} / ${c.drafts.length}`}
-          hint={`fundamentos pinados / minutas`}
+          hint={`fundamentos do caso / peças`}
           icon={<ScrollText className="size-4" />}
           tone={hasDraft ? "ok" : hasResearch ? "info" : "muted"}
         />
@@ -170,6 +267,22 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
             <Button asChild variant="ghost" size="sm">
               <Link href={`/processos/${c.process.id}`}>
                 Abrir <ArrowRight className="ml-1 size-3" />
+              </Link>
+            </Button>
+          </div>
+        </Card>
+      ) : preProcessual ? (
+        <Card className="p-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="leading-relaxed">
+              Este caso ainda é pré-processual.{" "}
+              <span className="text-foreground/70">
+                Vincule um processo existente ou marque como protocolado quando o protocolo sair.
+              </span>
+            </p>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/processos">
+                <Hash className="mr-1 size-3" /> Vincular processo existente
               </Link>
             </Button>
           </div>
@@ -217,15 +330,21 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
 
       <div className="flex flex-wrap gap-2 pt-2">
         <DocumentUploadButton caseId={c.id} label="Enviar documento" />
-        <Button asChild variant="secondary" size="sm">
-          <Link href={`/pesquisa-juridica?caseId=${c.id}`}>
-            <Search className="mr-1 size-3" /> Pesquisar fundamentos
-          </Link>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onGoToTab?.("research")}
+        >
+          <Search className="mr-1 size-3" /> Pesquisar fundamentos no caso
         </Button>
-        <Button asChild variant="secondary" size="sm">
-          <Link href={`/strategy?caseId=${c.id}`}>
-            <Sparkles className="mr-1 size-3" /> Gerar estratégia
-          </Link>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => onGoToTab?.("strategy")}
+        >
+          <Sparkles className="mr-1 size-3" /> Gerar estratégia
         </Button>
       </div>
     </div>

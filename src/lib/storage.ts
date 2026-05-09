@@ -26,6 +26,20 @@ export async function downloadDocumentBuffer(path: string): Promise<Buffer> {
   return Buffer.from(ab);
 }
 
+/**
+ * Apaga arquivo do bucket de documentos. Não falha hard se o arquivo já
+ * não existir no Storage (entrega "best-effort"); apenas loga e segue.
+ */
+export async function removeDocumentBuffer(path: string): Promise<void> {
+  const env = getSupabaseEnv();
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.storage.from(env.STORAGE_BUCKET_DOCUMENTS).remove([path]);
+  if (error) {
+    // Storage costuma devolver erro se o objeto não existe — loga e segue.
+    console.warn("[storage] remove falhou (não-fatal)", { path, error: error.message });
+  }
+}
+
 export function documentStoragePath(workspaceId: string, documentId: string, fileName: string) {
   const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `${workspaceId}/${documentId}/${safe}`;

@@ -29,6 +29,10 @@ export type LegalRetrievalFilters = {
   normUrns?: string[];
   /** Referências canônicas a artigo (ex.: ["Art. 5º"]). */
   articleRefs?: string[];
+  /** F3.5 — Filtra por inciso (chunker v3). */
+  incisoRefs?: string[];
+  /** F3.5 — Filtra por parágrafo (chunker v3). */
+  paragraphRefs?: string[];
 };
 
 export type LegalRetrievalOptions = {
@@ -57,6 +61,30 @@ export type LegalRetrievalOptions = {
    * o retrieval em si é global, não filtra por workspace).
    */
   workspaceId?: string;
+  /**
+   * F3 — Contexto do caso para query expansion temática. Quando passado,
+   * `rewriteLegalQuery` usa `topic-aliases` para gerar variantes
+   * orientadas pela área detectada pelo CaseBrain.
+   */
+  caseContext?: {
+    area: string[];
+    problem?: string;
+  };
+  /**
+   * F4 — Fontes pinadas pelo advogado que DEVEM constar no resultado
+   * mesmo que o ranking natural não as eleja. Garantia explícita de
+   * grounding para a etapa de drafting.
+   *
+   * - `chunkIds`: chunks específicos a injetar (ordem preservada).
+   * - `normUrns`: garante ao menos um chunk de cada norma listada.
+   *
+   * Implementação: pós-processo que carrega chunks faltantes do banco e
+   * os prepende ao topo do resultado final.
+   */
+  mustInclude?: {
+    chunkIds?: string[];
+    normUrns?: string[];
+  };
 };
 
 /** Componentes do score que somam até o ranking final. */

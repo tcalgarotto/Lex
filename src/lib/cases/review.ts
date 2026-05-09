@@ -21,6 +21,7 @@
 import {
   CaseRequestKind,
   type CaseFact,
+  type CaseParty,
   type CaseRequest,
 } from "@prisma/client";
 import type { ContradictionRisk } from "@/lib/legal/reasoning/contradiction";
@@ -34,6 +35,8 @@ export type ReviewItem = {
   status: ReviewItemStatus;
   detail: string;
   weight: number; // contribuição pro score (sum=1)
+  /** F6 — explicação para tooltip na UI (por que esse item virou warning/fail). */
+  rationale?: string;
 };
 
 export type ReviewResult = {
@@ -49,6 +52,14 @@ export type ReviewArgs = {
   requests: CaseRequest[];
   risks: ContradictionRisk[];
   issues: LegalIssue[];
+  /** F6 — partes do caso para validar qualificação. */
+  parties?: CaseParty[];
+  /** F6 — fontes pinadas (usadas como mustInclude no draft). */
+  pinnedChunkIds?: string[];
+  /** F6 — id da CaseRisk DOCUMENT_INCONSISTENCY (já persistidas). */
+  inconsistencyRisksCount?: number;
+  /** F6 — flag de uso do brain (vem do draft.metadataJson). */
+  draftUsedBrain?: boolean;
 };
 
 export function runReview(args: ReviewArgs): ReviewResult {
@@ -56,9 +67,14 @@ export function runReview(args: ReviewArgs): ReviewResult {
 
   items.push(checkStructure(args.draftContent));
   items.push(checkGrounding(args.groundingChunkIds));
+  items.push(checkPlaceholders(args.draftContent));
+  items.push(checkPartiesQualified(args.parties ?? [], args.draftContent));
   items.push(checkMainRequest(args.requests));
+  items.push(checkRequestClassification(args.requests));
   items.push(checkUrgencyConsistency(args.requests, args.draftContent));
   items.push(checkFactsCoverage(args.facts));
+  items.push(checkPinnedSourcesUsed(args.pinnedChunkIds ?? [], args.groundingChunkIds));
+  items.push(checkConsistencyAlerts(args.inconsistencyRisksCount ?? 0));
   items.push(checkRevokedNorms(args.risks));
   items.push(checkPrecedentDivergence(args.risks));
   items.push(checkIssueGaps(args.issues));
@@ -232,6 +248,212 @@ function checkPrecedentDivergence(risks: ContradictionRisk[]): ReviewItem {
   };
 }
 
+/* ---------------------------- F6 checks --------------------------------- */
+
+/**
+ * F6.placeholders — peça com `[local]`, `[OAB]`, `_Lacuna:_` e similares
+ * NÃO está pronta. Penaliza forte.
+ */
+function checkPlaceholders(content: string): ReviewItem {
+  const patterns: Array<{ re: RegExp; label: string }> = [
+    { re: /\[local\]/i, label: "local da peça" },
+    { re: /\[data\]/i, label: "data" },
+    { re: /\[oab\]/i, label: "OAB" },
+    { re: /\[nome do advogado\]/i, label: "nome do advogado" },
+    { re: /_Partes a qualificar\._/i, label: "qualificação das partes" },
+    { re: /_Pedidos a definir\._/i, label: "pedidos" },
+    { re: /_Fatos a complementar\._/i, label: "fatos" },
+    { re: /_Lacuna:/i, label: "valor da causa ou outra lacuna explícita" },
+  ];
+  const found = patterns.filter((p) => p.re.test(content));
+  if (found.length === 0) {
+    return {
+      id: "placeholders",
+      title: "Sem placeholders pendentes",
+      status: "pass",
+      detail: "Nenhum placeholder ou lacuna textual detectada.",
+      weight: 0.12,
+    };
+  }
+  return {
+    id: "placeholders",
+    title: "Placeholders / lacunas pendentes",
+    status: found.length >= 3 ? "fail" : "warning",
+    detail: `${found.length} placeholder(s) ainda na peça (${found.map((f) => f.label).join(", ")}).`,
+    rationale:
+      "Placeholders como [local], [OAB] ou seções 'a qualificar' indicam que a peça ainda não está pronta para protocolo.",
+    weight: 0.12,
+  };
+}
+
+/**
+ * F6.parties_qualified — partes precisam ter ao menos 1 dado qualificador
+ * (CPF/CNPJ ou endereço/identificação) refletido na peça.
+ */
+function checkPartiesQualified(parties: CaseParty[], content: string): ReviewItem {
+  if (parties.length === 0) {
+    return {
+      id: "parties_qualified",
+      title: "Partes qualificadas",
+      status: "fail",
+      detail: "Nenhuma parte cadastrada no caso.",
+      rationale: "Sem partes registradas, a peça não pode endereçar autoria/legitimidade.",
+      weight: 0.1,
+    };
+  }
+  // Conta partes que aparecem qualificadas no texto (>= 1 token de doc/endereço/contato).
+  let qualifiedInDraft = 0;
+  for (const p of parties) {
+    if (!p.name) continue;
+    const re = new RegExp(escapeRegex(p.name), "i");
+    if (!re.test(content)) continue;
+    qualifiedInDraft++;
+  }
+  if (qualifiedInDraft === parties.length) {
+    return {
+      id: "parties_qualified",
+      title: "Partes qualificadas",
+      status: "pass",
+      detail: `Todas as ${parties.length} parte(s) aparecem qualificadas na peça.`,
+      weight: 0.1,
+    };
+  }
+  if (qualifiedInDraft === 0) {
+    return {
+      id: "parties_qualified",
+      title: "Partes qualificadas",
+      status: "fail",
+      detail: `Nenhuma das ${parties.length} parte(s) aparece nominalmente na peça.`,
+      rationale:
+        "Sem qualificação das partes na peça, não há autoria/citação válida — risco de inépcia.",
+      weight: 0.1,
+    };
+  }
+  return {
+    id: "parties_qualified",
+    title: "Partes qualificadas",
+    status: "warning",
+    detail: `${qualifiedInDraft} de ${parties.length} parte(s) aparecem na peça.`,
+    rationale: "Algumas partes ainda não foram qualificadas no texto da peça.",
+    weight: 0.1,
+  };
+}
+
+/**
+ * F6.request_classification — pedidos sem `kind` definido (todos em OTHER)
+ * indicam que o intake/brain não classificou bem.
+ */
+function checkRequestClassification(reqs: CaseRequest[]): ReviewItem {
+  if (reqs.length === 0) {
+    return {
+      id: "request_classification",
+      title: "Classificação dos pedidos",
+      status: "fail",
+      detail: "Nenhum pedido cadastrado.",
+      weight: 0.06,
+    };
+  }
+  const classified = reqs.filter(
+    (r) => r.kind && r.kind !== CaseRequestKind.OTHER,
+  ).length;
+  const ratio = classified / reqs.length;
+  if (ratio >= 0.8) {
+    return {
+      id: "request_classification",
+      title: "Classificação dos pedidos",
+      status: "pass",
+      detail: `${classified} de ${reqs.length} pedido(s) classificados (urgência/principal/etc).`,
+      weight: 0.06,
+    };
+  }
+  if (ratio >= 0.4) {
+    return {
+      id: "request_classification",
+      title: "Classificação dos pedidos",
+      status: "warning",
+      detail: `Apenas ${classified} de ${reqs.length} pedido(s) classificados.`,
+      rationale:
+        "Pedidos sem categoria (urgência/principal/subsidiário) viram listas genéricas na peça.",
+      weight: 0.06,
+    };
+  }
+  return {
+    id: "request_classification",
+    title: "Classificação dos pedidos",
+    status: "fail",
+    detail: `${reqs.length - classified} pedido(s) sem categoria — peça vai mostrar 'OUTROS'.`,
+    rationale:
+      "Sem classificação correta, o renderRequests não consegue agrupar urgência vs. principal.",
+    weight: 0.06,
+  };
+}
+
+/**
+ * F6.pinned_sources_used — quando há pinned sources, todas devem aparecer
+ * em groundingChunkIds (foi assim que `mustInclude` foi desenhado).
+ */
+function checkPinnedSourcesUsed(pinned: string[], grounding: string[]): ReviewItem {
+  if (pinned.length === 0) {
+    return {
+      id: "pinned_sources_used",
+      title: "Fontes pinadas presentes na peça",
+      status: "pass",
+      detail: "Nenhuma fonte pinada — nada a checar.",
+      weight: 0.05,
+    };
+  }
+  const set = new Set(grounding);
+  const used = pinned.filter((id) => set.has(id)).length;
+  if (used === pinned.length) {
+    return {
+      id: "pinned_sources_used",
+      title: "Fontes pinadas presentes na peça",
+      status: "pass",
+      detail: `Todas as ${pinned.length} fonte(s) pinada(s) foram usadas como fundamento.`,
+      weight: 0.05,
+    };
+  }
+  return {
+    id: "pinned_sources_used",
+    title: "Fontes pinadas presentes na peça",
+    status: used === 0 ? "fail" : "warning",
+    detail: `${used} de ${pinned.length} fonte(s) pinada(s) foi(ram) usada(s) na peça.`,
+    rationale:
+      "Fontes pinadas pelo advogado deveriam ter sido injetadas via mustInclude. Investigar por que ficaram fora.",
+    weight: 0.05,
+  };
+}
+
+/**
+ * F6.consistency_alerts — peça gerada com alertas de inconsistência
+ * documental ativos (DOCUMENT_INCONSISTENCY) precisa de revisão antes
+ * de protocolo.
+ */
+function checkConsistencyAlerts(count: number): ReviewItem {
+  if (count === 0) {
+    return {
+      id: "consistency_alerts",
+      title: "Sem inconsistências documentais",
+      status: "pass",
+      detail: "Nenhum alerta de divergência entre brain e documentos.",
+      weight: 0.06,
+    };
+  }
+  return {
+    id: "consistency_alerts",
+    title: "Inconsistências documentais ativas",
+    status: count >= 3 ? "fail" : "warning",
+    detail: `${count} inconsistência(s) entre o caso e documentos não foram resolvidas.`,
+    rationale:
+      "CPFs, datas ou nomes divergentes podem invalidar a peça. Resolver na aba 'Documentos' ou ajustar o brain.",
+    weight: 0.06,
+  };
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function checkIssueGaps(issues: LegalIssue[]): ReviewItem {
   if (issues.length === 0) {
     return {
@@ -273,10 +495,38 @@ export function computeScore(items: ReviewItem[]): number {
   return Math.max(0, Math.min(1, sum / totalW));
 }
 
+/**
+ * F6 — Verdict mais honesto. "Pronta para protocolo" exige TODOS os
+ * critérios bloqueantes ok (placeholders/parties_qualified/grounding/
+ * consistency_alerts), não apenas score >= 0.85.
+ */
 function deriveVerdict(score: number, items: ReviewItem[]): string {
   const fails = items.filter((i) => i.status === "fail");
-  if (score >= 0.85 && fails.length === 0) return "Pronta para protocolo";
-  if (fails.length > 0) return `Pendências críticas (${fails.length})`;
-  if (score >= 0.7) return "Quase pronta — ajustes finos";
+  const warnings = items.filter((i) => i.status === "warning");
+  const blockers = items.filter(
+    (i) =>
+      (i.id === "placeholders" ||
+        i.id === "parties_qualified" ||
+        i.id === "grounding" ||
+        i.id === "consistency_alerts" ||
+        i.id === "main_request") &&
+      i.status === "fail",
+  );
+
+  if (blockers.length > 0) {
+    return `Não-protocolável: ${blockers.length} bloqueante(s) crítico(s)`;
+  }
+  if (fails.length > 0) {
+    return `Pendências críticas (${fails.length} fail / ${warnings.length} avisos)`;
+  }
+  if (score >= 0.9 && warnings.length === 0) {
+    return "Pronta para protocolo";
+  }
+  if (score >= 0.85) {
+    return `Quase pronta — ${warnings.length} aviso(s) para revisar`;
+  }
+  if (score >= 0.7) {
+    return `Em revisão — ${warnings.length} aviso(s)`;
+  }
   return "Em construção — revisão necessária";
 }

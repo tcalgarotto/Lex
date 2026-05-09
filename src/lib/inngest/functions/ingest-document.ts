@@ -195,6 +195,20 @@ export const ingestDocument = inngest.createFunction(
       }),
     );
 
+    // F2 + F4.5: documento indexado dentro de um caso => recomputa Brain
+    // (incorpora trechos extraídos como evidência) e roda checagem de
+    // consistência. Ambos eventos são idempotentes (cache + Levenshtein).
+    if (doc.caseId) {
+      await step.sendEvent("trigger-case-brain", {
+        name: "lex/case.brain",
+        data: { caseId: doc.caseId, source: "document_indexed" },
+      });
+      await step.sendEvent("trigger-consistency-check", {
+        name: "lex/document.consistency-check",
+        data: { documentId: doc.id, caseId: doc.caseId },
+      });
+    }
+
     return { ok: true, chunks: chunks.length };
   },
 );

@@ -53,19 +53,65 @@ const TRIBUNAL_LINE_RE = /\b(STF|STJ|TST|TSE|STM|TJ[A-Z]{2}|TRF\d|TRT\d{1,2}|TRE
 const DATE_DDMMYYYY_RE = /\b(\d{2})\/(\d{2})\/(\d{4})\b/g;
 const DATE_ISO_RE = /\b(\d{4}-\d{2}-\d{2})\b/g;
 
-// Sentenças que indicam pedido jurídico (verbo dispositivo)
+/**
+ * Verbos dispositivos típicos de PEDIDO jurídico. Sempre testados com
+ * `\b...\b` (ver {@link isLikelyRequest}) para evitar que palavras como
+ * "requerida" / "requerido" / "pedido administrativo" sejam classificadas
+ * como pedido — falso positivo histórico que vinha colocando fato como
+ * pedido na minuta (ver QA manual creche, item #2 de UX_FLOW_AUDIT).
+ *
+ * Lista expandida cobre as formas mais comuns no português jurídico
+ * brasileiro.
+ */
 const REQUEST_VERBS = [
   "requer",
-  "requeresse",
+  "requer-se",
   "pleiteia",
   "postula",
   "pugna",
   "pretende",
-  "requer-se",
   "pede",
   "pede-se",
   "solicita",
+  "objetiva",
+  "busca",
+  "demanda",
+  "espera",
+  "espera-se",
+  "aguarda",
+  "protesta",
+  "formula",
+  "deduz",
+  "intenta",
+  "promove",
 ];
+
+/**
+ * Regex anchored por `\b...\b` montada uma única vez para cobrir todos
+ * os verbos dispositivos. Evita que `lower.includes("requer")` case com
+ * `requerida` / `requerido` (situação que classificava réu como pedido).
+ */
+const REQUEST_VERBS_RE = new RegExp(
+  `\\b(?:${REQUEST_VERBS.map((v) => v.replace(/-/g, "\\-")).join("|")})\\b`,
+  "i",
+);
+
+/**
+ * Indícios fortes de pedido jurídico que não dependem de verbo (locuções
+ * adverbiais comuns no juridiquês). Também usado em `isLikelyRequest`.
+ */
+const REQUEST_PHRASE_RE = new RegExp(
+  [
+    "\\baguarda(?:\\s+deferimento|\\s+provimento)\\b",
+    "\\bdeferimento\\s+da\\s+(?:tutela|liminar)\\b",
+    "\\bjusti[cç]a\\s+gratuita\\b",
+    "\\bprodu[cç][aã]o\\s+de\\s+prova\\b",
+    "\\bcondena[cç][aã]o\\s+(?:da|do|de)\\b",
+    "\\bressarcimento\\s+(?:de|por)\\b",
+    "\\bproced[eê]ncia\\s+(?:da|do)\\s+pedido\\b",
+  ].join("|"),
+  "i",
+);
 
 // Categorias heurísticas para fatos
 const FACT_CATEGORY_PATTERNS: Array<[string, RegExp]> = [
@@ -215,9 +261,19 @@ export function extractFacts(sentences: string[]): ParsedFact[] {
   return out;
 }
 
-function isLikelyRequest(sentence: string): boolean {
-  const lower = sentence.toLowerCase();
-  return REQUEST_VERBS.some((v) => lower.includes(v));
+/**
+ * Detecta se a sentença é um PEDIDO jurídico (verbo dispositivo ou
+ * locução típica). Usa `\b...\b` para evitar que substrings dentro de
+ * palavras maiores (ex.: "requerida", "pedido administrativo") sejam
+ * confundidas com verbos dispositivos.
+ *
+ * Exportado para que `consolidateCaseBrain` possa reaproveitar o mesmo
+ * classificador na fase de pré-extract heurística.
+ */
+export function isLikelyRequest(sentence: string): boolean {
+  if (REQUEST_VERBS_RE.test(sentence)) return true;
+  if (REQUEST_PHRASE_RE.test(sentence)) return true;
+  return false;
 }
 
 function isMetaSentence(sentence: string): boolean {
@@ -267,6 +323,7 @@ export function extractRequests(sentences: string[]): ParsedRequest[] {
     const lower = s.toLowerCase();
     let kind: CaseRequestKind = CaseRequestKind.MAIN;
     if (/\btutela|liminar|urg[eê]ncia|antecipa[cç][aã]o\b/.test(lower)) kind = CaseRequestKind.URGENCY;
+    else if (/\bmulta\s+di[áa]ria|astreintes?|cominat[óo]ri[ao]\b/.test(lower)) kind = CaseRequestKind.PROVISIONAL;
     else if (/\bsubsidiariamente|altern\w+\b/.test(lower)) kind = CaseRequestKind.SUBSIDIARY;
     else if (/\bprodu[cç][aã]o\s+de\s+prova|per[ií]cia|testemunh\w+\b/.test(lower)) kind = CaseRequestKind.EVIDENCE;
     else if (/\bjusti[cç]a\s+gratuita|prioridade|segredo\s+de\s+justi[cç]a\b/.test(lower)) kind = CaseRequestKind.PROCEDURAL;

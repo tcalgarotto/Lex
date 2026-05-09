@@ -35,6 +35,12 @@ function userFilterConditions(filters: LegalRetrievalFilters | undefined): Recor
   if (filters.articleRefs?.length) {
     must.push({ key: "articleRef", match: { any: filters.articleRefs } });
   }
+  if (filters.incisoRefs?.length) {
+    must.push({ key: "incisoRef", match: { any: filters.incisoRefs } });
+  }
+  if (filters.paragraphRefs?.length) {
+    must.push({ key: "paragraphRef", match: { any: filters.paragraphRefs } });
+  }
   if (filters.normUrns?.length) {
     must.push({ key: "normUrn", match: { any: filters.normUrns } });
   }

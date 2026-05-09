@@ -57,10 +57,28 @@ const CHECKS: Check[] = [
   { q: "precatórios", expect: ["Art. 100"] },
   { q: "princípios da administração pública", expect: ["Art. 37"] },
   // 12-15 NOVAS — refs explícitas para validar boost sparse/intent.
-  { q: "art 5 lv", expect: ["Art. 5º"] },
+  { q: "art 5 lv", expect: ["Art. 5º", "Art. 5"] },
   { q: "artigo 92 conselho nacional de justiça", expect: ["Art. 92"] },
   { q: "art 218 ciência tecnologia inovação", expect: ["Art. 218"] },
   { q: "art 235 criação de Estado", expect: ["Art. 235"] },
+  // 16-18 NOVAS (F3 — QA caso real "creche"): conferir se top-3 prioriza
+  // arts. 208/205/227 e NÃO devolve Art. 81/56 como principais.
+  {
+    q: "vaga em creche",
+    expect: ["Art. 208"],
+    notExpectFullPathMatches: /\bArt\.\s*(81|56)\b/i,
+    note: "Educação infantil é dever do Estado (Art. 208 IV). Não pode confundir com Art. 81/56.",
+  },
+  {
+    q: "direito da criança estudar",
+    expect: ["Art. 205", "Art. 227", "Art. 208"],
+    note: "Educação como direito de todos + prioridade absoluta da criança.",
+  },
+  {
+    q: "creche menor de 5 anos",
+    expect: ["Art. 208"],
+    notExpectFullPathMatches: /\bArt\.\s*(81|56)\b/i,
+  },
 ];
 
 function pad(s: string, n: number): string {
@@ -101,9 +119,15 @@ async function runQuery(check: Check, useCache: boolean): Promise<RunResult> {
   }
   let okFp = true;
   if (check.notExpectFullPathMatches) {
-    const top1 = res.chunks[0];
-    const fp = top1?.fullPath ?? "";
-    if (check.notExpectFullPathMatches.test(fp)) okFp = false;
+    // Verifica top-3: se aparece em qualquer um dos 3 melhores, falha.
+    for (const c of res.chunks.slice(0, 3)) {
+      const fp = c.fullPath ?? "";
+      const ar = c.articleRef ?? "";
+      if (check.notExpectFullPathMatches.test(fp) || check.notExpectFullPathMatches.test(ar)) {
+        okFp = false;
+        break;
+      }
+    }
   }
 
   const top1 = res.chunks[0];

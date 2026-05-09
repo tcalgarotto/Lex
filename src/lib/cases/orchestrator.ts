@@ -23,6 +23,7 @@ import { detectContradictions, type ContradictionRisk } from "@/lib/legal/reason
 import { spotLegalIssues } from "@/lib/legal/reasoning/issue-spotting";
 import { synthesizeStrategy } from "@/lib/legal/reasoning/strategy";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
+import { getCorpusManifest } from "@/lib/corpus/manifest";
 import { runIntake } from "./intake";
 import {
   appendTimelineEvent,
@@ -34,6 +35,7 @@ import {
   setCaseStatus,
 } from "./repository";
 import { buildDraft } from "./drafting";
+import { buildCaseContext } from "./context";
 import { runReview } from "./review";
 import type { ParsedRisk } from "./types";
 
@@ -60,20 +62,39 @@ export async function draftWorkflow(args: {
   workspaceId: string;
   userId: string;
   caseId: string;
-}): Promise<{ draft: CaseDraft; chunkIds: string[]; verdict: string }> {
-  const c = await getCaseById(args.workspaceId, args.caseId);
-  if (!c) {
+}): Promise<{
+  draft: CaseDraft;
+  chunkIds: string[];
+  verdict: string;
+  lacunas: string[];
+  unindexedFoundations: Array<{ urn?: string; label: string; suggestedUse?: string }>;
+  usedBrain: boolean;
+  usedPinnedSources: number;
+}> {
+  // F4 — buildCaseContext centraliza joins, brain, pinned sources, documentos.
+  const ctx = await buildCaseContext({ workspaceId: args.workspaceId, caseId: args.caseId });
+  if (!ctx) {
     const err = new Error("Caso não encontrado neste workspace.");
     (err as { status?: number }).status = 404;
     throw err;
   }
+  const c = ctx.case;
 
-  // Query montada deterministicamente a partir do caso
-  const querySources = [
-    c.summary ?? c.title,
-    ...c.facts.slice(0, 4).map((f) => f.text),
-    ...c.requests.slice(0, 3).map((r) => r.text),
-  ].filter((s): s is string => !!s && s.length > 0);
+  // Query montada deterministicamente — privilegia brain.problem/objective
+  // quando disponível; cai para summary/facts/requests caso contrário.
+  const querySources = ctx.brain
+    ? [
+        ctx.brain.problem,
+        ctx.brain.objective,
+        ctx.brain.thesis,
+        ...ctx.brain.facts.slice(0, 4).map((f) => f.text),
+        ...ctx.brain.requests.slice(0, 3).map((r) => r.text),
+      ].filter((s): s is string => !!s && s.length > 0)
+    : [
+        c.summary ?? c.title,
+        ...ctx.facts.slice(0, 4).map((f) => f.text),
+        ...ctx.requests.slice(0, 3).map((r) => r.text),
+      ].filter((s): s is string => !!s && s.length > 0);
   const query = querySources.join(" ").slice(0, 1500);
 
   await appendTimelineEvent({
@@ -85,13 +106,41 @@ export async function draftWorkflow(args: {
     userId: args.userId,
   });
 
+  // F4 — pinnedSources viram mustInclude no retrieval.
+  const mustNormUrns = Array.from(
+    new Set(
+      ctx.pinnedSources
+        .map((s) => s.normUrn)
+        .filter((u): u is string => !!u),
+    ),
+  );
+  const mustChunkIds = Array.from(
+    new Set(
+      ctx.pinnedSources
+        .map((s) => s.chunkId)
+        .filter((id): id is string => !!id),
+    ),
+  );
+
   const filters: Parameters<typeof retrieveLegalContext>[1] = {
     topK: 12,
     workspaceId: args.workspaceId,
     useCache: true,
   };
-  if (c.tribunalCode) {
-    filters.filters = { tribunals: [c.tribunalCode] };
+  const corpusFilters: NonNullable<Parameters<typeof retrieveLegalContext>[1]>["filters"] = {};
+  if (c.tribunalCode) corpusFilters.tribunals = [c.tribunalCode];
+  if (Object.keys(corpusFilters).length > 0) filters.filters = corpusFilters;
+  if (mustNormUrns.length > 0 || mustChunkIds.length > 0) {
+    filters.mustInclude = {
+      ...(mustNormUrns.length > 0 ? { normUrns: mustNormUrns } : {}),
+      ...(mustChunkIds.length > 0 ? { chunkIds: mustChunkIds } : {}),
+    };
+  }
+  if (ctx.brain) {
+    filters.caseContext = {
+      area: ctx.brain.area,
+      ...(ctx.brain.problem ? { problem: ctx.brain.problem } : {}),
+    };
   }
   const retrieval = await retrieveLegalContext(query, filters);
 
@@ -119,13 +168,19 @@ export async function draftWorkflow(args: {
     await persistRisks({ workspaceId: args.workspaceId, caseId: args.caseId, risks: parsedRisks });
   }
 
+  const corpusManifest = await getCorpusManifest();
+
   const draftBundle = buildDraft({
     case: c,
-    facts: c.facts,
-    parties: c.parties,
-    requests: c.requests,
+    facts: ctx.facts,
+    parties: ctx.parties,
+    requests: ctx.requests,
     chunks: retrieval.chunks,
     strategy,
+    brain: ctx.brain,
+    pinnedSources: ctx.pinnedSources,
+    documents: c.documents.map((d) => ({ originalName: d.originalName })),
+    corpusManifest,
   });
 
   const draft = await persistDraft({
@@ -141,6 +196,11 @@ export async function draftWorkflow(args: {
       query,
       issuesCount: issues.length,
       risksCount: risks.length,
+      lacunas: draftBundle.lacunas,
+      unindexedFoundations: draftBundle.unindexedFoundations,
+      usedBrainContext: draftBundle.usedBrainContext,
+      usedPinnedSources: draftBundle.usedPinnedSources,
+      brainVersion: ctx.brain?.brainVersion ?? null,
     },
   });
 
@@ -152,6 +212,10 @@ export async function draftWorkflow(args: {
     draft,
     chunkIds: draftBundle.groundingChunkIds,
     verdict: retrieval.confidence.label,
+    lacunas: draftBundle.lacunas,
+    unindexedFoundations: draftBundle.unindexedFoundations,
+    usedBrain: draftBundle.usedBrainContext,
+    usedPinnedSources: draftBundle.usedPinnedSources,
   };
 }
 
@@ -184,13 +248,26 @@ export async function reviewWorkflow(args: {
   const issues = spotLegalIssues({ query, intent: retrieval.intent, chunks: retrieval.chunks });
   const risks = await detectContradictions({ chunks: retrieval.chunks, intent: retrieval.intent });
 
+  const inconsistencyRisksCount = c.risks.filter(
+    (r) => r.kind === "DOCUMENT_INCONSISTENCY" && !r.resolvedAt,
+  ).length;
+  const pinnedChunkIds = (c.legalSources ?? [])
+    .map((s) => s.chunkId)
+    .filter((id): id is string => !!id);
+  const draftMeta = (lastDraft.metadataJson ?? {}) as Record<string, unknown>;
+  const draftUsedBrain = Boolean(draftMeta["usedBrainContext"]);
+
   const result = runReview({
     draftContent: lastDraft.content,
     groundingChunkIds: lastDraft.groundingChunkIds,
     facts: c.facts,
+    parties: c.parties,
     requests: c.requests,
     risks,
     issues,
+    pinnedChunkIds,
+    inconsistencyRisksCount,
+    draftUsedBrain,
   });
 
   const review = await persistReview({
@@ -202,7 +279,10 @@ export async function reviewWorkflow(args: {
     userId: args.userId,
   });
 
-  if (result.score >= 0.85 && c.status === CaseStatus.DRAFTING) {
+  // F6 — só promove READY quando o verdict explicitamente diz "Pronta para
+  // protocolo" (sem warnings, score >= 0.9, sem fails). Caso contrário,
+  // mantém em REVIEW para o advogado decidir.
+  if (result.verdict === "Pronta para protocolo" && c.status === CaseStatus.DRAFTING) {
     await setCaseStatus(args.workspaceId, args.caseId, CaseStatus.READY, args.userId);
   } else if (c.status !== CaseStatus.REVIEW) {
     await setCaseStatus(args.workspaceId, args.caseId, CaseStatus.REVIEW, args.userId);

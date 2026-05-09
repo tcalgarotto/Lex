@@ -47,13 +47,8 @@ export function CaseResearchTab({ caseId, legalSources }: Props) {
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Fundamentos pinados · {legalSources.length}
+            Fundamentos do caso · {legalSources.length}
           </h3>
-          <Button asChild size="sm" variant="ghost">
-            <Link href={`/pesquisa-juridica?caseId=${caseId}`}>
-              Abrir pesquisa em tela cheia <ArrowRight className="ml-1 size-3" />
-            </Link>
-          </Button>
         </div>
 
         {error ? (
@@ -64,10 +59,12 @@ export function CaseResearchTab({ caseId, legalSources }: Props) {
 
         {legalSources.length === 0 ? (
           <Card className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Nenhum fundamento pinado ainda.</p>
+            <p className="text-sm text-muted-foreground">
+              Nenhum fundamento adicionado ao caso ainda.
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Use a busca abaixo para encontrar normas relevantes e clicar em
-              &quot;Usar no caso&quot;.
+              &quot;Adicionar ao caso&quot;.
             </p>
           </Card>
         ) : (
@@ -99,7 +96,7 @@ export function CaseResearchTab({ caseId, legalSources }: Props) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      title="Desfazer pin"
+                      title="Remover do caso"
                       disabled={busy === s.id}
                       onClick={() => unpin(s.id)}
                     >
@@ -114,8 +111,15 @@ export function CaseResearchTab({ caseId, legalSources }: Props) {
       </section>
 
       <section className="space-y-3 border-t border-white/5 pt-4">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
-          <Search className="size-3" /> Buscar fundamentos
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+            <Search className="size-3" /> Buscar fundamentos
+          </div>
+          <Button asChild size="sm" variant="ghost" className="text-[11px] text-muted-foreground">
+            <Link href={`/pesquisa-juridica?caseId=${caseId}`}>
+              Ver em tela cheia <ArrowRight className="ml-1 size-3" />
+            </Link>
+          </Button>
         </div>
         <LegalSearchPanel embeddedCaseId={caseId} />
       </section>

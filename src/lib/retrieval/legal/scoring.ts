@@ -12,6 +12,7 @@ import type {
   LegalRetrievedChunk,
   ScoreBreakdown,
 } from "./types";
+import { articleRefIncludes } from "./article-ref";
 
 /** Boosts são multiplicativos sobre o rerank score (todos em [0..1]). */
 const BOOSTS = {
@@ -61,7 +62,11 @@ function computeIntentAlignmentBoost(
   if (intent.preferredKinds.length > 0 && intent.preferredKinds.includes(chunk.norm.kind)) {
     factor *= 1.05;
   }
-  if (intent.articleRefs.length > 0 && chunk.articleRef && intent.articleRefs.includes(chunk.articleRef)) {
+  if (
+    intent.articleRefs.length > 0 &&
+    chunk.articleRef &&
+    articleRefIncludes(intent.articleRefs, chunk.articleRef)
+  ) {
     factor *= 1.15;
   }
   const sumulaKinds: NormKind[] = [
@@ -76,6 +81,27 @@ function computeIntentAlignmentBoost(
 }
 
 /**
+ * Penaliza chunks "longos genéricos" quando a query é claramente
+ * específica (menciona inciso/§ via algarismos romanos ou parágrafo)
+ * mas não cita um artigo. Evita que o "Art. 5º" inteiro vença um
+ * inciso específico do mesmo artigo.
+ */
+function computeLongGenericPenalty(
+  chunk: ChunkWithLineage,
+  intent: LegalIntent,
+  rawQuery: string | undefined,
+): number {
+  if (intent.articleRefs.length > 0) return 1.0;
+  const hasIncisoOrParagraph =
+    /\b[IVXLCDM]+\b/.test(rawQuery ?? "") || /§|par[áa]grafo|inciso/i.test(rawQuery ?? "");
+  if (!hasIncisoOrParagraph) return 1.0;
+  if (chunk.text.length > 1500 && chunk.structure !== "INCISO" && chunk.structure !== "PARAGRAFO") {
+    return 0.85;
+  }
+  return 1.0;
+}
+
+/**
  * Aplica boosts compostos sobre `rerankScore` (0..1) e devolve o `final`.
  * Idempotente.
  */
@@ -85,13 +111,16 @@ export function computeFinalScore(args: {
   rawScores: { dense?: number; bm25?: number };
   chunk: ChunkWithLineage;
   intent: LegalIntent;
+  /** Query crua usada para detectar pedido de inciso/§ específico. */
+  rawQuery?: string;
 }): { breakdown: ScoreBreakdown; explanation: string } {
   const base = args.rerankScore ?? args.rrfScore ?? 0;
   const boostKind = BOOSTS.kind[args.chunk.norm.kind] ?? 1.0;
   const boostStruct = BOOSTS.structure[args.chunk.structure] ?? 1.0;
   const boostRecency = computeRecencyBoost(args.chunk.norm.publishedAt, args.intent.asOf ?? new Date());
   const boostIntent = computeIntentAlignmentBoost(args.chunk, args.intent);
-  const boostTotal = boostKind * boostStruct * boostRecency * boostIntent;
+  const longGenericPenalty = computeLongGenericPenalty(args.chunk, args.intent, args.rawQuery);
+  const boostTotal = boostKind * boostStruct * boostRecency * boostIntent * longGenericPenalty;
 
   const final = Math.min(1, base * boostTotal);
 
@@ -100,7 +129,7 @@ export function computeFinalScore(args: {
     args.chunk.fullPath,
     `[kind=${args.chunk.norm.kind}, struct=${args.chunk.structure}]`,
     args.rerankScore !== undefined ? `rerank=${args.rerankScore.toFixed(3)}` : `rrf=${args.rrfScore.toFixed(3)}`,
-    `boost=${boostTotal.toFixed(2)} (kind×${boostKind.toFixed(2)} struct×${boostStruct.toFixed(2)} recency×${boostRecency.toFixed(2)} intent×${boostIntent.toFixed(2)})`,
+    `boost=${boostTotal.toFixed(2)} (kind×${boostKind.toFixed(2)} struct×${boostStruct.toFixed(2)} recency×${boostRecency.toFixed(2)} intent×${boostIntent.toFixed(2)}${longGenericPenalty < 1 ? ` longgen×${longGenericPenalty.toFixed(2)}` : ""})`,
     `final=${final.toFixed(3)}`,
   ]
     .filter(Boolean)

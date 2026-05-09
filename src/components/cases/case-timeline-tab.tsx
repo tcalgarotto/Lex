@@ -8,23 +8,38 @@ import {
   GitMerge,
   StickyNote,
   Activity,
+  Sparkles,
+  Brain,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { retrievalCountMessage } from "@/lib/cases/labels";
 
 const KIND_META: Record<
   string,
   { label: string; icon: typeof FileSearch; tone: string }
 > = {
   CASE_CREATED: { label: "Caso criado", icon: FilePlus, tone: "text-emerald-300" },
-  INTAKE_COMPLETED: { label: "Intake concluído", icon: ClipboardCheck, tone: "text-emerald-300" },
+  INTAKE_COMPLETED: { label: "Coleta inicial concluída", icon: ClipboardCheck, tone: "text-emerald-300" },
   RESEARCH_RUN: { label: "Pesquisa executada", icon: FileSearch, tone: "text-blue-300" },
-  DRAFT_GENERATED: { label: "Minuta gerada", icon: PenSquare, tone: "text-indigo-300" },
-  DRAFT_EDITED: { label: "Minuta editada", icon: PenSquare, tone: "text-indigo-300" },
-  REVIEW_RUN: { label: "Review executada", icon: GitMerge, tone: "text-purple-300" },
+  DRAFT_GENERATED: { label: "Peça gerada", icon: PenSquare, tone: "text-indigo-300" },
+  DRAFT_EDITED: { label: "Peça editada", icon: PenSquare, tone: "text-indigo-300" },
+  REVIEW_RUN: { label: "Revisão executada", icon: GitMerge, tone: "text-purple-300" },
   RISK_FLAGGED: { label: "Risco sinalizado", icon: ShieldAlert, tone: "text-amber-300" },
   STATUS_CHANGED: { label: "Status alterado", icon: Activity, tone: "text-slate-300" },
   NOTE: { label: "Anotação", icon: StickyNote, tone: "text-slate-300" },
+  STRATEGY_GENERATED: { label: "Estratégia gerada", icon: Sparkles, tone: "text-violet-300" },
+  BRAIN_GENERATED: {
+    label: "Inteligência do caso atualizada",
+    icon: Brain,
+    tone: "text-cyan-300",
+  },
+  DOCUMENT_INCONSISTENCY: {
+    label: "Inconsistência de documento",
+    icon: AlertTriangle,
+    tone: "text-rose-300",
+  },
 };
 
 export function CaseTimelineTab({ events }: { events: CaseTimelineEvent[] }) {
@@ -52,8 +67,8 @@ export function CaseTimelineTab({ events }: { events: CaseTimelineEvent[] }) {
                   </div>
                   <p className="text-sm">{e.message}</p>
                   {e.retrievalChunkIds.length ? (
-                    <p className="font-mono text-[10px] text-muted-foreground">
-                      retrieval: {e.retrievalChunkIds.length} chunks
+                    <p className="text-[11px] text-muted-foreground">
+                      {retrievalCountMessage(e.retrievalChunkIds.length)}
                     </p>
                   ) : null}
                 </div>

@@ -19,9 +19,13 @@ import { CaseOverviewTab } from "./case-overview-tab";
 import { CaseDocumentsTab } from "./case-documents-tab";
 import { CaseFactsPartiesTab } from "./case-facts-parties-tab";
 import { CaseResearchTab } from "./case-research-tab";
-import { CaseStrategyPiecesTab } from "./case-strategy-pieces-tab";
+import {
+  CaseStrategyPiecesTab,
+  type CaseStrategyView,
+} from "./case-strategy-pieces-tab";
 import { CaseTimelineTab } from "./case-timeline-tab";
 import { CaseCollabTab } from "./case-collab-tab";
+import { CaseChecklistTab } from "./case-checklist-tab";
 
 type CaseFull = Case & {
   facts: CaseFact[];
@@ -49,10 +53,35 @@ type CaseFull = Case & {
   process: Pick<Process, "id" | "number" | "title" | "tribunal" | "vara" | "tags"> | null;
 };
 
-type TabKey = "overview" | "documents" | "facts" | "research" | "strategy" | "activity";
+type TabKey =
+  | "overview"
+  | "documents"
+  | "facts"
+  | "research"
+  | "strategy"
+  | "activity"
+  | "checklist";
+
+function readStrategy(metadataJson: unknown): CaseStrategyView | null {
+  if (!metadataJson || typeof metadataJson !== "object") return null;
+  const m = metadataJson as { strategy?: unknown };
+  const s = m.strategy;
+  if (!s || typeof s !== "object") return null;
+  const obj = s as Partial<CaseStrategyView>;
+  if (typeof obj.thesis !== "string") return null;
+  return {
+    thesis: obj.thesis,
+    arguments: Array.isArray(obj.arguments) ? obj.arguments : [],
+    counterArguments: Array.isArray(obj.counterArguments) ? obj.counterArguments : [],
+    nextSteps: Array.isArray(obj.nextSteps) ? obj.nextSteps : [],
+    badge: obj.badge,
+    generatedAt: obj.generatedAt,
+  };
+}
 
 export function CaseTabs({ caseData: c }: { caseData: CaseFull }) {
   const [tab, setTab] = useState<TabKey>("overview");
+  const strategy = readStrategy(c.metadataJson);
 
   return (
     <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
@@ -68,6 +97,7 @@ export function CaseTabs({ caseData: c }: { caseData: CaseFull }) {
         <TabsTrigger value="strategy">
           Estratégia &amp; Peças · {c.drafts.length}
         </TabsTrigger>
+        <TabsTrigger value="checklist">Entrevista guiada</TabsTrigger>
         <TabsTrigger value="activity">Atividade · {c.timeline.length}</TabsTrigger>
       </TabsList>
 
@@ -99,7 +129,11 @@ export function CaseTabs({ caseData: c }: { caseData: CaseFull }) {
           risks={c.risks}
           drafts={c.drafts}
           reviews={c.reviews}
+          strategy={strategy}
         />
+      </TabsContent>
+      <TabsContent value="checklist" className="mt-4">
+        <CaseChecklistTab caseId={c.id} />
       </TabsContent>
       <TabsContent value="activity" className="mt-4">
         <div className="space-y-6">

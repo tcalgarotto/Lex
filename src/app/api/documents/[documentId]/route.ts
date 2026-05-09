@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import { CaseTimelineKind } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { removeDocumentBuffer } from "@/lib/storage";
+import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 
 export async function GET(
   _req: Request,
@@ -51,5 +54,88 @@ export async function GET(
       createdAt: c.createdAt,
     })),
   });
+}
+
+/**
+ * DELETE /api/documents/[documentId]
+ *
+ * Remove definitivamente o documento:
+ *  1. Verifica escopo workspace (multi-tenant).
+ *  2. Apaga pontos no Qdrant (lex_main filtrado por documentId+workspaceId).
+ *  3. Apaga objeto no Supabase Storage (best-effort).
+ *  4. Apaga `Document` no Postgres (cascade limpa `DocumentChunk`).
+ *  5. Registra `Activity` + `CaseTimelineEvent` (NOTE) se vinculado a caso.
+ *
+ * Retorna `{ ok: true }` em sucesso.
+ */
+export async function DELETE(
+  _req: Request,
+  context: { params: Promise<{ documentId: string }> },
+) {
+  const { documentId } = await context.params;
+  const { workspaceId, user } = await getWorkspaceContext();
+
+  const doc = await prisma.document.findFirst({
+    where: { id: documentId, workspaceId },
+    select: {
+      id: true,
+      workspaceId: true,
+      caseId: true,
+      processId: true,
+      originalName: true,
+      storagePath: true,
+    },
+  });
+  if (!doc) {
+    return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
+  }
+
+  try {
+    await getQdrantVectorStore().deleteByDocumentId(doc.id, doc.workspaceId);
+  } catch (err) {
+    console.warn("[document.delete] Qdrant delete falhou (não-fatal)", {
+      documentId: doc.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    await removeDocumentBuffer(doc.storagePath);
+  } catch (err) {
+    console.warn("[document.delete] Storage remove falhou (não-fatal)", {
+      documentId: doc.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  await prisma.document.delete({ where: { id: doc.id } });
+
+  await prisma.activity.create({
+    data: {
+      workspaceId,
+      kind: "document.deleted",
+      title: `Documento excluído: ${doc.originalName}`,
+      metaJson: {
+        documentId: doc.id,
+        processId: doc.processId,
+        caseId: doc.caseId,
+        deletedBy: user.id,
+      },
+    },
+  });
+
+  if (doc.caseId) {
+    await prisma.caseTimelineEvent.create({
+      data: {
+        caseId: doc.caseId,
+        kind: CaseTimelineKind.NOTE,
+        message: `Documento removido do caso: ${doc.originalName}`,
+        userId: user.id,
+        payloadJson: { action: "document.deleted", documentId: doc.id },
+      },
+    });
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
