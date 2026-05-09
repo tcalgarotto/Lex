@@ -106,6 +106,20 @@ export type ScoreBreakdown = {
   rrf?: number;
   /** Boost por alinhamento com intent/filtros (kind, tribunal, asOf). */
   boost?: number;
+  /** Boost específico quando artigoRef casa com a query/intent. */
+  exactArticleBoost?: number;
+  /** Boost por alinhamento com tópico/área (heurístico). */
+  topicBoost?: number;
+  /** Boost quando há contexto do caso (heurístico). */
+  caseContextBoost?: number;
+  /** Boost por fonte pinada/mustInclude. */
+  pinnedBoost?: number;
+  /** Penalidade por chunk longo. */
+  longChunkPenalty?: number;
+  /** Penalidade por ADCT fora de contexto. */
+  adctPenalty?: number;
+  /** Penalidade quando fora de vigência (revogado vs asOf). */
+  revokedPenalty?: number;
   /** Score final consolidado 0..1. Sempre presente. */
   final: number;
 };
@@ -153,6 +167,11 @@ export type LegalRetrievalResult = {
   rewrittenQueries: string[];
   filters: LegalRetrievalFilters;
   intent: import("./intent").LegalIntent;
+  /**
+   * F7.2 — Plano explícito da busca (o "porquê" do pipeline).
+   * Preenchido pelo orquestrador; útil para auditoria e UI admin/dev.
+   */
+  searchPlan?: import("./search-plan").LegalSearchPlan;
   chunks: LegalRetrievedChunk[];
   groundingScore: number;
   confidence: { label: "Alta" | "Média" | "Baixa"; score: number; reason: string };

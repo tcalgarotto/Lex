@@ -23,6 +23,7 @@ import { detectContradictions, type ContradictionRisk } from "@/lib/legal/reason
 import { spotLegalIssues } from "@/lib/legal/reasoning/issue-spotting";
 import { synthesizeStrategy } from "@/lib/legal/reasoning/strategy";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
+import { buildApprovedLegalFoundation, validateLegalGrounding } from "@/lib/retrieval/legal/approved-foundation";
 import { getCorpusManifest } from "@/lib/corpus/manifest";
 import { runIntake } from "./intake";
 import {
@@ -143,6 +144,13 @@ export async function draftWorkflow(args: {
     };
   }
   const retrieval = await retrieveLegalContext(query, filters);
+  // F7.2 — valida grounding e deriva fundamentos aprovados para drafting.
+  const _grounding = validateLegalGrounding(retrieval);
+  const foundations = buildApprovedLegalFoundation({
+    chunks: retrieval.chunks,
+    audience: "admin",
+    limit: filters.topK ?? 8,
+  });
 
   const issues = spotLegalIssues({
     query,
@@ -175,7 +183,7 @@ export async function draftWorkflow(args: {
     facts: ctx.facts,
     parties: ctx.parties,
     requests: ctx.requests,
-    chunks: retrieval.chunks,
+    foundations,
     strategy,
     brain: ctx.brain,
     pinnedSources: ctx.pinnedSources,
@@ -193,6 +201,8 @@ export async function draftWorkflow(args: {
       sections: draftBundle.sections,
       groundingScore: retrieval.groundingScore,
       confidence: retrieval.confidence,
+      groundingOk: _grounding.ok,
+      groundingGaps: _grounding.gaps,
       query,
       issuesCount: issues.length,
       risksCount: risks.length,

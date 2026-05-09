@@ -28,13 +28,17 @@ import { embedAndUpsertNormVersion } from "../src/lib/corpus/embeddings-pipeline
 
 const DEFAULT_ARTICLES = [
   "Art. 5",
-  "Art. 7",
+  "Art. 6",
   "Art. 37",
-  "Art. 205",
-  "Art. 208",
-  "Art. 227",
   "Art. 196",
   "Art. 198",
+  "Art. 205",
+  "Art. 206",
+  "Art. 208",
+  "Art. 211",
+  "Art. 212",
+  "Art. 212-A",
+  "Art. 227",
 ];
 
 function parseArgs(): {
@@ -42,6 +46,7 @@ function parseArgs(): {
   normUrn: string | null;
   dryRun: boolean;
   noEmbed: boolean;
+  adctLong: boolean;
 } {
   const args = process.argv.slice(2);
   const out = {
@@ -49,10 +54,12 @@ function parseArgs(): {
     normUrn: null as string | null,
     dryRun: false,
     noEmbed: false,
+    adctLong: false,
   };
   for (const a of args) {
     if (a === "--dry-run") out.dryRun = true;
     else if (a === "--no-embed") out.noEmbed = true;
+    else if (a === "--adct-long") out.adctLong = true;
     else if (a.startsWith("--articles=")) {
       out.articles = a
         .slice("--articles=".length)
@@ -84,6 +91,7 @@ async function main(): Promise<void> {
   console.log(`Norma: ${args.normUrn ?? "(default = qualquer norma com esses artigos)"}`);
   console.log(`Dry-run: ${args.dryRun}`);
   console.log(`No-embed: ${args.noEmbed}`);
+  console.log(`ADCT long: ${args.adctLong}`);
   console.log("");
 
   const norms = await prisma.legalNorm.findMany({
@@ -122,9 +130,15 @@ async function main(): Promise<void> {
       orderBy: { ordinal: "asc" },
     });
 
-    const matching = parents.filter(
-      (p) => p.articleRef && targetSet.has(normalizeArticleKey(p.articleRef)),
-    );
+    const matching = parents.filter((p) => {
+      if (!p.articleRef) return false;
+      if (targetSet.has(normalizeArticleKey(p.articleRef))) return true;
+      // ADCT longo: rechunk de artigos longos do ADCT independentemente do artigoRef.
+      if (args.adctLong && norm.urn.includes("!adct")) {
+        return (p.text?.length ?? 0) > 1200;
+      }
+      return false;
+    });
     if (matching.length === 0) continue;
 
     console.log(`• ${norm.identifier ?? norm.title} (${norm.urn})`);
@@ -154,6 +168,37 @@ async function main(): Promise<void> {
       while (usedOrdinals.has(nextOrdinal)) nextOrdinal += 1;
 
       for (const child of children) {
+        // Guardrail: filhos nunca devem exceder tamanho máximo razoável.
+        if (child.text.length > 2000) {
+          throw new Error(
+            `Chunk filho excede 2000 chars (${parent.articleRef ?? "artigo?"} ${child.incisoRef ?? child.paragraphRef ?? ""})`,
+          );
+        }
+        // Guardrail específico: CF/88 Art. 208, inciso IV deve conter SOMENTE o inciso IV (creche/pré-escola até 5 anos).
+        if (
+          normalizeArticleKey(parent.articleRef ?? "") === normalizeArticleKey("Art. 208") &&
+          child.structure === "INCISO" &&
+          String(child.incisoRef ?? "").toUpperCase() === "IV"
+        ) {
+          const t = child.text.toLowerCase();
+          if (!t.includes("educação infantil")) {
+            throw new Error("Art. 208 IV inválido: não contém 'educação infantil'");
+          }
+          if (!t.includes("creche")) {
+            throw new Error("Art. 208 IV inválido: não contém 'creche'");
+          }
+          if (!t.includes("pré-escola") && !t.includes("pre-escola")) {
+            throw new Error("Art. 208 IV inválido: não contém 'pré-escola'");
+          }
+          if (!/até\s+(?:5|cinco)(?:\s*\([^)]*\))?\s+anos/.test(t)) {
+            throw new Error("Art. 208 IV inválido: não contém 'até 5 anos' (ou 'cinco anos')");
+          }
+          // Não pode “vazar” outros incisos (romanos) no mesmo chunk.
+          if (/\n\s*[ivxlcdm]+\s*[—\-–]\s+/i.test(child.text.trim().replace(/^IV\s*[—\-–]/i, ""))) {
+            throw new Error("Art. 208 IV inválido: contém mais de um inciso no mesmo chunk");
+          }
+        }
+
         const contentHash = crypto
           .createHash("sha256")
           .update(child.text)

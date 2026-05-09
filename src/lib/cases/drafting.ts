@@ -29,7 +29,7 @@ import {
   type CaseRequest,
 } from "@prisma/client";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
-import type { LegalRetrievedChunk } from "@/lib/retrieval/legal/types";
+import type { ApprovedLegalFoundation } from "@/lib/retrieval/legal/approved-foundation";
 import type { StrategySynthesis } from "@/lib/legal/reasoning/strategy";
 import type { CaseBrain, BrainParty, BrainRequest } from "./brain-types";
 import {
@@ -43,7 +43,7 @@ export type DraftBuildArgs = {
   facts: CaseFact[];
   parties: CaseParty[];
   requests: CaseRequest[];
-  chunks: LegalRetrievedChunk[];
+  foundations: ApprovedLegalFoundation[];
   strategy?: StrategySynthesis;
   /** F4 — quando presente, prioriza dados do brain. */
   brain?: CaseBrain | null;
@@ -98,7 +98,7 @@ export function buildDraft(args: DraftBuildArgs): DraftBuildResult {
     id: "law",
     title: "IV. Do direito",
     body: renderLaw(
-      args.chunks,
+      args.foundations,
       args.strategy,
       groundingChunkIds,
       args.pinnedSources ?? [],
@@ -298,7 +298,7 @@ function renderFacts(
 }
 
 function renderLaw(
-  chunks: LegalRetrievedChunk[],
+  foundations: ApprovedLegalFoundation[],
   strategy: StrategySynthesis | undefined,
   groundingOut: string[],
   pinnedSources: CaseLegalSource[],
@@ -339,18 +339,18 @@ function renderLaw(
   // Filtra retrieval por área: se brain não inclui Constitucional/ADCT-related,
   // pula chunks ADCT (a menos que pinned explicitamente).
   const skipAdct = !areaIncludes(brain?.area, ["constitucional"]);
-  for (const c of chunks) {
+  for (const c of foundations) {
     if (lines.length >= 8) break;
-    if (seenNormUrn.has(c.norm.urn)) continue;
-    if (skipAdct && /adct|disposi[cç][oõ]es\s+transit[óo]rias/i.test(c.norm.title ?? "")) continue;
-    seenNormUrn.add(c.norm.urn);
+    if (seenNormUrn.has(c.urn)) continue;
+    if (skipAdct && /adct|disposi[cç][oõ]es\s+transit[óo]rias/i.test(c.title ?? "")) continue;
+    seenNormUrn.add(c.urn);
     seenChunkId.add(c.chunkId);
     groundingOut.push(c.chunkId);
-    const headline = c.norm.title || c.norm.identifier || c.norm.urn;
+    const headline = c.title || c.identifier || c.urn;
     const articleHint = c.articleRef ? ` — ${c.articleRef}` : "";
-    const previewRaw = (c.text ?? "").slice(0, 320).replace(/\s+/g, " ").trim();
+    const previewRaw = (c.excerpt ?? "").slice(0, 320).replace(/\s+/g, " ").trim();
     const preview = previewRaw.length === 320 ? `${previewRaw}…` : previewRaw;
-    lines.push(`- _${headline}${articleHint}_ (\`${c.norm.urn}\`) — “${preview}”`);
+    lines.push(`- _${headline}${articleHint}_ (\`${c.urn}\`) — “${preview}”`);
   }
 
   if (lines.length > 0) {

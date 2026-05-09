@@ -67,7 +67,7 @@ function computeIntentAlignmentBoost(
     chunk.articleRef &&
     articleRefIncludes(intent.articleRefs, chunk.articleRef)
   ) {
-    factor *= 1.15;
+    factor *= 1.15; // exactArticleBoost
   }
   const sumulaKinds: NormKind[] = [
     NormKind.SUMULA_VINCULANTE,
@@ -101,6 +101,25 @@ function computeLongGenericPenalty(
   return 1.0;
 }
 
+function computeAdctPenalty(chunk: ChunkWithLineage, intent: LegalIntent, rawQuery?: string): number {
+  const isAdct =
+    chunk.norm.urn.includes("!adct") ||
+    /\bADCT\b/i.test(chunk.norm.identifier ?? "") ||
+    /\bADCT\b/i.test(chunk.norm.title);
+  if (!isAdct) return 1.0;
+  // Se o usuário pediu ADCT explicitamente, não penaliza.
+  if (/\bADCT\b/i.test(rawQuery ?? "")) return 1.0;
+  // Se intent cita artigo e o chunk é exatamente esse artigo, reduz penalidade.
+  if (intent.articleRefs.length > 0 && chunk.articleRef) return 0.93;
+  return 0.85;
+}
+
+function computeRevokedPenalty(chunk: ChunkWithLineage, asOf: Date): number {
+  if (!chunk.validTo) return 1.0;
+  if (asOf.getTime() <= chunk.validTo.getTime()) return 1.0;
+  return 0.75;
+}
+
 /**
  * Aplica boosts compostos sobre `rerankScore` (0..1) e devolve o `final`.
  * Idempotente.
@@ -113,14 +132,37 @@ export function computeFinalScore(args: {
   intent: LegalIntent;
   /** Query crua usada para detectar pedido de inciso/§ específico. */
   rawQuery?: string;
+  /** Sinaliza quando veio de mustInclude/pinado. */
+  pinned?: boolean;
+  /** Contexto do caso (áreas) para boosts leves. */
+  caseAreas?: string[];
 }): { breakdown: ScoreBreakdown; explanation: string } {
   const base = args.rerankScore ?? args.rrfScore ?? 0;
   const boostKind = BOOSTS.kind[args.chunk.norm.kind] ?? 1.0;
   const boostStruct = BOOSTS.structure[args.chunk.structure] ?? 1.0;
-  const boostRecency = computeRecencyBoost(args.chunk.norm.publishedAt, args.intent.asOf ?? new Date());
+  const asOf = args.intent.asOf ?? new Date();
+  const boostRecency = computeRecencyBoost(args.chunk.norm.publishedAt, asOf);
   const boostIntent = computeIntentAlignmentBoost(args.chunk, args.intent);
   const longGenericPenalty = computeLongGenericPenalty(args.chunk, args.intent, args.rawQuery);
-  const boostTotal = boostKind * boostStruct * boostRecency * boostIntent * longGenericPenalty;
+  const adctPenalty = computeAdctPenalty(args.chunk, args.intent, args.rawQuery);
+  const revokedPenalty = computeRevokedPenalty(args.chunk, asOf);
+  const pinnedBoost = args.pinned ? 1.25 : 1.0;
+  const caseContextBoost =
+    args.caseAreas && args.caseAreas.length > 0
+      ? 1.0 + Math.min(0.06, args.caseAreas.length * 0.02)
+      : 1.0;
+  const topicBoost = caseContextBoost; // por enquanto, mesma heurística (explicável)
+
+  const boostTotal =
+    boostKind *
+    boostStruct *
+    boostRecency *
+    boostIntent *
+    longGenericPenalty *
+    adctPenalty *
+    revokedPenalty *
+    pinnedBoost *
+    topicBoost;
 
   const final = Math.min(1, base * boostTotal);
 
@@ -129,7 +171,7 @@ export function computeFinalScore(args: {
     args.chunk.fullPath,
     `[kind=${args.chunk.norm.kind}, struct=${args.chunk.structure}]`,
     args.rerankScore !== undefined ? `rerank=${args.rerankScore.toFixed(3)}` : `rrf=${args.rrfScore.toFixed(3)}`,
-    `boost=${boostTotal.toFixed(2)} (kind×${boostKind.toFixed(2)} struct×${boostStruct.toFixed(2)} recency×${boostRecency.toFixed(2)} intent×${boostIntent.toFixed(2)}${longGenericPenalty < 1 ? ` longgen×${longGenericPenalty.toFixed(2)}` : ""})`,
+    `boost=${boostTotal.toFixed(2)} (kind×${boostKind.toFixed(2)} struct×${boostStruct.toFixed(2)} recency×${boostRecency.toFixed(2)} intent×${boostIntent.toFixed(2)}${longGenericPenalty < 1 ? ` longChunk×${longGenericPenalty.toFixed(2)}` : ""}${adctPenalty < 1 ? ` adct×${adctPenalty.toFixed(2)}` : ""}${revokedPenalty < 1 ? ` revoked×${revokedPenalty.toFixed(2)}` : ""}${pinnedBoost > 1 ? ` pinned×${pinnedBoost.toFixed(2)}` : ""}${topicBoost > 1 ? ` topic×${topicBoost.toFixed(2)}` : ""})`,
     `final=${final.toFixed(3)}`,
   ]
     .filter(Boolean)
@@ -138,6 +180,13 @@ export function computeFinalScore(args: {
   const breakdown: ScoreBreakdown = {
     rrf: args.rrfScore,
     boost: boostTotal,
+    exactArticleBoost: args.intent.articleRefs.length > 0 && args.chunk.articleRef && articleRefIncludes(args.intent.articleRefs, args.chunk.articleRef) ? 1.15 : 1.0,
+    topicBoost,
+    caseContextBoost,
+    pinnedBoost,
+    longChunkPenalty: longGenericPenalty,
+    adctPenalty,
+    revokedPenalty,
     final,
   };
   if (args.rawScores.dense !== undefined) breakdown.dense = args.rawScores.dense;
