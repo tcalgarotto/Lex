@@ -14,6 +14,7 @@ test.describe("api auth required", () => {
     "/api/alerts",
     "/api/notifications",
     "/api/admin/corpus-stats",
+    "/api/office-memory",
   ]) {
     test(`GET ${route} -> 401 sem auth`, async ({ request, baseURL }) => {
       const origin = new URL(baseURL!).origin;

@@ -100,6 +100,9 @@ model User {
   interviewTemplates InterviewTemplate[]
   libraryFoundationsCreated LibraryFoundation[] @relation("LibraryFoundationCreatedBy")
   libraryFoundationsOwned   LibraryFoundation[] @relation("LibraryFoundationOwnerUser")
+  officeMemoriesOwned       OfficeMemory[]       @relation("OfficeMemoryOwnerUser")
+  officeMemoriesCreated      OfficeMemory[]       @relation("OfficeMemoryCreatedBy")
+  officeMemoriesUpdated      OfficeMemory[]       @relation("OfficeMemoryUpdatedBy")
 }
 
 model Workspace {
@@ -130,11 +133,22 @@ model Workspace {
   alerts              CaseAlert[]
   interviewTemplates  InterviewTemplate[]
   libraryFoundations  LibraryFoundation[]
+  officeMemories      OfficeMemory[]
 }
 
 enum LibraryFoundationScope {
   WORKSPACE
   USER
+}
+
+/**
+ * F19 — Memória curada (opt-in): texto reutilizável por workspace, usuário ou caso.
+ * Nada é promovido automaticamente para cá.
+ */
+enum OfficeMemoryScope {
+  WORKSPACE
+  USER
+  CASE
 }
 
 model LibraryFoundation {
@@ -1052,12 +1066,47 @@ model Case {
   alerts       CaseAlert[]
   documents    Document[]
   legalSources CaseLegalSource[]
+  officeMemories OfficeMemory[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])
   @@index([tribunalCode])
   @@index([workspaceId, archivedAt])
   @@index([workspaceId, deletedAt])
+}
+
+model OfficeMemory {
+  id            String            @id @default(cuid())
+  workspaceId   String
+  scope         OfficeMemoryScope
+  caseId        String?
+  ownerUserId   String?
+  title         String
+  contentMd     String            @db.Text
+  useAsModel    Boolean           @default(false)
+  useAsStyle    Boolean           @default(false)
+  optInRag      Boolean           @default(false)
+  private       Boolean           @default(false)
+  originType    String?
+  originId      String?
+  createdById   String?
+  updatedById   String?
+  archivedAt    DateTime?
+  deletedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  case      Case?     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  ownerUser User?     @relation("OfficeMemoryOwnerUser", fields: [ownerUserId], references: [id])
+  createdBy User?     @relation("OfficeMemoryCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("OfficeMemoryUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([workspaceId])
+  @@index([workspaceId, scope])
+  @@index([workspaceId, deletedAt])
+  @@index([caseId])
+  @@index([ownerUserId])
 }
 
 model CaseFact {

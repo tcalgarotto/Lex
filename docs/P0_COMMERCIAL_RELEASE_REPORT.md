@@ -1,86 +1,101 @@
 # P0 Commercial Release Report — Lex
 
-> Relatório honesto de release P0 comercial (fluxo caso-cêntrico).
-> Última atualização: 2026-05-09.
+> Relatório honesto de release P0 comercial (fluxo caso-cêntrico).  
+> Última atualização: **2026-05-09** (rodada final F19–F25).
 
 ## 1. Resumo do que mudou
 
-- **F6 (parcial)**: editor/armazenamento de **roteiros de entrevista** (templates) com escopo **Escritório** e **Meu** (usuário).
-  - **UI**: `/settings/roteiros` (criar a partir de modelos padrão, editar JSON, excluir).
-  - **API**: `/api/interview-templates` + `/api/interview-templates/[id]` (multi-tenant por `workspaceId`, com regras de permissão por escopo).
-  - **Integração no caso**: “Trocar roteiro” (entrevista guiada) lista também “Modelos salvos” e permite selecionar por `templateId` do banco.
+- **F19 — Memória do escritório (opt-in)**: modelo Prisma `OfficeMemory` com escopos `WORKSPACE` / `USER` / `CASE`, flags `useAsModel`, `useAsStyle`, `optInRag`, `private`, `originType`/`originId`, auditoria (`createdBy`/`updatedBy`, soft delete). API `/api/office-memory` e UI mínima em `/biblioteca/memoria`. Nada é promovido automaticamente para memória.
+- **F20 — Painel “Origem dos dados”**: componente `CaseDataOriginButton` + `parseMetadataJson` em fatos, pedidos, riscos; para `CaseLegalSource` (sem `metadataJson` no schema) a origem é montada a partir de `excerpt`, `query`, `chunkId`, `pinnedById`, `createdAt`.
+- **F21 / F23**: auditorias atualizadas com evidência em `docs/SECURITY_REVIEW_P0.md` e `docs/CODE_REVIEW_P0.md`.
+- **Correção de segurança (defesa em profundidade)**: `buildCaseContext` / `fetchDocumentTexts` agora filtra `Document` por `workspaceId` além dos IDs vindos do caso (`src/lib/cases/context.ts`).
 
-- **F7.1–F7.3 (parcial com evidência)**: reforços no retrieval jurídico (intent → search plan → rerank explicável) e guardrails de chunking v3 (inclui Art. 208, inciso IV isolado).
+## 2. Telas alteradas
 
-- **F8/F9 (parcial)**: drafting passa a consumir somente `ApprovedLegalFoundation[]` (fontes aprovadas). Review ganhou bloqueios explícitos para ADCT irrelevante e “promessa de protocolo”.
+- `/biblioteca` — link “Memória (opt-in)” para `/biblioteca/memoria`.
+- `/biblioteca/memoria` — nova página (lista + formulário de criação + toggles RAG/arquivar/excluir).
+- `/cases/[id]` — abas Fatos, Pedidos, Riscos e Pesquisa jurídica: botão **Origem** (diálogo) por item.
 
-- **F10 (parcial)**: export de **minuta do caso** em **DOCX/PDF/Markdown** via endpoint dedicado com validação obrigatória `workspaceId/caseId/draftId` + teste de integração multi-tenant.
+## 3. Arquivos principais
 
-- **F11 (parcial)**: base de **soft delete** e filtros iniciais em **Casos**.
-  - **DB**: `archivedAt/deletedAt` em `Case`, `Document`, `LegalPiece` (migração aplicada).
-  - **UI**: `/cases` ganhou busca simples + alternância para ver arquivados.
-  - **API**: arquivar/restaurar (`POST/DELETE /api/cases/[id]/archive`) e exclusão definitiva com confirmação (`DELETE /api/cases/[id]/delete?confirm=1`) com validação por `workspaceId` e limpeza best-effort (Qdrant + Storage) de documentos vinculados.
+| Área | Caminhos |
+|------|-----------|
+| DB | `prisma/schema.prisma`, `prisma/migrations/20260509220000_office_memory/migration.sql` |
+| API memória | `src/app/api/office-memory/route.ts`, `src/app/api/office-memory/[id]/route.ts` |
+| Regras visibilidade | `src/lib/office-memory/visibility.ts` |
+| UI memória | `src/app/(app)/biblioteca/memoria/page.tsx`, `src/components/biblioteca/office-memory-panel.tsx`, `src/app/(app)/biblioteca/page.tsx` |
+| F20 | `src/lib/cases/data-origin-meta.ts`, `src/components/cases/case-data-origin.tsx`, `case-facts-tab.tsx`, `case-requests-tab.tsx`, `case-risks-tab.tsx`, `case-research-tab.tsx` |
+| Contexto caso | `src/lib/cases/context.ts` |
+| Testes | `tests/integration/office-memory.test.ts`, `tests/e2e/05-api-auth-required.spec.ts` |
+| Docs | `docs/SECURITY_REVIEW_P0.md`, `docs/CODE_REVIEW_P0.md`, este relatório |
 
-## 2. Fluxo final (produto)
+## 4. Bugs corrigidos
 
-Novo caso → relato livre / entrevista guiada → estrutura editável (partes/fatos/pedidos/riscos) → documentos → pesquisa jurídica confiável → estratégia → peça → revisão → export → processo judicial (CNJ) se houver.
+- **IDOR em profundidade no contexto do caso**: leitura de texto de documentos para RAG/drafting ignorava `workspaceId` no `findMany` de `Document` — corrigido para `{ workspaceId, id: { in: documentIds } }`.
 
-## 3. Telas alteradas (lista)
+## 5. Riscos remanescentes (explícitos)
 
-- `/cases/[id]` (aba “Peças” / drafts) — botões de export DOCX/PDF/MD.
-- `/test-guide` — atualizado com 6 jornadas sentinela copiáveis.
+1. **Superfície de rotas**: não há prova matemática de que *cada* handler `/api/*` valida `workspaceId`; há amostragem + suíte de integração nas rotas mais sensíveis.
+2. **`/api/search`**: ramo vetorial usa `catch {}` e `console.warn` fora do `logger` com scrub — risco P1 de observabilidade e mensagem bruta (ver `docs/SECURITY_REVIEW_P0.md` SEC-04).
+3. **UX comercial**: checklist em `docs/COMMERCIAL_UX_P0_AUDIT.md` ainda contém itens ⏳ (jargão, estados vazios globais, etc.); não foram todos fechados nesta rodada.
+4. **`AI_REASONING ≠ LEGAL_TRUTH`**: invariante de produto; qualquer regressão em drafting/review exige testes e revisão humana.
 
-## 4. Arquivos principais
+## 6. Testes rodados (comandos + resultados)
 
-- `docs/UX_FLOW_AUDIT.md`
-- `docs/CASE_BRAIN.md`
-- `docs/DRAFTING_REVIEW_FLOW.md`
-- `docs/SECURITY_REVIEW_P0.md`
-- `docs/RETRIEVAL_PIPELINE_AUDIT.md`
-- `docs/DEEPINFRA_EMBEDDING_AUDIT.md`
+| Comando | Resultado (2026-05-09) |
+|---------|-------------------------|
+| `npm run lint` | OK (sem warnings) |
+| `npm run typecheck` | OK |
+| `npm test` | **534 passed** |
+| `npm run test:integration` | **43 passed** (inclui `office-memory.test.ts`) |
+| `npm run test:e2e` | **79 passed** (inclui `GET /api/office-memory` → 401 sem cookie) |
+| `NODE_ENV=production npm run build` | OK (`/biblioteca/memoria` e rotas API compiladas) |
+| `npm run qa:retrieval:domains` | **10/10** domínios OK |
+| `npm run db:migrate:deploy` | Migração `20260509220000_office_memory` aplicada no DB configurado em `.env` |
 
-## 5. Bugs corrigidos
+## 7. Falhas encontradas
 
-- `npm test` voltava a falhar por import runtime de Prisma no provider Câmara; corrigido para type-only.
-- Export de minuta do caso inexistente: agora existe `GET /api/cases/[id]/drafts/[draftId]/export`.
+- Nenhuma falha nos comandos acima após correções finais (typecheck `OfficeMemoryUpdateInput` via `updatedBy: { connect }`).
 
-## 6. Riscos remanescentes
+## 8. Itens adiados (com justificativa)
 
-- **Segurança P0**: ver `docs/SECURITY_REVIEW_P0.md` (se checklist não estiver ✅, release não pode ser marcada READY).
-- **Retrieval**: ver `docs/RETRIEVAL_PIPELINE_AUDIT.md` (QA por domínios).
-- **Performance**: busca global/retrieval cold pode ser ~3s (ver `docs/UX_FLOW_AUDIT.md`).
+- **P1 SEC-04** (`/api/search` → logger scrub no vetorial): escopo documentado; correção não misturada nesta entrega para não inflar diff.
+- **Exaustão de “toda rota Prisma”**: adiado como processo contínuo; ver tabela em `SECURITY_REVIEW_P0.md`.
+- **Refatorar componentes grandes** (`case-facts-tab`, página do caso): adiado (risco/retorno vs sprint).
 
-## 7. Testes rodados (comandos + resultados)
+## 9. Critérios A–N (release) e status item a item
 
-> Não preencher sem evidência. Se não rodou, declarar explicitamente.
+| Critério | Significado | Status |
+|----------|-------------|--------|
+| **A** | Lint | ✅ `npm run lint` |
+| **B** | Typecheck | ✅ `npm run typecheck` |
+| **C** | Testes unitários | ✅ `npm test` (534) |
+| **D** | Testes integração | ✅ `npm run test:integration` (43) |
+| **E** | E2E | ✅ `npm run test:e2e` (79) |
+| **F** | Build produção | ✅ `NODE_ENV=production npm run build` |
+| **G** | QA retrieval domínios | ✅ `npm run qa:retrieval:domains` (10/10) |
+| **H** | Migrações DB aplicáveis | ✅ `db:migrate:deploy` (OfficeMemory) |
+| **I** | Multi-tenant / IDOR (regressão nas rotas críticas) | ✅ Testes + APIs novas; não exaustivo |
+| **J** | Uploads/exports com `workspaceId` | ✅ Amostragem documentos + exports + relatório segurança |
+| **K** | Cache com isolamento por tenant/contexto | ✅ `cache.ts` + desliga com `caseContext` |
+| **L** | Logs sem vazamento bruto (política) | ⚠️ `logger` OK; exceção **P1** em `/api/search` |
+| **M** | F20 Origem dos dados (UI) | ✅ Fatos, pedidos, riscos, fundamentos fixados |
+| **N** | F19 Memória opt-in | ✅ Modelo + API + `/biblioteca/memoria` |
 
-- `npm run lint` → **OK** (2026-05-09)
-- `npm run typecheck` → **OK** (2026-05-09)
-- `npx prisma generate` → **OK** (2026-05-09)
-- `npm run db:migrate:deploy` → **OK** (2026-05-09)
-- `npm test` → **OK** (532 tests) (2026-05-09)
-- `npm run test:integration` → **OK** (33 tests) (2026-05-09)
-- `npm run test:e2e` → **OK** (78 tests) (2026-05-09)
-- `npm run qa:retrieval:domains` → **OK** (10/10) (2026-05-09)
-- `NODE_ENV=production npm run build` → **OK** (2026-05-09)
+## 10. Status global
 
-## 8. Falhas encontradas
+**NOT READY**
 
-- (preencher com evidência)
-
-## 9. Itens adiados
-
-- **F11–F13**: Biblioteca real, separação Documento/Peça/Biblioteca e fluxo completo (UI) de arquivar/restaurar/excluir definitivo por entidade ainda pendentes (F11 iniciou apenas base + casos).
-- **F15–F20**: Jobs em Admin (cobertura total), Pesquisa Jurídica como busca avançada com filtros completos, Dashboard final comercial, Memória opt-in multi-escopo e painel “Origem dos dados” ainda pendentes.
-- **F21–F23**: auditorias completas por evidência (uploads/downloads/exports + PII/logs/perf/caches) ainda pendentes.
-
-## 10. Status final
-
-**Status**: NOT READY
-
-Motivo: apesar de **todos os checks** estarem verdes nesta rodada, ainda faltam entregas grandes do P0 comercial (F11–F23) e a auditoria de superfície de segurança/performance não está completa por evidência.
+**Argumentação:** embora **A–K** e **M–N** estejam verdes com evidência de comandos, o critério **L** não está **100%** aderente (P1 em `src/app/api/search/route.ts`). Além disso, o produto comercial ainda carrega débito de UX declarado em `docs/COMMERCIAL_UX_P0_AUDIT.md` (fora desta tabela, mas relevante para “release comercial” honesto). **Não maquiar:** checks verdes não substituem fechamento de P1 de logging nem do backlog de UX.
 
 ## 11. Instruções para testar (manual)
 
-Usar o roteiro de `docs/UX_FLOW_AUDIT.md` e registrar resultados aqui.
+1. Abrir o roteiro em **`/test-guide`** (após login), seguir jornadas sentinela.  
+2. **F19**: `/biblioteca` → “Memória (opt-in)” → criar entrada WORKSPACE e CASE; alternar RAG/arquivar; em outro workspace (outro membro), confirmar que não vê IDs alheios (404 na API).  
+3. **F20**: `/cases/[id]` → abas Fatos / Pedidos / Riscos / Pesquisa jurídica → **Origem** e conferir diálogo.
 
+## 12. Pull Request
+
+- **Branch**: `p0-commercial-sprint-2026-05-09`
+- **URL de comparação (após push)**: `https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09`
+- **PR**: criar com `gh pr create` após o commit desta rodada (número do PR preenchido no GitHub após criação).

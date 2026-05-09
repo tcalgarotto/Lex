@@ -38,7 +38,7 @@ export async function buildCaseContext(args: {
   // Carrega texto extraído dos documentos (evita carregar tudo do GET do caso).
   const docTexts =
     c.documents.length > 0
-      ? await fetchDocumentTexts(c.documents.map((d) => d.id))
+      ? await fetchDocumentTexts(args.workspaceId, c.documents.map((d) => d.id))
       : [];
 
   const meta = (c.metadataJson ?? {}) as Record<string, unknown>;
@@ -72,9 +72,9 @@ function readBrain(meta: Record<string, unknown>): CaseBrain | null {
   return x as CaseBrain;
 }
 
-async function fetchDocumentTexts(documentIds: string[]): Promise<BrainInputDoc[]> {
+async function fetchDocumentTexts(workspaceId: string, documentIds: string[]): Promise<BrainInputDoc[]> {
   const { prisma } = await import("@/lib/prisma");
-  const where: Prisma.DocumentWhereInput = { id: { in: documentIds } };
+  const where: Prisma.DocumentWhereInput = { workspaceId, id: { in: documentIds } };
   const docs = await prisma.document.findMany({
     where,
     select: { id: true, originalName: true, extractedText: true },

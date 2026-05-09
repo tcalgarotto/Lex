@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LegalSearchPanel } from "@/components/legal-search/legal-search-panel";
+import { CaseDataOriginButton } from "@/components/cases/case-data-origin";
 import type { CaseLegalSource } from "@prisma/client";
 
 interface Props {
@@ -93,15 +94,29 @@ export function CaseResearchTab({ caseId, legalSources }: Props) {
                         </p>
                       ) : null}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      title="Remover do caso"
-                      disabled={busy === s.id}
-                      onClick={() => unpin(s.id)}
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <CaseDataOriginButton
+                        kind="legalSource"
+                        metadataJson={{
+                          origin: "Fundamento fixado a partir da pesquisa jurídica",
+                          source: s.query ? `Busca: "${s.query}"` : `Chunk: ${s.chunkId}`,
+                          sourceText: s.excerpt,
+                          lastEditedAt: s.createdAt.toISOString(),
+                          lastEditedById: s.pinnedById ?? undefined,
+                        }}
+                        createdAt={s.createdAt}
+                        actorUserId={s.pinnedById}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Remover do caso"
+                        disabled={busy === s.id}
+                        onClick={() => unpin(s.id)}
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               </li>

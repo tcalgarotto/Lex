@@ -90,6 +90,9 @@ export default async function BibliotecaPage() {
             <Button asChild variant="secondary" size="sm">
               <Link href="/pesquisa-juridica?scope=legislacao">Pesquisa jurídica</Link>
             </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/biblioteca/memoria">Memória (opt-in)</Link>
+            </Button>
             <Button asChild size="sm">
               <Link href="/biblioteca/fundamentos/novo">Novo fundamento</Link>
             </Button>
