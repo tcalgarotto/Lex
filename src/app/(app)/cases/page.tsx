@@ -112,7 +112,7 @@ function CaseCard({ c }: { c: CaseRow }) {
       <dl className="mt-3 grid grid-cols-4 gap-2 text-[11px] text-muted-foreground">
         <Stat label="Fatos" value={c._count.facts} />
         <Stat label="Pedidos" value={c._count.requests} />
-        <Stat label="Drafts" value={c._count.drafts} />
+        <Stat label="Rascunhos" value={c._count.drafts} />
         <Stat
           label="Riscos"
           value={c._count.risks}

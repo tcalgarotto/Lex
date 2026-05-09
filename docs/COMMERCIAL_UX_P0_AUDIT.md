@@ -1,7 +1,7 @@
 # Commercial UX P0 Audit — Lex
 
 > Documento vivo para auditoria de UX comercial P0 do Lex (visão advogado).
-> Última atualização: 2026-05-09.
+> Última atualização: 2026-05-09 (rodada UX P1 pós-gate A–N).
 
 ## 1. Objetivo
 
@@ -17,11 +17,12 @@ Checklist (marcar ✅ apenas com evidência):
 - ✅ **Baseline técnica verde (Sprint anterior)**: lint/typecheck/build/e2e/unit/integration verdes; `qa:search:legal` verde. **Fonte**: briefing do usuário + histórico em `docs/UX_FLOW_AUDIT.md` §14.  
 - ⏳ **Onde estou?**: cada tela tem título + descrição curta + contexto do caso (quando aplicável).
 - ⏳ **Próxima ação**: cada tela/aba tem CTA principal coerente e não “expulsa” o usuário do caso.
-- ⏳ **Sem jargão técnico**: usuário não vê “embedding/chunk/qdrant/sparse/dense/intent/grounding”.
+- ⏳ **Sem jargão técnico**: usuário não vê “embedding/chunk/qdrant/sparse/dense/intent/grounding”.  
+  - **Progresso (P1)**: redução pontual em busca/peças/pesquisa/timeline/API (ver §8.1); **não** há ainda “mapa central” nem modo avançado isolado.
 - ⏳ **Estados vazios** orientam (não “tela fria”).
 - ⏳ **Tabs/cards** não quebram em 1366×768.
 - ⏳ **Caso vs Processo**: pré-processual é explícito; CNJ só quando existe; Jobs ≠ Processos.
-- ⏳ **Pesquisa jurídica**: mostra fonte/trecho/relevância com linguagem jurídica (sem score opaco como foco).
+- ✅ **Pesquisa jurídica**: relevância em níveis (Alta/Média/Baixa) + tooltips no painel (`legal-search-panel.tsx`); copy “Adicionar ao caso” alinhada em `/pesquisa-juridica` e botão do painel. **Busca global** `/busca`: escopos em PT-BR e relevância sem % cru (ver §8.1).
 - ⏳ **RAG limitation**: UI deixa claro quando base não está disponível (lacuna) e **nunca** vende como fundamento recuperado.
 - ✅ **CRUD do caso**: partes/fatos/pedidos/riscos editáveis inline com origem/confidence/status/timeline.  
   - **Evidência (UI)**: `src/components/cases/case-facts-tab.tsx`, `case-parties-tab.tsx`, `case-requests-tab.tsx`, `case-risks-tab.tsx` (+ copy obrigatória em riscos).  
@@ -103,13 +104,10 @@ Checklist (marcar ✅ apenas com evidência):
   - **Agente responsável**: `product-ux-legal-workflow-agent` + `code-review-refactor-agent`  
   - **Teste de aceite**: clicar no item no dashboard e cair no caso correto, com a seção de estratégia visível.
 
-- **Timeline usa “Pesquisa jurisprudencial” (base errada → quebra confiança)**  
-  - **Problema**: o Lex sugere que rodou “jurisprudência” mesmo quando a base principal disponível é legislação (CF/ADCT). É uma promessa não cumprida e gera desconfiança.  
-  - **Evidência**: `src/lib/cases/orchestrator.ts` em `draftWorkflow()` registra evento com `message: "Pesquisa jurisprudencial automática iniciada"`. Esse texto aparece em `/cases/[id]` → tab “Atividade” (`src/components/cases/case-timeline-tab.tsx`).  
-  - **Severidade**: **P0**  
-  - **Correção proposta**: trocar para “Pesquisa jurídica automática…” e, quando aplicável, indicar base (“Constituição/ADCT”) ou manter neutro.  
-  - **Agente responsável**: `product-ux-legal-workflow-agent` + `code-review-refactor-agent`  
-  - **Teste de aceite**: gerar peça e checar na aba Atividade que não aparece “jurisprudencial” indevidamente.
+- ✅ **Timeline usava “Pesquisa jurisprudencial” (base errada → quebra confiança)** — **fechado** (`7a7af85`)  
+  - **Problema**: o Lex sugeria “jurisprudência” mesmo quando a base principal é legislação.  
+  - **Correção aplicada**: `src/lib/cases/orchestrator.ts` — mensagem neutra `Pesquisa jurídica automática iniciada (acervo indexado)`.  
+  - **Teste de aceite**: aba Atividade não exibe mais “jurisprudencial” nesse evento; `npm test` inclui `orchestrator.test.ts`.
 
 - **/busca mostra “vetorial” (jargão) e isso vira badge**  
   - **Problema**: o advogado vê o tipo de resultado como **“vetorial”**, que não comunica valor comercial e parece debug interno.  
@@ -208,6 +206,19 @@ Checklist (marcar ✅ apenas com evidência):
   - **Agente responsável**: `product-ux-legal-workflow-agent` + `design-system-frontend-polish-agent`  
   - **Teste de aceite**: clicar CTA e conseguir vincular sem perder o caso (ou voltar em 1 clique).
 
+#### P1 — fechamento desta rodada (`7a7af85`)
+
+| Item (§5.2) | Status | Evidência |
+|-------------|--------|-----------|
+| Jargão / mapa central PT-BR | ⏳ **Parcial** | Pontos críticos ajustados (busca, peças, pesquisa, API `legal-sources`, metadado origem em `case-research-tab.tsx`); **não** há scrub central nem modo “avançado” só admin. |
+| Enum cru em cards | ✅ **Fechado** | `/cases` · `caseStatusLabel` já em uso; label **Rascunhos** no lugar de “Drafts” (`src/app/(app)/cases/page.tsx`). |
+| Relevância % opaca | ✅ **Fechado** | `/busca` · `buscaRelevanceTier` + `title` com explicação (`src/app/(app)/busca/page.tsx`); painel jurídico já usava Alta/Média/Baixa. |
+| `norm.kind` cru | ✅ **Fechado** | `normKindLabel` mapeia enums Prisma (`CONSTITUTION`, `ORDINARY_LAW`, …) em PT (`src/components/legal-search/legal-search-panel.tsx`). |
+| URN/provider em detalhe `/busca` | ✅ **N/A / já atendido** | Dialog atual **não** renderiza `normUrn`/`provider` (achado do audit desatualizado). |
+| Aba Peças — chunk/retrieval/Brain | ✅ **Fechado** | Lista “Fundamento consultado nº …”; badges já em PT; sem “chunk:” visível ao advogado (`case-drafts-tab.tsx`, `case-research-tab.tsx`). |
+| “Usar no caso” vs “Adicionar ao caso” | ✅ **Fechado** | `/pesquisa-juridica`, botão do `LegalSearchPanel`, copy da aba caso. |
+| CTA `/processos` sem contexto | ✅ **Fechado** | `?returnCase=<caseId>` + banner “Voltar ao caso” (`processos/page.tsx`, `case-overview-tab.tsx`). |
+
 ### P2 (polish)
 - **Performance percebida na busca global/contextual (latência cold)**  
   - **Problema**: busca global pode parecer lenta se sempre esperar retrieval legal; advogado quer resposta rápida com estados claros.  
@@ -263,9 +274,17 @@ Usar o roteiro em `docs/UX_FLOW_AUDIT.md` e registrar aqui quaisquer becos sem s
 - ✅ `npx prisma migrate deploy` (OK; aplicou `20260509132000_casefact_metadata_json`)
 - ⚠️ `npx prisma migrate dev --create-only --name add_case_fact_metadata` (FALHOU por drift; ver log no terminal)
 - ✅ Fechamento sprint (2026-05-09): `npm run lint`, `npm run typecheck`, `npm test` (534), `npm run test:integration` (43), `npm run test:e2e` (80), `NODE_ENV=production npm run build`, `npm run qa:retrieval:domains` (10/10) — todos OK no ambiente do agente.
+- ✅ **Rodada UX P1 (pós-READY, mesmo dia)**: `npm run lint`, `npm run typecheck`, `npm test` (534), `npm run test:integration` (43), `npm run test:e2e` (80), `NODE_ENV=production npm run build` — OK após alterações de copy/UX em `7a7af85`.
 
-## 8. P1 — status final após fechamento de logs (2026-05-09)
+## 8. P1 — status (atualizado pós-gate A–N)
 
-- **Gate de segurança / observabilidade (critério L, alinhado ao release P0)**: **fechado**. A busca global (`/api/search`) e rotas críticas de documentos/casos passaram a usar `getLogger` com scrub, `requestId` e metadados sem texto bruto da query do usuário. Detalhes: `docs/SECURITY_REVIEW_P0.md` e `docs/CODE_REVIEW_P0.md` §5.
-- **P1 de copy, jargão e polimento de UI listados na seção “P1 (melhorias)” acima**: permanecem **abertos** como melhoria de produto comercial; **não** reabrem o gate de logs/segurança desta sprint.
+### 8.1 Fechamento da lista P1 (copy, fluxo, labels)
+
+- Tabela e evidências em **§5.2 “P1 — fechamento desta rodada”** (`7a7af85`).
+- **Gate A–N**: **não reaberto**; alterações são só camada de produto (strings, labels, deep-link, mapeamento de enums na UI).
+- **Pendência explícita**: checklist amplo §3 (tabs em 1366×768, “onde estou” em **todas** as telas, estados vazios globais, RAG limitation em toda superfície) continua **dívida** — ver itens ⏳ em §3; próxima rodada pode usar `design-system-frontend-polish-agent` com screenshots.
+
+### 8.2 Gate de segurança / observabilidade (critério L)
+
+- **Fechado** na sprint anterior. Detalhes: `docs/SECURITY_REVIEW_P0.md` e `docs/CODE_REVIEW_P0.md` §5.
 

@@ -102,7 +102,7 @@ export async function draftWorkflow(args: {
     workspaceId: args.workspaceId,
     caseId: args.caseId,
     kind: "RESEARCH_RUN",
-    message: "Pesquisa jurisprudencial automática iniciada",
+    message: "Pesquisa jurídica automática iniciada (acervo indexado)",
     payloadJson: { source: "draft" },
     userId: args.userId,
   });

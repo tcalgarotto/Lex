@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -10,8 +11,18 @@ import { ProcessVirtualList } from "@/components/processes/process-virtual-list"
 import { createProcessAndRedirect } from "@/app/(app)/processos/actions";
 import { formatCnj } from "@/lib/cnj";
 
-export default async function ProcessosPage() {
+export default async function ProcessosPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ returnCase?: string }>;
+}) {
   const { workspaceId } = await getWorkspaceContext();
+  const sp = (await searchParams) ?? {};
+  const returnCaseId =
+    typeof sp.returnCase === "string" && sp.returnCase.trim().length > 0
+      ? sp.returnCase.trim()
+      : null;
+
   const processes = await prisma.process.findMany({
     where: { workspaceId },
     orderBy: { updatedAt: "desc" },
@@ -19,6 +30,17 @@ export default async function ProcessosPage() {
 
   return (
     <AppShell title="Processos judiciais">
+      {returnCaseId ? (
+        <div className="mb-6 rounded-lg border border-violet-500/25 bg-violet-500/5 px-4 py-3 text-sm text-violet-100">
+          <p className="mb-2">
+            Você veio de um caso em fase pré-processual. Depois de criar ou localizar o
+            processo, volte ao caso para concluir o vínculo.
+          </p>
+          <Button asChild variant="secondary" size="sm">
+            <Link href={`/cases/${returnCaseId}`}>Voltar ao caso</Link>
+          </Button>
+        </div>
+      ) : null}
       <div className="grid gap-8 lg:grid-cols-2">
         <Card className="border-white/10 bg-zinc-900/40">
           <CardHeader>

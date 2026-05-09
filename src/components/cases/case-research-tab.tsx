@@ -18,9 +18,9 @@ interface Props {
 
 /**
  * Aba "Pesquisa jurídica" do caso. Exibe:
- *  - Fundamentos pinados (CaseLegalSource) com botão de remoção;
+ *  - Fundamentos salvos no caso (CaseLegalSource) com botão de remoção;
  *  - Painel de busca embutido (`LegalSearchPanel`) com o caso pré-selecionado,
- *    permitindo pinar novos fundamentos sem sair da tela do caso.
+ *    permitindo adicionar novos fundamentos sem sair da tela do caso.
  */
 export function CaseResearchTab({ caseId, legalSources }: Props) {
   const router = useRouter();
@@ -99,7 +99,9 @@ export function CaseResearchTab({ caseId, legalSources }: Props) {
                         kind="legalSource"
                         metadataJson={{
                           origin: "Fundamento fixado a partir da pesquisa jurídica",
-                          source: s.query ? `Busca: "${s.query}"` : `Chunk: ${s.chunkId}`,
+                          source: s.query
+                            ? `Busca: "${s.query}"`
+                            : "Trecho indexado no acervo oficial (referência interna)",
                           sourceText: s.excerpt,
                           lastEditedAt: s.createdAt.toISOString(),
                           lastEditedById: s.pinnedById ?? undefined,

@@ -141,11 +141,39 @@ function totalHits(d: SearchResponse): number {
 }
 
 function normKindLabel(r: SearchResult): string | null {
-  const kind = (r.norm.kind ?? "").toLowerCase();
-  if (kind.includes("constitution")) return "Constituição";
-  if (r.norm.urn.includes("!adct")) return "ADCT";
-  if (kind.includes("sumula")) return "Súmula";
-  if (kind.includes("jurisprudence")) return "Jurisprudência";
+  if (r.norm.urn.toLowerCase().includes("!adct")) return "ADCT";
+  const raw = (r.norm.kind ?? "").trim();
+  if (!raw) return null;
+  const k = raw.toLowerCase().replace(/_/g, "");
+  const byEnum: Record<string, string> = {
+    constitution: "Constituição",
+    constitutionalamendment: "Emenda constitucional",
+    ordinarylaw: "Lei",
+    complementarylaw: "Lei complementar",
+    delegatedlaw: "Lei delegada",
+    decreelaw: "Decreto-lei",
+    decree: "Decreto",
+    provisionalmeasure: "Medida provisória",
+    code: "Código",
+    resolution: "Resolução",
+    portaria: "Portaria",
+    normativeinstruction: "Instrução normativa",
+    circular: "Circular",
+    regiment: "Regimento interno",
+    sumulastf: "Súmula (STF)",
+    sumulastj: "Súmula (STJ)",
+    sumulavinculante: "Súmula vinculante",
+    repetitivetheme: "Tema repetitivo",
+    jurisprudencestf: "Jurisprudência (STF)",
+    jurisprudencestj: "Jurisprudência (STJ)",
+    jurisprudencetst: "Jurisprudência (TST)",
+    jurisprudenceother: "Jurisprudência",
+    other: "Norma",
+  };
+  if (byEnum[k]) return byEnum[k];
+  if (k.includes("jurisprudence")) return "Jurisprudência";
+  if (k.includes("sumula")) return "Súmula";
+  if (k.includes("constitution")) return "Constituição";
   return null;
 }
 
@@ -458,7 +486,7 @@ function Body({
                               ? "Já no caso"
                               : isPinning
                                 ? "Salvando…"
-                                : "Usar no caso"}
+                                : "Adicionar ao caso"}
                           </Button>
                         ) : null}
                       </div>
