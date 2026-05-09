@@ -60,6 +60,7 @@ Preencha:
 - `SUPABASE_SERVICE_ROLE_KEY` — Project Settings → API → `service_role` (necessário só para upload/download via Storage admin)
 - `DATABASE_URL` — pooler em **modo TRANSACTION** (porta 6543), com `?pgbouncer=true&connection_limit=1`
 - `DIRECT_URL` — pooler em **modo SESSION** (porta 5432), usado por `prisma migrate`
+- `SHADOW_DATABASE_URL` — **obrigatório em dev** para `prisma migrate dev` (shadow schema separado; não é reset)
 - `DEEPSEEK_API_KEY`, `DEEPINFRA_API_KEY`
 
 3. **Configurar Auth URLs no painel Supabase**
@@ -80,9 +81,26 @@ Sem trailing slash. Em produção adicione também a URL pública (ex.: `https:/
 ```bash
 npm install
 npx prisma generate
-npx prisma migrate deploy   # primeira vez; em dev local use migrate dev
+npx prisma migrate deploy   # primeira vez; em dev local use migrate dev (requer SHADOW_DATABASE_URL)
 npx prisma db seed
 ```
+
+### Shadow DB / schema (recomendado para dev)
+
+O Prisma usa um **shadow database** para calcular diffs durante `prisma migrate dev`. Neste repo, por padrão usamos
+um **schema separado no mesmo Postgres** (mais seguro e barato do que um banco inteiro).
+
+1) No Postgres do projeto (via SQL editor Supabase), execute:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS shadow_prisma;
+```
+
+2) Na sua `.env`, configure:
+
+- `SHADOW_DATABASE_URL`: copie o `DIRECT_URL` e adicione `?schema=shadow_prisma`
+
+> Importante: nunca use shadow em produção. Em prod usamos somente `prisma migrate deploy`.
 
 > Caso precise resetar (apaga tudo): `npx prisma migrate reset` (somente em dev).
 
