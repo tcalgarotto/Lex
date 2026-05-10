@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * P0 — Fluxo do caso reorganizado (legado embutido).
+ * Sign-off provisório F-1; dupla revisão Thales (PO) + Cursor (CTO interim).
+ * Owners de Legal/Security/QA Lead ainda PROVISÓRIOS — release público bloqueado.
+ * Ver: docs/UX_FLOW_AUDIT.md
+ *
+ * Preferir rotas por seção em `/cases/[id]/…`. Este componente permanece para referência
+ * e possíveis telas de rollback até a Lane E consolidar testes.
+ */
+
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type {
@@ -120,10 +130,7 @@ export function CaseTabs({
       </TabsList>
 
       <TabsContent value="overview" className="mt-4">
-        <CaseOverviewTab
-          caseData={c}
-          onGoToTab={(t) => goTab(t)}
-        />
+        <CaseOverviewTab caseData={c} />
       </TabsContent>
       <TabsContent value="documents" className="mt-4">
         <CaseDocumentsTab caseId={c.id} documents={c.documents} />
@@ -137,7 +144,7 @@ export function CaseTabs({
         />
       </TabsContent>
       <TabsContent value="research" className="mt-4">
-        <CaseResearchTab caseId={c.id} legalSources={c.legalSources} />
+        <CaseResearchTab caseId={c.id} legalSources={c.legalSources} caseRecord={c} />
       </TabsContent>
       <TabsContent value="strategy" className="mt-4">
         <CaseStrategyPiecesTab

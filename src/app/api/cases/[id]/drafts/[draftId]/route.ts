@@ -1,16 +1,12 @@
 /**
- * F5 — Edição de minuta (cria nova versão a partir de uma existente).
+ * P0 — Estratégia e Peças (drafting + review + export).
+ * Drafting-guard ativo; jurisprudência candidata não promovida sem confirmação humana.
+ * Sign-off provisório F-1; dupla revisão Thales (PO) + Cursor (CTO interim).
+ * Owners de Legal/Security/QA Lead ainda PROVISÓRIOS — release público bloqueado.
+ * Ver: docs/features/CASE_DRAFTING_TAB.md
  *
- * PATCH /api/cases/[id]/drafts/[draftId]
- *
- * Body: { content: string }
- *
- * Comportamento:
- *  - Não muta a versão original (auditável). Cria uma nova versão N+1 com
- *    `status = EDITED`, herda groundingChunkIds e adiciona `editedFromVersion`
- *    no metadataJson.
- *  - Insere evento `DRAFT_EDITED` na timeline.
- *  - Retorna a nova versão completa.
+ * GET — minuta por id.
+ * PATCH (F5) — salva edição manual como nova versão auditável (não muta a anterior).
  */
 
 import { NextResponse } from "next/server";
@@ -18,8 +14,37 @@ import { z } from "zod";
 import { CaseDraftStatus, CaseTimelineKind, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { enforceDraftingRateLimit } from "@/lib/cases/drafting/drafting-route-common";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string; draftId: string }> },
+) {
+  const { workspaceId, user } = await getWorkspaceContext();
+  const { id: caseId, draftId } = await params;
+
+  const limited = await enforceDraftingRateLimit({
+    req,
+    userId: user.id,
+    bucket: "draft-get",
+  });
+  if (limited) return limited;
+
+  const c = await prisma.case.findFirst({
+    where: { id: caseId, workspaceId },
+    select: { id: true },
+  });
+  if (!c) return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
+
+  const draft = await prisma.caseDraft.findFirst({
+    where: { id: draftId, caseId },
+  });
+  if (!draft) return NextResponse.json({ error: "Minuta não encontrada" }, { status: 404 });
+
+  return NextResponse.json({ draft });
+}
 
 const PatchSchema = z.object({
   content: z
@@ -34,6 +59,13 @@ export async function PATCH(
 ) {
   const { workspaceId, user } = await getWorkspaceContext();
   const { id: caseId, draftId } = await params;
+
+  const limited = await enforceDraftingRateLimit({
+    req,
+    userId: user.id,
+    bucket: "draft-patch",
+  });
+  if (limited) return limited;
 
   let body: z.infer<typeof PatchSchema>;
   try {

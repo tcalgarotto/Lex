@@ -14,6 +14,7 @@ import { CaseTimelineKind, Prisma } from "@prisma/client";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { consolidateCaseBrain, persistBrainEntities } from "@/lib/cases/brain";
+import { mergeCaseMetadataJson } from "@/lib/cases/case-brain/case-metadata-merge";
 
 export const consolidateCaseBrainFn = inngest.createFunction(
   { id: "consolidate-case-brain", retries: 2 },
@@ -69,11 +70,10 @@ export const consolidateCaseBrainFn = inngest.createFunction(
 
     await step.run("persist", async () => {
       await prisma.$transaction(async (tx) => {
-        const updatedMeta: Record<string, unknown> = {
-          ...meta,
+        const updatedMeta = mergeCaseMetadataJson(meta, {
           brain,
           brainVersion: brain.brainVersion,
-        };
+        });
         await tx.case.update({
           where: { id: caseId },
           data: { metadataJson: updatedMeta as Prisma.InputJsonValue },

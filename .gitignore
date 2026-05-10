@@ -67,3 +67,8 @@ prisma/*.db-journal
 
 # Planos locais do Cursor IDE (não pertencem ao repo)
 .cursor/plans/
+
+# HTMLs de referência visual de terceiros (uso local apenas; NÃO comitar)
+/preview.html
+/preview(1).html
+/docs/model design/

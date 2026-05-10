@@ -4,11 +4,26 @@ Existem **dois motores** de recuperação no Lex. Eles convivem por
 herança e têm responsabilidades distintas. Esta página documenta a
 regra para evitar uso cruzado.
 
+## Pesquisa jurídica no produto (P0 — 2026-05)
+
+- O pipeline interno descrito abaixo (`retrieveLegalContext`, Qdrant, FTS, etc.) **permanece no repositório** e **não foi removido**.
+- Para demo controlada e piloto (sign-off **F-1**), a **pesquisa jurídica voltada ao usuário** pode ser atendida pelo **modo assistido externo** documentado em `docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md` e implementado em `src/lib/legal-research/**` + `POST /api/legal-research/*`.
+- **Estado do motor interno:** em **otimização / diagnóstico** — não é o caminho padrão da pesquisa assistida enquanto `LEGAL_RESEARCH_PROVIDER=deepseek` estiver vigente na configuração de ambiente alvo.
+- **Compatibilidade:** existe `buildRetrievalSearchCompatiblePayload` (`src/lib/legal-research/retrieval-adapter.ts`) para montar o mesmo formato de resposta de `GET /api/retrieval/search` **sem editar** essa rota; integração na UI é responsabilidade da Lane E.
+
+### Critérios sugeridos para voltar a usar o motor interno na pesquisa principal
+
+1. **Benchmark** de precisão em gold-set (consultas + fundamentos esperados) acima do limiar definido com Legal.
+2. **Validação humana** em amostra representativa de jurisprudência retornada (zero inventário de número de processo).
+3. **Observabilidade:** taxa de erro, latência p95 e custo por consulta estáveis por duas semanas de staging.
+4. Aprovação explícita no processo de release (owners não provisórios).
+
 ## TL;DR
 
 | Caso de uso | Motor | Tabela primária | Collection Qdrant | Status |
 |---|---|---|---|---|
-| Pergunta sobre lei/jurisprudência (Strategy, Cases, retrieval explain) | `retrieveLegalContext` | `LegalNorm` + `LegalChunk` | `lex_corpus_norms`, `lex_corpus_jurisprudence` | ✅ canônico |
+| Pesquisa jurídica assistida (modo P0 externo) | `src/lib/legal-research` (DeepSeek API) | — | — | 🔶 temporário (F-1) |
+| Pergunta sobre lei/jurisprudência (Strategy, Cases, retrieval explain) | `retrieveLegalContext` | `LegalNorm` + `LegalChunk` | `lex_corpus_norms`, `lex_corpus_jurisprudence` | ✅ canônico (motor interno intocado) |
 | Pergunta sobre documento de processo do workspace (chat de processo, geração de peça) | `retrieveContext` (hybrid) | `Document` + `DocumentChunk` + `LegalPiece` | `lex_main` (multi-tenant) | ✅ válido |
 | Busca global `/busca` | endpoint `/api/search/route.ts` (consome ambos com saneamento) | mix | mix | ✅ válido |
 | `LegalSource` (legacy) | hybrid (com filtro anti-demo) | `LegalSource` | `lex_main` | ⚠️ legacy — **não** usar para novas features |

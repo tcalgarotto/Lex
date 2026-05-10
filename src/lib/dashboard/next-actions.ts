@@ -197,7 +197,7 @@ export async function buildNextActions(workspaceId: string): Promise<NextActions
         id: c.id,
         label: c.title,
         hint: `${c._count.facts} fato(s) · ${c._count.requests} pedido(s)`,
-        href: `/cases/${c.id}?tab=strategy`,
+        href: `/cases/${c.id}/estrategia`,
         tone: "info",
       })),
     },

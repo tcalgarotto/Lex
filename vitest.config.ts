@@ -4,7 +4,7 @@ import path from "node:path";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "tests/**/*.test.ts", "tests/**/*.test.tsx"],
     // Cada arquivo roda em fork isolado: garante que `vi.doMock` num arquivo
     // não vaze para outro (importante para os testes de rate-limit/redis).
     pool: "forks",

@@ -13,6 +13,7 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { buildCaseContext } from "@/lib/cases/context";
 import { consolidateCaseBrain, persistBrainEntities } from "@/lib/cases/brain";
+import { mergeCaseMetadataJson } from "@/lib/cases/case-brain/case-metadata-merge";
 
 export const dynamic = "force-dynamic";
 
@@ -54,11 +55,10 @@ export async function POST(
   const brain = { ...result.brain, brainVersion: previousBrainVersion + 1 };
 
   await prisma.$transaction(async (tx) => {
-    const updatedMeta: Record<string, unknown> = {
-      ...meta,
+    const updatedMeta = mergeCaseMetadataJson(meta, {
       brain,
       brainVersion: brain.brainVersion,
-    };
+    });
     await tx.case.update({
       where: { id: ctx.case.id },
       data: { metadataJson: updatedMeta as Prisma.InputJsonValue },
