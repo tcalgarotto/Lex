@@ -71,13 +71,13 @@ describe("deriveDocumentDisplayStatus", () => {
     expect(r.stalled).toBe(true);
   });
 
-  it("EMBEDDING há 19 min → ainda 'Gerando vetores'", () => {
+  it("EMBEDDING há 19 min → ainda 'Indexando'", () => {
     const r = deriveDocumentDisplayStatus({
       status: DocumentStatus.EMBEDDING,
       updatedAt: minutesAgo(19),
       now: NOW,
     });
-    expect(r.label).toBe("Gerando vetores");
+    expect(r.label).toBe("Indexando");
     expect(r.stalled).toBe(false);
   });
 

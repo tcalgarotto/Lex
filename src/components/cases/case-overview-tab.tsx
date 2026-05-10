@@ -14,7 +14,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { deriveDocumentDisplayStatus } from "@/lib/documents/status-display";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
-import { CaseProgressBar } from "./case-progress";
 import { ReadinessCard } from "./case-readiness-card";
 import { isCasePreProcessual, PRE_PROCESSUAL_MESSAGE } from "@/lib/cases/labels";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
@@ -182,8 +181,6 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
       ) : c.summary ? (
         <Card className="p-4 text-sm leading-relaxed text-muted-foreground">{c.summary}</Card>
       ) : null}
-
-      <CaseProgressBar caseData={c} />
 
       {readiness ? <ReadinessCard readiness={readiness} /> : null}
 

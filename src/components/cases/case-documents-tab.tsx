@@ -34,7 +34,6 @@ import {
   deriveDocumentDisplayStatus,
   type DocumentDisplayKind,
 } from "@/lib/documents/status-display";
-import { documentStatusLabel } from "@/lib/cases/labels";
 import type { DocumentStatus } from "@prisma/client";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
 import { translateTerm } from "@/lib/ui/product-terminology";
@@ -211,10 +210,7 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{d.originalName}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                      <StatusChip
-                        kind={status.kind}
-                        label={documentStatusLabel(d.status) ?? status.label}
-                      />
+                      <StatusChip kind={status.kind} label={status.label} />
                       {d.totalChunks !== null ? (
                         <span>
                           {d.processedChunks ?? 0}/{d.totalChunks} trechos indexados
@@ -455,14 +451,19 @@ function LinkExistingDialog({
           </Card>
         ) : (
           <ul className="max-h-80 space-y-2 overflow-y-auto pr-1">
-            {docs.map((d) => (
+            {docs.map((d) => {
+              const disp = deriveDocumentDisplayStatus({
+                status: d.status,
+                updatedAt: d.updatedAt,
+              });
+              return (
               <li key={d.id}>
                 <Card className="p-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{d.originalName}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {documentStatusLabel(d.status)} · atualizado{" "}
+                        {disp.label} · atualizado{" "}
                         {new Date(d.updatedAt).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
@@ -477,7 +478,8 @@ function LinkExistingDialog({
                   </div>
                 </Card>
               </li>
-            ))}
+            );
+            })}
           </ul>
         )}
         <div className="flex justify-end">
