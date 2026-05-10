@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
 import { CaseActions } from "@/components/cases/case-actions";
+import { CaseProgressBar } from "@/components/cases/case-progress";
 import { CaseSubnav } from "@/components/cases/case-subnav";
 import { caseStatusLabel, isCasePreProcessual } from "@/lib/cases/labels";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
@@ -101,6 +102,8 @@ export default async function CaseDetailLayout({
             <CaseActions caseId={c.id} readiness={readiness} />
           </div>
         </header>
+
+        <CaseProgressBar caseData={c} />
 
         <CaseSubnav caseId={c.id} />
 

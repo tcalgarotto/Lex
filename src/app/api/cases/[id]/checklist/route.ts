@@ -23,6 +23,7 @@ import {
 } from "@/lib/cases/checklists/registry";
 import { inngest } from "@/lib/inngest/client";
 import type { ChecklistTemplate } from "@/lib/cases/checklists/registry";
+import { reconcileCaseBrainFromWorkspaceCase } from "@/lib/cases/reconcile-case-brain";
 
 export const dynamic = "force-dynamic";
 
@@ -201,14 +202,23 @@ export async function POST(
     },
   });
 
-  // F2: dispara reconsolidação (best-effort).
+  // F2: reconsolidação síncrona para a demo funcionar sem worker Inngest;
+  // se falhar (timeout/LLM), mantém fallback assíncrono.
   try {
-    await inngest.send({
-      name: "lex/case.brain",
-      data: { caseId: c.id, source: "checklist" },
+    await reconcileCaseBrainFromWorkspaceCase({
+      workspaceId,
+      caseId: c.id,
+      userId: user.id,
     });
   } catch {
-    /* noop */
+    try {
+      await inngest.send({
+        name: "lex/case.brain",
+        data: { caseId: c.id, source: "checklist" },
+      });
+    } catch {
+      /* noop */
+    }
   }
 
   return NextResponse.json({

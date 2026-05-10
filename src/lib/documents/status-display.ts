@@ -40,8 +40,8 @@ export const STALLED_THRESHOLDS_MS: Record<DocumentStatus, number | null> = {
 export const DOCUMENT_STATUS_LABELS_PT: Record<DocumentStatus, string> = {
   UPLOADED: "Enviado",
   PARSING: "Extraindo texto",
-  CHUNKING: "Quebrando em trechos",
-  EMBEDDING: "Gerando vetores",
+  CHUNKING: "Segmentando o documento",
+  EMBEDDING: "Indexando",
   INDEXED: "Pronto para busca",
   FAILED: "Falhou",
 };

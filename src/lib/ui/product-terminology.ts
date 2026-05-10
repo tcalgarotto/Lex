@@ -51,7 +51,7 @@ export function translateTerm(term: string): string {
 }
 
 export const USER_FACING_MESSAGES = {
-  AI_RESULT_REVIEW: "Resultado sugerido por IA. Revise antes de usar.",
+  AI_RESULT_REVIEW: "Sugestão de IA — a conferir. Revise antes de usar.",
   JURISPRUDENCE_CONFIRM: "Jurisprudência candidata. Confirme a fonte antes de citar.",
   FOUNDATION_REQUIRES_PIN:
     "Este fundamento será usado na estratégia e na peça apenas se você fixar ou aprovar.",
