@@ -1,13 +1,22 @@
 "use client";
 
+/**
+ * P0 — Fluxo do caso reorganizado.
+ * Sign-off provisório F-1; dupla revisão Thales (PO) + Cursor (CTO interim).
+ * Owners de Legal/Security/QA Lead ainda PROVISÓRIOS — release público bloqueado.
+ * Ver: docs/UX_FLOW_AUDIT.md
+ */
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ExternalLink,
+  Eye,
   FileText,
   Link2,
   RefreshCcw,
+  Sparkles,
   Trash2,
   Unlink,
 } from "lucide-react";
@@ -28,6 +37,7 @@ import {
 import { documentStatusLabel } from "@/lib/cases/labels";
 import type { DocumentStatus } from "@prisma/client";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
+import { translateTerm } from "@/lib/ui/product-terminology";
 
 export interface CaseDocSummary {
   id: string;
@@ -58,6 +68,10 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<CaseDocSummary | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [textDoc, setTextDoc] = useState<CaseDocSummary | null>(null);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [textLoading, setTextLoading] = useState(false);
+  const [textError, setTextError] = useState<string | null>(null);
 
   async function reprocess(id: string) {
     setError(null);
@@ -88,6 +102,34 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
       setError(`Falha ao desvincular: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
+    }
+  }
+
+  async function loadExtractedText(doc: CaseDocSummary) {
+    setTextDoc(doc);
+    setExtractedText(null);
+    setTextError(null);
+    setTextLoading(true);
+    try {
+      const res = await fetch(`/api/documents/${doc.id}`);
+      if (!res.ok) throw new Error(`status=${res.status}`);
+      const json = (await res.json()) as {
+        document?: { extractedText?: string | null };
+        chunks?: { text: string }[];
+      };
+      const t = json.document?.extractedText?.trim();
+      if (t) {
+        setExtractedText(t);
+        return;
+      }
+      const stitched = (json.chunks ?? []).map((c) => c.text).join("\n\n").trim();
+      setExtractedText(
+        stitched || "Texto ainda não disponível para este documento.",
+      );
+    } catch (e) {
+      setTextError(e instanceof Error ? e.message : "Falha ao carregar o texto");
+    } finally {
+      setTextLoading(false);
     }
   }
 
@@ -175,7 +217,7 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
                       />
                       {d.totalChunks !== null ? (
                         <span>
-                          {d.processedChunks ?? 0}/{d.totalChunks} trechos
+                          {d.processedChunks ?? 0}/{d.totalChunks} trechos indexados
                         </span>
                       ) : null}
                       <span>
@@ -183,11 +225,35 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Ver texto extraído"
+                      onClick={() => void loadExtractedText(d)}
+                    >
+                      <Eye className="size-3" aria-hidden />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" asChild>
+                      <Link href={`/cases/${caseId}/estrategia`} aria-label="Gerar sugestões na estratégia">
+                        <Sparkles className="size-3" aria-hidden />
+                      </Link>
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" asChild>
+                      <Link href={`/cases/${caseId}/partes-fatos`} aria-label="Vincular a fato">
+                        <Link2 className="size-3" aria-hidden />
+                      </Link>
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" asChild>
+                      <Link href={`/cases/${caseId}/partes-fatos`} aria-label="Usar como prova">
+                        <FileText className="size-3" aria-hidden />
+                      </Link>
+                    </Button>
                     {d.processId ? (
                       <Button asChild variant="ghost" size="sm">
                         <Link href={`/processos/${d.processId}/documentos/${d.id}`}>
-                          <ExternalLink className="size-3" />
+                          <ExternalLink className="size-3" aria-label="Abrir no processo" />
                         </Link>
                       </Button>
                     ) : null}
@@ -196,29 +262,29 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
                       size="sm"
                       disabled={busy === d.id}
                       onClick={() => reprocess(d.id)}
-                      title="Reprocessar"
+                      aria-label="Tentar novamente o processamento"
                     >
-                      <RefreshCcw className="size-3" />
+                      <RefreshCcw className="size-3" aria-hidden />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       disabled={busy === d.id}
                       onClick={() => unlink(d.id)}
-                      title="Desvincular do caso"
+                      aria-label="Desvincular do caso"
                     >
-                      <Unlink className="size-3" />
+                      <Unlink className="size-3" aria-hidden />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       disabled={busy === d.id}
                       onClick={() => setConfirmDelete(d)}
-                      title="Excluir documento"
+                      aria-label="Excluir documento"
                       className="text-rose-300 hover:text-rose-200"
                       data-testid={`document-delete-${d.id}`}
                     >
-                      <Trash2 className="size-3" />
+                      <Trash2 className="size-3" aria-hidden />
                     </Button>
                   </div>
                 </div>
@@ -235,6 +301,27 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
         onLinked={() => router.refresh()}
       />
 
+      <Dialog open={!!textDoc} onOpenChange={(open) => !open && setTextDoc(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Texto extraído</DialogTitle>
+          </DialogHeader>
+          {textLoading ? (
+            <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+              Carregando…
+            </p>
+          ) : textError ? (
+            <p className="text-sm text-rose-200" role="alert">
+              {textError}
+            </p>
+          ) : (
+            <pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/30 p-3 text-xs leading-relaxed text-foreground">
+              {extractedText}
+            </pre>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
@@ -248,7 +335,8 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
             <span className="font-medium text-foreground">
               {confirmDelete?.originalName}
             </span>
-            ? Esta ação remove o arquivo, os trechos indexados e os pontos no Qdrant.
+            ? Esta ação remove o arquivo, os trechos indexados e as entradas associadas na{" "}
+            {translateTerm("Qdrant")}.
             <span className="mt-2 block text-rose-200">Esta operação não pode ser desfeita.</span>
           </p>
           <div className="flex justify-end gap-2">

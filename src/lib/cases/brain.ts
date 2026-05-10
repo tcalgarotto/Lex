@@ -31,6 +31,7 @@ import { runIntake } from "./intake";
 import { parseSlashCommands } from "./slash-commands";
 import { validateBrain } from "./brain-validator";
 import { computeProceduralReadiness } from "./readiness";
+import { readEntityMeta } from "@/lib/cases/case-brain/merge-policy";
 import type {
   BrainFact,
   BrainEvidence,
@@ -634,20 +635,35 @@ export async function persistBrainEntities(args: {
   if (brain.facts.length > 0) {
     const existing = await prisma.caseFact.findMany({
       where: { caseId },
-      select: { id: true, text: true, ordinal: true },
+      select: { id: true, text: true, ordinal: true, metadataJson: true },
       orderBy: { ordinal: "asc" },
     });
     const existingTexts = new Set(existing.map((e) => e.text.slice(0, 200).toLowerCase()));
+    const lockedTexts = new Set(
+      existing
+        .filter((e) => readEntityMeta(e.metadataJson).lockedByUser)
+        .map((e) => e.text.slice(0, 200).toLowerCase()),
+    );
     const startOrdinal = (existing.at(-1)?.ordinal ?? 0) + 1;
-    const toCreate = brain.facts
-      .filter((f) => !existingTexts.has(f.text.slice(0, 200).toLowerCase()))
-      .map((f, i) => ({
-        caseId,
-        ordinal: startOrdinal + i,
-        text: f.text,
-        dates: f.date ? [f.date] : [],
+    const filtered = brain.facts.filter((f) => {
+      const key = f.text.slice(0, 200).toLowerCase();
+      if (existingTexts.has(key)) return false;
+      if (lockedTexts.has(key)) return false;
+      return true;
+    });
+    const toCreate = filtered.map((f, i) => ({
+      caseId,
+      ordinal: startOrdinal + i,
+      text: f.text,
+      dates: f.date ? [f.date] : [],
+      confidence: f.confidence,
+      metadataJson: {
+        origem: mapBrainOriginToOrigem(f.origin),
+        sourceText: f.sourceText,
         confidence: f.confidence,
-      }) satisfies Prisma.CaseFactCreateManyInput);
+        status: "sugerido",
+      } as Prisma.InputJsonValue,
+    })) satisfies Prisma.CaseFactCreateManyInput[];
     if (toCreate.length > 0) {
       await prisma.caseFact.createMany({ data: toCreate });
     }
@@ -683,8 +699,10 @@ export async function persistBrainEntities(args: {
           };
           const meta: Record<string, unknown> = {};
           meta["origin"] = p.origin;
+          meta["origem"] = mapBrainOriginToOrigem(p.origin);
           meta["sourceText"] = p.sourceText;
           meta["confidence"] = p.confidence;
+          meta["status"] = "sugerido";
           if (p.contact) meta["phone"] = p.contact;
           if (p.address) meta["address"] = p.address;
           if (p.age !== undefined) meta["age"] = p.age;
@@ -715,8 +733,10 @@ export async function persistBrainEntities(args: {
         text: r.text,
         metadataJson: {
           origin: r.origin,
+          origem: mapBrainOriginToOrigem(r.origin),
           sourceText: r.sourceText,
           confidence: r.confidence,
+          status: "sugerido",
         } as Prisma.InputJsonValue,
       } satisfies Prisma.CaseRequestCreateManyInput));
     if (toCreate.length > 0) {
@@ -743,6 +763,12 @@ export async function persistBrainEntities(args: {
             detail: r.detail,
             evidenceChunkIds: [],
             evidenceNormUrns: [],
+            metadataJson: {
+              origem: mapBrainOriginToOrigem(r.origin),
+              sourceText: r.sourceText,
+              confidence: r.confidence,
+              status: "sugerido",
+            } as Prisma.InputJsonValue,
           }) satisfies Prisma.CaseRiskCreateManyInput,
       );
     if (toCreate.length > 0) {
@@ -795,6 +821,16 @@ function brainSeverityToPrisma(s: BrainRisk["severity"]): CaseRiskSeverity {
     default:
       return CaseRiskSeverity.LOW;
   }
+}
+
+function mapBrainOriginToOrigem(
+  origin: string,
+): "entrevista_guiada" | "documento_OCR" | "ia_extracao" | "manual" | "deepseek_recommendation" {
+  if (origin === "checklist") return "entrevista_guiada";
+  if (typeof origin === "string" && origin.startsWith("document:")) return "documento_OCR";
+  if (origin === "manual_note") return "manual";
+  if (origin === "rag") return "deepseek_recommendation";
+  return "ia_extracao";
 }
 
 function brainRiskTitleToKind(title: string): CaseRiskKind {

@@ -1,3 +1,10 @@
+/**
+ * P0 — Case Brain pipeline (entrevista → dados → persistência).
+ * Sign-off provisório F-1; dupla revisão Thales (PO) + Cursor (CTO interim).
+ * Documentos vinculados a caso: extração de texto sempre; indexação semântica
+ * no acervo só com opt-in (`caseBrain.documentSemanticIndexDocIds`).
+ * Ver: docs/CASE_BRAIN.md
+ */
 import { NonRetriableError } from "inngest";
 import { randomUUID } from "node:crypto";
 import { DocumentStatus, LegalLayer } from "@prisma/client";
@@ -59,6 +66,15 @@ export const ingestDocument = inngest.createFunction(
       return d;
     });
 
+    const ingestMode = await step.run("resolve-ingest-mode", async () => {
+      const { caseDocumentAllowsSemanticIndex } = await import(
+        "@/lib/cases/case-brain/document-rag-policy"
+      );
+      if (!doc.caseId) return "full" as const;
+      const allow = await caseDocumentAllowsSemanticIndex(doc.caseId, doc.id);
+      return allow ? ("full" as const) : ("text-only" as const);
+    });
+
     await step.run("status-parsing", () =>
       prisma.document.update({
         where: { id: doc.id },
@@ -110,6 +126,32 @@ export const ingestDocument = inngest.createFunction(
         },
       }),
     );
+
+    if (ingestMode === "text-only") {
+      if (!text.trim()) {
+        throw await failDocument(doc.id, "Não foi possível ler texto útil deste arquivo.");
+      }
+      await step.run("finish-text-only-case-doc", () =>
+        prisma.document.update({
+          where: { id: doc.id },
+          data: {
+            status: DocumentStatus.INDEXED,
+            indexedAt: new Date(),
+            progress: 1,
+            totalChunks: 0,
+            processedChunks: 0,
+            errorMessage: null,
+          },
+        }),
+      );
+      if (doc.caseId) {
+        await step.sendEvent("trigger-case-brain-text-only", {
+          name: "lex/case.brain",
+          data: { caseId: doc.caseId, source: "document_text_ready" },
+        });
+      }
+      return { ok: true, chunks: 0, mode: "text-only" as const };
+    }
 
     await step.run("status-chunking", () =>
       prisma.document.update({

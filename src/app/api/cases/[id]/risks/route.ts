@@ -4,14 +4,14 @@ import { Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
+import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
+import { touchCaseBrainFingerprintAfterMutation } from "@/lib/cases/case-brain/fingerprint";
+import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
 export const dynamic = "force-dynamic";
 
 async function ensureCase(workspaceId: string, caseId: string) {
-  const c = await prisma.case.findFirst({
-    where: { id: caseId, workspaceId },
-    select: { id: true },
-  });
+  const c = await findCaseInWorkspace(workspaceId, caseId);
   return c?.id ?? null;
 }
 
@@ -26,6 +26,7 @@ const postSchema = z.object({
   detail: z.string().min(2).max(50_000),
   evidenceNormUrns: z.array(z.string().min(3).max(400)).optional(),
   evidenceChunkIds: z.array(z.string().min(3).max(120)).optional(),
+  origem: z.string().min(1).max(60).optional(),
   source: z.string().min(1).max(60).optional(),
   status: z.string().min(1).max(40).optional(),
   confidence: z.number().min(0).max(1).optional(),
@@ -41,9 +42,12 @@ const patchSchema = z.object({
   evidenceChunkIds: z.array(z.string().min(3).max(120)).optional(),
   resolvedAt: z.string().datetime().nullable().optional(),
   resolvedById: z.string().min(3).max(120).nullable().optional(),
+  origem: z.string().min(1).max(60).nullable().optional(),
   source: z.string().min(1).max(60).nullable().optional(),
   status: z.string().min(1).max(40).nullable().optional(),
   confidence: z.number().min(0).max(1).optional(),
+  lockedByUser: z.boolean().optional(),
+  markManual: z.boolean().optional(),
 });
 
 const deleteSchema = z.object({ id: z.string().cuid() });
@@ -75,8 +79,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   }
 
   const metadata: Record<string, unknown> = {
+    origem: parsed.data.origem ?? parsed.data.source ?? "manual",
     source: parsed.data.source ?? "manual",
-    status: parsed.data.status ?? "editado",
+    status: parsed.data.status ?? "manual",
     confidence: parsed.data.confidence ?? 0.75,
   };
 
@@ -108,6 +113,14 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   } catch {
     /* noop */
   }
+
+  await touchCaseBrainFingerprintAfterMutation(caseId, workspaceId);
+  await recordCaseMutationActivity({
+    workspaceId,
+    kind: "case.risk.create",
+    title: "Risco criado",
+    meta: { caseId, riskId: created.id },
+  });
 
   return NextResponse.json({ ok: true, risk: created }, { status: 201 });
 }
@@ -142,7 +155,17 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     if (parsed.data.status === null) delete meta["status"];
     else meta["status"] = parsed.data.status;
   }
+  if (parsed.data.origem !== undefined) {
+    if (parsed.data.origem === null) delete meta["origem"];
+    else meta["origem"] = parsed.data.origem;
+  }
   if (typeof parsed.data.confidence === "number") meta["confidence"] = parsed.data.confidence;
+  if (parsed.data.markManual) {
+    meta["lockedByUser"] = true;
+    meta["origem"] = "manual";
+    meta["status"] = "manual";
+  }
+  if (typeof parsed.data.lockedByUser === "boolean") meta["lockedByUser"] = parsed.data.lockedByUser;
 
   const updated = await prisma.caseRisk.update({
     where: { id: existing.id },
@@ -176,6 +199,14 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   } catch {
     /* noop */
   }
+
+  await touchCaseBrainFingerprintAfterMutation(caseId, workspaceId);
+  await recordCaseMutationActivity({
+    workspaceId,
+    kind: "case.risk.update",
+    title: "Risco atualizado",
+    meta: { caseId, riskId: updated.id },
+  });
 
   return NextResponse.json({ ok: true, risk: updated });
 }
@@ -218,6 +249,14 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   } catch {
     /* noop */
   }
+
+  await touchCaseBrainFingerprintAfterMutation(caseId, workspaceId);
+  await recordCaseMutationActivity({
+    workspaceId,
+    kind: "case.risk.delete",
+    title: "Risco removido",
+    meta: { caseId, riskId: existing.id },
+  });
 
   return NextResponse.json({ ok: true });
 }

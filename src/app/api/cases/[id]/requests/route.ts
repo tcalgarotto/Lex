@@ -4,14 +4,14 @@ import { Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
+import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
+import { touchCaseBrainFingerprintAfterMutation } from "@/lib/cases/case-brain/fingerprint";
+import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
 export const dynamic = "force-dynamic";
 
 async function ensureCase(workspaceId: string, caseId: string) {
-  const c = await prisma.case.findFirst({
-    where: { id: caseId, workspaceId },
-    select: { id: true },
-  });
+  const c = await findCaseInWorkspace(workspaceId, caseId);
   return c?.id ?? null;
 }
 
@@ -24,6 +24,7 @@ const postSchema = z.object({
     .optional(),
   text: z.string().min(2).max(50_000),
   legalBasisUrn: z.string().min(3).max(300).optional(),
+  origem: z.string().min(1).max(60).optional(),
   source: z.string().min(1).max(60).optional(),
   status: z.string().min(1).max(40).optional(),
   confidence: z.number().min(0).max(1).optional(),
@@ -36,9 +37,12 @@ const patchSchema = z.object({
     .optional(),
   text: z.string().min(2).max(50_000).optional(),
   legalBasisUrn: z.string().min(3).max(300).nullable().optional(),
+  origem: z.string().min(1).max(60).nullable().optional(),
   source: z.string().min(1).max(60).nullable().optional(),
   status: z.string().min(1).max(40).nullable().optional(),
   confidence: z.number().min(0).max(1).optional(),
+  lockedByUser: z.boolean().optional(),
+  markManual: z.boolean().optional(),
 });
 
 const deleteSchema = z.object({ id: z.string().cuid() });
@@ -77,8 +81,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   const ordinal = (last?.ordinal ?? 0) + 1;
 
   const metadata: Record<string, unknown> = {
+    origem: parsed.data.origem ?? parsed.data.source ?? "manual",
     source: parsed.data.source ?? "manual",
-    status: parsed.data.status ?? "editado",
+    status: parsed.data.status ?? "manual",
     confidence: parsed.data.confidence ?? 0.8,
   };
 
@@ -108,6 +113,14 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   } catch {
     /* noop */
   }
+
+  await touchCaseBrainFingerprintAfterMutation(caseId, workspaceId);
+  await recordCaseMutationActivity({
+    workspaceId,
+    kind: "case.request.create",
+    title: "Pedido criado",
+    meta: { caseId, requestId: created.id },
+  });
 
   return NextResponse.json({ ok: true, request: created }, { status: 201 });
 }
@@ -142,7 +155,17 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
     if (parsed.data.status === null) delete meta["status"];
     else meta["status"] = parsed.data.status;
   }
+  if (parsed.data.origem !== undefined) {
+    if (parsed.data.origem === null) delete meta["origem"];
+    else meta["origem"] = parsed.data.origem;
+  }
   if (typeof parsed.data.confidence === "number") meta["confidence"] = parsed.data.confidence;
+  if (parsed.data.markManual) {
+    meta["lockedByUser"] = true;
+    meta["origem"] = "manual";
+    meta["status"] = "manual";
+  }
+  if (typeof parsed.data.lockedByUser === "boolean") meta["lockedByUser"] = parsed.data.lockedByUser;
 
   const updated = await prisma.caseRequest.update({
     where: { id: existing.id },
@@ -171,6 +194,14 @@ export async function PATCH(req: Request, context: { params: Promise<{ id: strin
   } catch {
     /* noop */
   }
+
+  await touchCaseBrainFingerprintAfterMutation(caseId, workspaceId);
+  await recordCaseMutationActivity({
+    workspaceId,
+    kind: "case.request.update",
+    title: "Pedido atualizado",
+    meta: { caseId, requestId: updated.id },
+  });
 
   return NextResponse.json({ ok: true, request: updated });
 }
@@ -213,6 +244,14 @@ export async function DELETE(req: Request, context: { params: Promise<{ id: stri
   } catch {
     /* noop */
   }
+
+  await touchCaseBrainFingerprintAfterMutation(caseId, workspaceId);
+  await recordCaseMutationActivity({
+    workspaceId,
+    kind: "case.request.delete",
+    title: "Pedido removido",
+    meta: { caseId, requestId: existing.id },
+  });
 
   return NextResponse.json({ ok: true });
 }

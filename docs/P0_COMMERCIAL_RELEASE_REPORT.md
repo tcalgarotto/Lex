@@ -1,114 +1,87 @@
-# P0 Commercial Release Report — Lex
+# P0 Commercial Release Report — Lex (integração Lane E)
 
-> Relatório honesto de release P0 comercial (fluxo caso-cêntrico).  
-> Última atualização: **2026-05-09** (fechamento sprint + rodada RSC/UX P1; commits `32abc3b`, `5949777`).
+> Relatório **honesto** pós-swaps de integração (2026-05-10). Sign-off **F-1** vigente: owners Legal/Security/QA **\[PROVISÓRIO\]**; **promoção a produção pública pagante permanece bloqueada** (`docs/governance/F-1_SIGNOFF.md`).
 
-## 1. Resumo do que mudou
+## 1. Status global
 
-- **F19 — Memória do escritório (opt-in)**: modelo Prisma `OfficeMemory` com escopos `WORKSPACE` / `USER` / `CASE`, flags `useAsModel`, `useAsStyle`, `optInRag`, `private`, `originType`/`originId`, auditoria (`createdBy`/`updatedBy`, soft delete). API `/api/office-memory` e UI mínima em `/biblioteca/memoria`. Nada é promovido automaticamente para memória.
-- **F20 — Painel “Origem dos dados”**: componente `CaseDataOriginButton` + `parseMetadataJson` em fatos, pedidos, riscos; para `CaseLegalSource` (sem `metadataJson` no schema) a origem é montada a partir de `excerpt`, `query`, `chunkId`, `pinnedById`, `createdAt`.
-- **F21 / F23**: auditorias atualizadas com evidência em `docs/SECURITY_REVIEW_P0.md` e `docs/CODE_REVIEW_P0.md`.
-- **Correção de segurança (defesa em profundidade)**: `buildCaseContext` / `fetchDocumentTexts` agora filtra `Document` por `workspaceId` além dos IDs vindos do caso (`src/lib/cases/context.ts`).
-- **Critério L (logs)**: `/api/search` e rotas críticas de documentos/casos passam a usar `getLogger` com scrub; `x-request-id` na busca global; ver `docs/CODE_REVIEW_P0.md` §5.
+**NOT READY — produção pública pagante.** Justificativa: owners provisórios + gates de segurança/UX ainda ⏳ no audit (admin gating server-side, checklist amplo §3), e **`src/lib/legal-research/types.ts` segue fora do índice git** (`??` no `git status`) até decisão de versionamento/commit humano.
 
-## 2. Telas alteradas
+**READY — uso interno / demo controlada (F0)** condicionado a: revisão humana obrigatória de toda saída assistida; ambiente com chaves DeepSeek e `LEGAL_RESEARCH_PROVIDER=deepseek` conforme ADR; equipe ciente de que E2E Playwright **não foi reexecutado nesta sessão** após todos os swaps.
 
-- `/biblioteca` — link “Memória (opt-in)” para `/biblioteca/memoria`.
-- `/biblioteca/memoria` — nova página (lista + formulário de criação + toggles RAG/arquivar/excluir).
-- `/cases/[id]` — abas Fatos, Pedidos, Riscos e Pesquisa jurídica: botão **Origem** (diálogo) por item.
+## 2. Fase 1 — Integração (swaps)
 
-## 3. Arquivos principais
+| # | Swap | Estado |
+|---|------|--------|
+| 1 | `estrategia-lazy.tsx` → `CaseDraftingTab` | Feito |
+| 2 | `POST .../pin` e `mark-verified` → Case Brain real | Feito |
+| 3 | `case-brain-shim.ts` delega snapshot/pins/verify | Feito |
+| 4 | Pesquisa no caso → `GET /api/cases/[id]/case-brain` | Feito |
+| 5 | UI pesquisa — contrato Lane A real (sem 404/501 “esperado”) | Feito |
+| 6 | `types.ts` versionado | **Não** — arquivo ainda **untracked** |
+| 7 | Inngest `case-ready-for-research` | **Não** registrado (deliberado) |
+| 8 | `next-actions.ts` + `strategy-gaps-panel` hrefs | Feito |
+| 9 | `claims` / `requests` | Mantidos ambos; unificação **TODO** |
 
-| Área | Caminhos |
-|------|-----------|
-| DB | `prisma/schema.prisma`, `prisma/migrations/20260509220000_office_memory/migration.sql` |
-| API memória | `src/app/api/office-memory/route.ts`, `src/app/api/office-memory/[id]/route.ts` |
-| Regras visibilidade | `src/lib/office-memory/visibility.ts` |
-| UI memória | `src/app/(app)/biblioteca/memoria/page.tsx`, `src/components/biblioteca/office-memory-panel.tsx`, `src/app/(app)/biblioteca/page.tsx` |
-| F20 | `src/lib/cases/data-origin-meta.ts`, `src/components/cases/case-data-origin.tsx`, `case-facts-tab.tsx`, `case-requests-tab.tsx`, `case-risks-tab.tsx`, `case-research-tab.tsx` |
-| Contexto caso | `src/lib/cases/context.ts` |
-| Testes | `tests/integration/office-memory.test.ts`, `tests/e2e/05-api-auth-required.spec.ts` |
-| Docs | `docs/SECURITY_REVIEW_P0.md`, `docs/CODE_REVIEW_P0.md`, `docs/COMMERCIAL_UX_P0_AUDIT.md`, este relatório |
-| Logging | `src/app/api/search/route.ts`, `src/app/api/documents/**`, `src/app/api/cases/[id]/delete`, `legal-sources`, `src/lib/storage.ts`, `observability/record.ts`, `cost/record.ts`, `inngest/functions/ingest-document.ts` |
+**Conflitos:** nenhum conflito de merge detectado; ajustes de tipo em `activity-log.ts`, cast em `pinned-foundations/route.ts` e `prefer-const` em `drafting-markdown-export.ts` para fechar lint/typecheck.
 
-## 4. Bugs corrigidos
+## 3. Fase 2 — QA (comandos)
 
-- **IDOR em profundidade no contexto do caso**: leitura de texto de documentos para RAG/drafting ignorava `workspaceId` no `findMany` de `Document` — corrigido para `{ workspaceId, id: { in: documentIds } }`.
-- **`/processos` quebrava em runtime (RSC)**: `async` page usava `onBlur` em `<Input>` — **corrigido em `32abc3b`** com `CnjInput` (client) em `src/components/processes/cnj-input.tsx`.
-- **`/test-guide` com o mesmo padrão**: botão “Copiar relato” em Server Component — corrigido em `5949777` com `SentinelJourneysPanel` + dados em `lib/test-guide/sentinel-journeys.ts`.
-- **Anti-regressão RSC**: `src/lib/rsc-app-route-handlers-guard.test.ts` (Vitest) varre `src/app/**/{page,layout,not-found,error}.tsx` sem `"use client"` e falha se houver `onBlur`/`onClick`/… em JSX.
-
-## 5. Riscos remanescentes (explícitos)
-
-1. **Superfície de rotas**: não há prova matemática de que *cada* handler `/api/*` valida `workspaceId`; há amostragem + suíte de integração nas rotas mais sensíveis.
-2. **Bootstrap / jobs offline**: `src/lib/env.ts` e `embeddings-pipeline.ts` ainda emitem `console.*` — aceito fora do gate HTTP (ver `docs/CODE_REVIEW_P0.md` §5).
-3. **UX comercial (além do gate A–N)**: checklist §3 do audit ainda tem itens ⏳ (cobertura total de telas, tabs em 1366×768, etc.); a rodada P1 em §13 fechou a maioria dos itens §5.2 — ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1.
-4. **`AI_REASONING ≠ LEGAL_TRUTH`**: invariante de produto; qualquer regressão em drafting/review exige testes e revisão humana.
-
-## 6. Testes rodados (comandos + resultados)
-
-| Comando | Resultado (2026-05-09) |
-|---------|-------------------------|
-| `npm run lint` | OK (sem warnings) |
+| Comando | Resultado |
+|---------|-------------|
+| `npm run lint` | OK — **1 warning** pré-existente: `interview-extraction.ts` (`risksBrain` unused) |
 | `npm run typecheck` | OK |
-| `npm test` | **535 passed** (inclui guard RSC `rsc-app-route-handlers-guard.test.ts`) |
-| `npm run test:integration` | **43 passed** (inclui `office-memory.test.ts`) |
-| `npm run test:e2e` | **80 passed** (revalidado após UX P1) |
-| `NODE_ENV=production npm run build` | OK (`/biblioteca/memoria` e rotas API compiladas) |
-| `npm run qa:retrieval:domains` | **10/10** domínios OK |
-| `npm run db:migrate:deploy` | Migração `20260509220000_office_memory` aplicada no DB configurado em `.env` |
-| Bateria pós-`5949777` | Reexecutada na mesma ordem (lint → … → `qa:retrieval:domains`); **535** unit, **43** integration, **80** e2e, build e QA **10/10** OK. |
+| `npm test` | **595 passed** |
+| `npm run test:integration` | **43 passed** |
+| `NODE_ENV=production npm run build` | OK |
+| `npm run test:e2e` | **Não executado** nesta sessão pós-swaps |
+| `npm run qa:retrieval:domains` | **10/10** (Redis avisou indisponível localmente; script passou) |
 
-## 7. Falhas encontradas
+## 4. Fase 3 — Testes adicionados
 
-- Nenhuma falha nos comandos acima após correções finais (typecheck `OfficeMemoryUpdateInput` via `updatedBy: { connect }`).
+| Arquivo | Foco |
+|---------|------|
+| `tests/legal-research/deepseek-provider.test.ts` | JSON válido/inválido; provider sem throw com key ausente; upstream; retry |
+| `tests/legal-research/research-flow.test.ts` | Schemas pin/mark/search |
+| `tests/cases/case-flow.test.ts` | Contrato pin com `foundation` |
+| `tests/ui/case-flow.test.ts` | Ordem das abas + ausência de jargão nas mensagens USER_FACING testadas |
+| `tests/security/legal-research-security.test.ts` | `scrubPii` |
+| `tests/security/case-tenancy.test.ts` | Schema `recommend` exige `caseId` |
 
-## 8. Itens adiados (com justificativa)
+`vitest.config.ts`: inclui `tests/**/*.test.ts(x)`.
 
-- **Exaustão de “toda rota Prisma”**: adiado como processo contínuo; ver tabela em `SECURITY_REVIEW_P0.md`.
-- **Refatorar componentes grandes** (`case-facts-tab`, página do caso): adiado (risco/retorno vs sprint).
-- **UX P1 (restante §3 do audit)**: continuidade em sprints seguintes; entrega parcial documentada em §13 e no audit §8.1.
+## 5. Fase 4 — Documentação
 
-## 9. Critérios A–N (release) e status item a item
+- **Governança:** `PRIORITY_MATRIX.md`, `FORBIDDEN_ORDERINGS.md` (nota F-O-08/09 + **F-O-21**), `PRODUCT_SURVIVAL_MODE.md`, `TRUTH_HIERARCHY.md` (nível 9b + regra 13 + linha na matriz).
+- **Validação / planos / features:** `docs/validation/*` (3 arquivos), `docs/plans/P0_CASE_FLOW_REPAIR_PLAN.md`, `docs/features/CASE_RESEARCH_TAB.md`.
+- **README:** sem alteração necessária (sem referência a `?tab=strategy` obsoleta).
 
-| Critério | Significado | Status |
-|----------|-------------|--------|
-| **A** | Lint | ✅ `npm run lint` |
-| **B** | Typecheck | ✅ `npm run typecheck` |
-| **C** | Testes unitários | ✅ `npm test` (535) |
-| **D** | Testes integração | ✅ `npm run test:integration` (43) |
-| **E** | E2E | ✅ `npm run test:e2e` (80) |
-| **F** | Build produção | ✅ `NODE_ENV=production npm run build` |
-| **G** | QA retrieval domínios | ✅ `npm run qa:retrieval:domains` (10/10) |
-| **H** | Migrações DB aplicáveis | ✅ `db:migrate:deploy` (OfficeMemory) |
-| **I** | Multi-tenant / IDOR (regressão nas rotas críticas) | ✅ Testes + APIs novas; não exaustivo |
-| **J** | Uploads/exports com `workspaceId` | ✅ Amostragem documentos + exports + relatório segurança |
-| **K** | Cache com isolamento por tenant/contexto | ✅ `cache.ts` + desliga com `caseContext` |
-| **L** | Logs sem vazamento bruto (política) | ✅ `getLogger` + scrub + `requestId`/`workspaceId` onde aplicável; sem query bruta em `/api/search` |
-| **M** | F20 Origem dos dados (UI) | ✅ Fatos, pedidos, riscos, fundamentos fixados |
-| **N** | F19 Memória opt-in | ✅ Modelo + API + `/biblioteca/memoria` |
+## 6. Bugs P0 corrigidos nesta leva
 
-## 10. Status global
+- Integração incompleta entre pesquisa assistida, Case Brain e drafting (pins “mortos”, 202 shim, payload/schema divergentes).
+- `recommend-for-case` no cliente com corpo inválido e parse de resposta errado.
+- Pesquisa global usando rota errada sem `caseId`.
+- Links do dashboard e painel de lacunas ainda apontando para `?tab=`.
 
-**READY + UX P1 (parcial)** — **READY** mantém-se para o **gate P0 comercial** (**A–N** + bateria §6). Rodadas pós-gate: `6edf8e8` (copy/fluxo P1), `32abc3b` (CNJ client em `/processos`), `5949777` (guard Vitest + `/test-guide` + mapa mínimo de terminologia + tabs). Maioria dos itens §5.2 do audit fechada; §3 amplo ainda parcial (ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1).
+## 7. Bloqueadores reais (NOT READY)
 
-**Argumentação:** **A–N** atendidos com evidência de comandos (§6). O critério **L** foi fechado na sprint anterior com `getLogger` + scrub. **Transparência:** o checklist amplo §3 do audit (todas as telas, tabs 1366×768, estados vazios globais) permanece **parcialmente** ⏳; ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §8.1.
+- Release **público pagante** bloqueado por **F-1** (owners provisórios), independente do verde técnico.
+- **`src/lib/legal-research/types.ts` não rastreado no git** — risco de perda/revisão incompleta em PR.
+- **E2E** não revalidado após integração; **admin gating** ainda conforme audit de segurança.
 
-## 11. Instruções para testar (manual)
+## 8. Pré-existentes observados
 
-1. Abrir o roteiro em **`/test-guide`** (após login), seguir jornadas sentinela.  
-2. **F19**: `/biblioteca` → “Memória (opt-in)” → criar entrada WORKSPACE e CASE; alternar RAG/arquivar; em outro workspace (outro membro), confirmar que não vê IDs alheios (404 na API).  
-3. **F20**: `/cases/[id]` → abas Fatos / Pedidos / Riscos / Pesquisa jurídica → **Origem** e conferir diálogo.
+- Warning ESLint `risksBrain` em `interview-extraction.ts` (fora do escopo Lane E).
+- Integrações externas (Qdrant/Redis) com stderr em testes de integração quando serviços ausentes — tratado como ambiente de CI/local.
 
-## 12. Pull Request
+## 9. TODOs futuros
 
-- **Branch**: `p0-commercial-sprint-2026-05-09`
-- **PR #10**: https://github.com/tcalgarotto/Lex/pull/10
-- **Compare**: https://github.com/tcalgarotto/Lex/compare/main...p0-commercial-sprint-2026-05-09
+- Registrar evento Inngest `case-ready-for-research` quando houver critério de produto.
+- Unificar `claims` vs `requests` com migração de clientes.
+- `git add` + commit dos arquivos Lane A incluindo `types.ts`.
+- Reexecutar `npm run test:e2e` e `npm run qa:retrieval:domains` em CI antes de ampliar pilotos.
 
-## 13. Pós-READY — UX P1 + hardening RSC (`6edf8e8`, `32abc3b`, `5949777`)
+## 10. Confirmações explícitas
 
-- **Objetivo**: linguagem/fluxo de advogado **e** evitar crash de Server Component por handler JSX (build não substitui smoke de RSC).
-- **Entregas**: ver `docs/COMMERCIAL_UX_P0_AUDIT.md` §5.2.1 (tabela atualizada) e §7.
-- **Arquivos (rodada `6edf8e8`)**: `busca/page.tsx`, `pesquisa-juridica/page.tsx`, `legal-search-panel.tsx`, `case-overview-tab.tsx`, `processos/page.tsx`, `case-drafts-tab.tsx`, `case-research-tab.tsx`, `case-actions.tsx`, `orchestrator.ts`, `legal-sources/route.ts`, `cases/page.tsx`.
-- **Arquivos (rodada `32abc3b` + `5949777`)**: `cnj-input.tsx`, `rsc-app-route-handlers-guard.test.ts`, `lib/test-guide/sentinel-journeys.ts`, `components/test-guide/sentinel-journeys-panel.tsx`, `test-guide/page.tsx`, `lib/ui/product-terminology.ts`, `case-tabs.tsx`.
+- **Não** foi executado `git add` / `git commit` / `git push` por esta lane.
+- **RAG interno** (`src/lib/retrieval/**`) e **Qdrant** **não** foram removidos nem alterados para esta entrega.
+- Owners Legal/Security/QA continuam **\[PROVISÓRIO\]**; release público **bloqueado** conforme F-1.

@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * P0 — Fluxo do caso reorganizado.
+ * Sign-off provisório F-1; dupla revisão Thales (PO) + Cursor (CTO interim).
+ * Owners de Legal/Security/QA Lead ainda PROVISÓRIOS — release público bloqueado.
+ * Ver: docs/UX_FLOW_AUDIT.md
+ */
+
 import Link from "next/link";
 import { ArrowRight, FileText, Search, Sparkles, ScrollText, AlertTriangle, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,17 +45,15 @@ type CaseOverview = Case & {
 
 interface CaseOverviewTabProps {
   caseData: CaseOverview;
-  /** Callback do pai para trocar de aba (usado pelos CTAs do overview). */
-  onGoToTab?: (tab: "documents" | "facts" | "research" | "strategy") => void;
 }
+
+type CaseRouteSeg = "documentos" | "partes-fatos" | "pesquisa-juridica" | "estrategia";
 
 interface NextStep {
   label: string;
   /** Tom visual do step (ok=feito, alerta=pendente urgente, info=normal). */
   tone: "info" | "warning";
-  action?:
-    | { kind: "tab"; target: "documents" | "facts" | "research" | "strategy" }
-    | { kind: "link"; href: string };
+  action?: { kind: "route"; segment: CaseRouteSeg } | { kind: "link"; href: string };
 }
 
 function readBrainNarrative(metadataJson: unknown): string | null {
@@ -94,7 +99,7 @@ function readProceduralReadiness(metadataJson: unknown): ProceduralReadiness | n
   };
 }
 
-export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps) {
+export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
   const docsReady = c.documents.filter((d) => d.status === "INDEXED").length;
   const docsStalled = c.documents.filter(
     (d) => deriveDocumentDisplayStatus(d).stalled,
@@ -116,52 +121,47 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
     steps.push({
       label: `${docsStalled} documento(s) travado(s) — reprocessar`,
       tone: "warning",
-      action: { kind: "tab", target: "documents" },
+      action: { kind: "route", segment: "documentos" },
     });
   }
   if (c.documents.length === 0) {
     steps.push({
       label: "Enviar primeiro documento ao caso",
       tone: "info",
-      action: { kind: "tab", target: "documents" },
+      action: { kind: "route", segment: "documentos" },
     });
   } else if (docsReady > 0 && !hasFacts) {
     steps.push({
       label: `Extrair fatos dos ${docsReady} documento(s) prontos`,
       tone: "info",
-      action: { kind: "tab", target: "facts" },
+      action: { kind: "route", segment: "partes-fatos" },
     });
   } else if (hasFacts && !hasRequests) {
     steps.push({
       label: "Adicionar pedidos / consolidar partes",
       tone: "info",
-      action: { kind: "tab", target: "facts" },
+      action: { kind: "route", segment: "partes-fatos" },
     });
   }
   if (hasFacts && !hasResearch) {
     steps.push({
       label: "Pesquisar fundamentos jurídicos aplicáveis",
       tone: "info",
-      action: { kind: "tab", target: "research" },
+      action: { kind: "route", segment: "pesquisa-juridica" },
     });
   }
   if (hasFacts && hasRequests && !hasDraft) {
     steps.push({
       label: "Gerar estratégia inicial e primeira peça",
       tone: "info",
-      action: { kind: "tab", target: "strategy" },
+      action: { kind: "route", segment: "estrategia" },
     });
   } else if (hasDraft) {
     steps.push({
       label: "Revisar última peça gerada",
       tone: "info",
-      action: { kind: "tab", target: "strategy" },
+      action: { kind: "route", segment: "estrategia" },
     });
-  }
-
-  function clickStep(s: NextStep) {
-    if (!s.action) return;
-    if (s.action.kind === "tab" && onGoToTab) onGoToTab(s.action.target);
   }
 
   return (
@@ -304,23 +304,28 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
                       : "text-violet-300 hover:text-violet-200"
                   }`}
                 >
-                  {s.tone === "warning" ? <AlertTriangle className="size-3" /> : null}
-                  {s.label} <ArrowRight className="size-3" />
+                  {s.tone === "warning" ? <AlertTriangle className="size-3" aria-hidden /> : null}
+                  {s.label} <ArrowRight className="size-3" aria-hidden />
                 </span>
               );
               if (!s.action) return <li key={s.label} className="text-sm">{inner}</li>;
               if (s.action.kind === "link") {
                 return (
                   <li key={s.label} className="text-sm">
-                    <Link href={s.action.href}>{inner}</Link>
+                    <Link href={s.action.href} className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+                      {inner}
+                    </Link>
                   </li>
                 );
               }
               return (
                 <li key={s.label} className="text-sm">
-                  <button type="button" onClick={() => clickStep(s)} className="text-left">
+                  <Link
+                    href={`/cases/${c.id}/${s.action.segment}`}
+                    className="rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  >
                     {inner}
-                  </button>
+                  </Link>
                 </li>
               );
             })}
@@ -330,21 +335,15 @@ export function CaseOverviewTab({ caseData: c, onGoToTab }: CaseOverviewTabProps
 
       <div className="flex flex-wrap gap-2 pt-2">
         <DocumentUploadButton caseId={c.id} label="Enviar documento" />
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => onGoToTab?.("research")}
-        >
-          <Search className="mr-1 size-3" /> Pesquisar fundamentos no caso
+        <Button type="button" variant="secondary" size="sm" asChild>
+          <Link href={`/cases/${c.id}/pesquisa-juridica`}>
+            <Search className="mr-1 size-3" aria-hidden /> Pesquisar fundamentos no caso
+          </Link>
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => onGoToTab?.("strategy")}
-        >
-          <Sparkles className="mr-1 size-3" /> Gerar estratégia
+        <Button type="button" variant="secondary" size="sm" asChild>
+          <Link href={`/cases/${c.id}/estrategia`}>
+            <Sparkles className="mr-1 size-3" aria-hidden /> Gerar estratégia
+          </Link>
         </Button>
       </div>
     </div>

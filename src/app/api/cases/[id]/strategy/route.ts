@@ -22,8 +22,47 @@ import { detectContradictions } from "@/lib/legal/reasoning/contradiction";
 import { spotLegalIssues } from "@/lib/legal/reasoning/issue-spotting";
 import { synthesizeStrategy } from "@/lib/legal/reasoning/strategy";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
+import { listPinnedJurisprudenceCandidates } from "@/lib/cases/drafting/case-brain-shim";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/cases/[id]/strategy
+ *
+ * Retorna estratégia legada (`metadataJson.strategy`), estratégia P0
+ * (`metadataJson.draftingStrategy`), flag de aprovação e prontidão do caso.
+ */
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { workspaceId } = await getWorkspaceContext();
+  const { id } = await params;
+
+  const row = await prisma.case.findFirst({
+    where: { id, workspaceId },
+    select: { metadataJson: true },
+  });
+  if (!row) {
+    return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
+  }
+
+  const meta = (row.metadataJson ?? {}) as Record<string, unknown>;
+  const readiness =
+    meta["brain"] &&
+    typeof meta["brain"] === "object" &&
+    (meta["brain"] as { proceduralReadiness?: unknown }).proceduralReadiness
+      ? (meta["brain"] as { proceduralReadiness: unknown }).proceduralReadiness
+      : null;
+
+  const jurisprudenceCandidates = await listPinnedJurisprudenceCandidates(workspaceId, id);
+
+  return NextResponse.json({
+    legacyStrategy: meta["strategy"] ?? null,
+    draftingStrategy: meta["draftingStrategy"] ?? null,
+    approved: Boolean(meta["draftingStrategyApproved"]),
+    draftingStrategyApproved: meta["draftingStrategyApproved"] ?? null,
+    readiness,
+    jurisprudenceCandidates,
+  });
+}
 
 export async function POST(
   _req: Request,

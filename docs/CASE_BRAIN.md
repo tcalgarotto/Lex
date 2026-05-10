@@ -1,181 +1,129 @@
-# Case Brain — inteligência consolidada do caso
+# Case Brain — arquitetura e contratos (P0)
 
-> Documento de referência para engenheiros e advogados-revisores. Última
-> revisão: F7 (Lex Case Brain Refactor).
+Sign-off provisório **F-1 (2026-05-10)**. Release público bloqueado; owners Legal/Security/QA provisórios — cada PR Tier-S exige nota de dupla revisão (PO + CTO interim).
 
-## Visão geral
+## Objetivo
 
-O **Case Brain** é o "cérebro" determinístico-com-LLM por trás de todo
-caso jurídico no Lex. Ele consolida em uma única estrutura tudo o que o
-sistema sabe sobre o caso (dados crus do cliente, respostas do checklist,
-texto extraído de documentos, fontes pinadas, fatos extraídos) num único
-JSON auditável que é usado por:
+Consolidar relato livre, entrevista guiada e documentos em **partes, fatos, pedidos (claims), riscos** com trilha de auditoria (`origem`, `sourceText`, `confidence`, `lockedByUser`), alimentar **prontidão processual** e expor um **snapshot** único para as lanes de produto (pesquisa jurídica, UI de caso, estratégia/peças).
 
-- `**renderHeader/renderParties/renderRequests`** do drafter (F4) para
-produzir uma minuta sem placeholders mascarados.
-- `**computeProceduralReadiness**` (F2.2) para calcular o quão pronta a
-peça está e bloquear "Gerar peça" quando faltam dados críticos.
-- `**checkDocumentConsistency**` (F4.5) para detectar divergências entre
-documentos novos e o brain consolidado.
-- `**runReview**` (F6) para validar a peça gerada contra os critérios
-explícitos (placeholders, classificação de pedidos, fontes pinadas
-usadas, alertas de inconsistência).
+## Shape canônico
 
-## Pipeline (LLM-first auditável)
+### Tabelas Prisma (persistência relacional)
 
-```
-raw_input + checklist + documents + pinned sources
-      │
-      ▼
-heurística determinística (intake / regex / nomes próprios)  ← pré-extração
-      │
-      ▼
-DeepSeek/LLM com JSON schema estrito (consolidação semântica)
-      │
-      ▼
-brain-validator (campo a campo, com cap de comprimento e enums)
-      │
-      ▼
-hash-based cache (Redis) — input identico → mesmo brain
-      │
-      ▼
-Case.metadataJson.brain  (persistido)
-```
+| Entidade | Modelo | Metadados auditáveis |
+|----------|--------|------------------------|
+| Parte | `CaseParty` | `metadataJson` |
+| Fato | `CaseFact` | `metadataJson` |
+| Pedido | `CaseRequest` | `metadataJson` |
+| Risco | `CaseRisk` | `metadataJson` |
+| Caso | `Case` | `metadataJson` — contém `brain`, `brainVersion`, `caseBrain` |
 
-Cada item extraído carrega `sourceText`, `confidence` (0..1) e `origin`
-(`input`, `checklist`, `manual_note`, `rag`, `document:<id>`). Isso
-permite responder a qualquer momento "de onde veio essa informação?".
+Não há migration nova no P0: tudo que não couber em colunas usa `metadataJson` / `Case.metadataJson`.
 
-## Contrato
+### `Case.metadataJson`
 
-Veja `src/lib/cases/brain-types.ts` para o contrato completo. Resumo:
+- **`brain`**: objeto `CaseBrain` (consolidação LLM + heurísticas) — ver `src/lib/cases/brain-types.ts`.
+- **`brainVersion`**: número incrementado a cada consolidação bem-sucedida.
+- **`caseBrain`**: envelope estável para consumo cross-lane:
+  - `pinnedFoundations[]`: fundamento ou jurisprudência pinada (ver abaixo).
+  - `caseFingerprint`: hash do estado relacional (ver `computeCaseFingerprint`).
+  - `documentSemanticIndexDocIds[]` (opcional): ids de `Document` do caso com **opt-in** para indexação semântica no acervo. **Padrão:** documentos do caso **não** entram nessa indexação; apenas leitura de texto + uso no caso.
 
-```ts
-type CaseBrain = {
-  brainVersion: number;
-  inputHash: string;
-  degraded?: boolean;             // pipeline rodou só com heurística
+### Origem (`metadataJson.origem`)
 
-  title: string;
-  area: string[];
-  phase: "pre_processual" | "judicial" | ...;
-  problem: string;
-  objective: string;
-  thesis: string;
-  probableMeasure: { kind: ProbableMeasureKind; rationale: string; };
-  narrative: string;
+Valores esperados:
 
-  parties: BrainParty[];
-  probableAuthority?: BrainAuthority;
-  facts: BrainFact[];
-  requests: BrainRequest[];
-  risks: BrainRisk[];
-  evidence: BrainEvidence[];
-  missingDocuments: string[];
-  suggestedFoundations: SuggestedFoundation[];
-  inconsistencies: BrainInconsistency[];
+`entrevista_guiada` | `documento_OCR` | `manual` | `deepseek_recommendation` | `ia_extracao`
 
-  proceduralReadiness: ProceduralReadiness;  // F2.2
-  checklistResponses?: ChecklistResponses;   // F2.1
+Espelho legado: `origin` / `source` (mantidos onde já existiam).
 
-  generatedAt: string;
-};
-```
+### Status (`metadataJson.status`)
 
-## Como o brain é regerado
+`extraido` | `sugerido` | `confirmado` | `manual` | `duvida`
 
-### Triggers de reconciliação (Inngest `lex/case.brain`)
+Regras:
 
-1. `POST /api/cases` (modo `raw` ou `existing_process` com rawInput) — após
-  `intakeWorkflow`.
-2. `POST /api/cases/[id]/checklist` — após o advogado salvar respostas.
-3. `POST /api/cases/[id]/brain` — recompute manual via UI.
-4. `lex/document.uploaded` → `INDEXED` — após a função
-  `ingestDocument` finalizar a indexação Qdrant.
+- Extrações automáticas usam **`sugerido`** por padrão.
+- **`confirmado`** e **`manual`** têm prioridade semântica para curadoria humana.
+- **`lockedByUser: true`** ou status `confirmado` / `manual` → consolidação automática **não sobrescreve** o registro (inserções duplicadas por texto são suprimidas onde aplicável — ver `persistBrainEntities` em `brain.ts`).
 
-A função `consolidateCaseBrainFn` carrega o caso, junta tudo, chama
-`consolidateCaseBrain`, incrementa `brainVersion`, persiste o resultado
-em `Case.metadataJson` e registra `CaseTimelineKind.BRAIN_GENERATED`.
+## Pipelines
 
-### Fail-safe
+### 1. Entrevista guiada → dados estruturados
 
-Se o LLM falhar (timeout, schema inválido, ECONNREFUSED), o pipeline
-retorna `degraded = true` com um brain construído apenas pela
-heurística. A UI mostra um aviso "Brain em modo degradado — alguns
-campos podem estar incompletos."
+1. Cliente chama `POST /api/cases/[id]/intake/answer` com `templateId`, `value` (texto), opcional `fieldId`, `mergeChecklist`.
+2. Respostas relevantes são mescladas em `metadataJson.brain.checklistResponses` (quando `mergeChecklist` e template resolvido).
+3. `mergeInterviewExtractIntoCase` (`src/lib/cases/case-brain/interview-extraction.ts`) aplica heurísticas + `runIntake` e grava sugestões em `CaseParty` / `CaseFact` / `CaseRequest` / `CaseRisk` com `origem: "entrevista_guiada"` e `status: "sugerido"`.
+4. Prontidão parcial é recalculada e escrita em `metadataJson.brain.proceduralReadiness`.
+5. Evento Inngest `lex/case.brain` com `source: "intake_answer"` dispara recomputação completa (assíncrona).
 
-## Prontidão processual (F2.2)
+Estado da entrevista: `GET /api/cases/[id]/intake/state`.
 
-`proceduralReadiness` é calculado por `computeProceduralReadiness` em
-`src/lib/cases/readiness.ts`. Score 0..100, status:
+### 2. Documentos do caso
 
-- `insuficiente` (<40 ou com blockers críticos abertos)
-- `parcial` (40–69)
-- `boa` (70–89)
-- `pronta_para_minuta` (≥90 sem blockers)
+1. `POST /api/cases/[id]/documents` (multipart `file`) cria `Document` com `caseId`, status inicial mapeável para **PROCESSING** na UI.
+2. `lex/document.ingest` extrai texto. Se **não** houver opt-in em `caseBrain.documentSemanticIndexDocIds`, o fluxo encerra após texto com status `INDEXED`, progresso 1 e **sem** vetores no acervo (somente leitura no caso).
+3. `GET .../extracted-text` devolve o texto extraído.
+4. `POST .../documents/[docId]/suggest` gera sugestões determinísticas e persiste itens com `origem: "documento_OCR"`.
+5. `POST .../documents/[docId]/retry` reenfileira a leitura após falha.
 
-Existem regras genéricas e regras específicas por checklist
-(`CRECHE_RULES`). Cada regra tem `weight`, `blocker?` e `nextActionHint`.
+Mapeamento de status para UI (sem expor enum interno cru ao usuário final): ver campo `uiStatus` nas respostas JSON (`READY` | `FAILED` | `PROCESSING`).
 
-A UI:
+### 3. Consolidação global (`lex/case.brain`)
 
-- mostra `ReadinessCard` no overview do caso.
-- desabilita o botão "Gerar peça" quando `status === "insuficiente"`,
-com tooltip explicando qual blocker resolver.
-- oferece "Gerar mesmo assim (com lacunas explícitas)" como override
-consciente.
+Worker: `src/lib/inngest/functions/consolidate-case-brain.ts`. Persiste `brain` em `Case.metadataJson` com **`mergeCaseMetadataJson`** para não apagar `caseBrain.pinnedFoundations` / políticas.
 
-## Checklists guiados (F2.1)
+`persistBrainEntities` (`src/lib/cases/brain.ts`) insere apenas o que falta; anexa `origem`/`status`/`sourceText` em novos fatos/pedidos/riscos; respeita fatos com `lockedByUser` na deduplicação por prefixo de texto.
 
-`src/lib/cases/checklists/registry.ts` mantém um registry tipado de
-templates. O primeiro template é `constitucional.educacao.creche`.
-Cada template tem `triggers.keywords` (texto livre) e
-`triggers.brainHints` (área detectada) que alimentam `suggestChecklistTemplate`.
+## Fundamentos pinados (Lane A)
 
-A UI (`CaseChecklistTab`) renderiza seções como acordeões, com:
+Funções exportadas em `src/lib/cases/case-brain/pinned-foundations.ts`:
 
-- copy script para entrevistar a cliente (compartilhável por WhatsApp).
-- progress bar por seção.
-- save persiste em `Case.metadataJson.brain.checklistResponses` e
-dispara reconciliação do brain.
+- `addPinnedFoundationToCase(caseId, workspaceId, candidate, pinnedByUserId?)`
+- `listPinnedFoundations(caseId, workspaceId)`
+- `markPinnedFoundationVerified(caseId, workspaceId, pinnedId, verifiedBy)`
+- `removePinnedFoundation` (usado pela rota `DELETE`)
 
-## Inconsistência documento × caso (F4.5)
+Tipos: `LegalFoundationCandidate` / `JurisprudenceCandidate` de `@/lib/legal-research/types`.
 
-`checkDocumentConsistency` em `src/lib/cases/consistency.ts` compara
-nomes (Levenshtein normalizada), CPF/CNPJ, idades, datas dos fatos,
-cidade e número CNJ entre o brain e o texto extraído de cada documento.
+Rotas HTTP:
 
-Inconsistências encontradas viram:
+- `GET/POST /api/cases/[id]/pinned-foundations`
+- `DELETE /api/cases/[id]/pinned-foundations/[pinnedId]`
+- `POST /api/cases/[id]/pinned-foundations/[pinnedId]/mark-verified`
 
-1. `CaseRisk` (kind=`DOCUMENT_INCONSISTENCY`, severity por gravidade,
-  metadata com `documentId/evidence/suggestion`).
-2. Evento `CaseTimelineEvent` (kind=`DOCUMENT_INCONSISTENCY`).
-3. Snapshot leve em `brain.inconsistencies` (regerado completo na
-  próxima consolidação).
+## Snapshot para Lanes C / D
 
-UI: banner amarelo no overview do caso lista as 4 primeiras
-inconsistências e bloqueia o usuário de seguir sem revisar.
+`getCaseBrainSnapshot(caseId, workspaceId)` em `src/lib/cases/case-brain/snapshot.ts` — exposto via `GET /api/cases/[id]/case-brain`.
 
-## Limitação RAG / Drafting Guard (F4.1)
+Inclui: partes, fatos, claims (requests), riscos, documentos com `uiStatus`, `brain`, `pinnedFoundations`, `caseFingerprint`.
 
-`getCorpusManifest()` em `src/lib/corpus/manifest.ts` lista, em runtime,
-todas as `LegalNorm` ativas no Postgres. O drafter (`renderUrgency`,
-`renderLaw`) consulta `decideCitationSync(citation, manifest)` antes de
-estampar art. 300 CPC ou Lei 12.016 na peça. Se a norma não está
-indexada, vai para a seção "X. Lacunas de complementação" em vez de
-aparecer como fundamento ancorado.
+## Fingerprint
 
-A UI da pesquisa jurídica (`/pesquisa-juridica`) também usa o manifest
-para mostrar ao usuário "Bases ainda não disponíveis" — evita falsa
-expectativa.
+`computeCaseFingerprint(caseId, workspaceId)` — hash do conjunto relacional + `brainVersion`.
 
-## Pontos de auditoria
+`touchCaseBrainFingerprintAfterMutation` atualiza `caseBrain.caseFingerprint` após mutações CRUD.
 
-- Toda extração tem `sourceText`/`origin`/`confidence`.
-- `inputHash` é determinístico (sha256 do input + docs + checklist) —
-mesmo input ⇒ mesmo brain (sem custo de LLM).
-- `brainVersion` incrementa monotonicamente — qualquer edição manual ou
-recompute fica rastreada na `CaseTimeline`.
-- `Case.metadataJson.brain` é o único snapshot canônico — não duplicar
-dados em outras tabelas; usar `buildCaseContext` para ler.
+## Activity (auditoria workspace)
 
+`recordCaseMutationActivity` grava em `Activity` com `metaJson` higienizado (sem PII bruta).
+
+## Eventos
+
+- `lex/case.brain` — já existente; fontes adicionais: `intake_answer`, `document_text_ready`, etc.
+- **`lex/case.ready-for-research`**: reservado para integração futura; **Lane E** deve registrar handler no `src/app/api/inngest/route.ts` se desejado. Hoje a recomputação é disparada via `lex/case.brain`.
+
+## TODOs por lane
+
+| Lane | Ação |
+|------|------|
+| A | Consumir `addPinnedFoundationToCase`, `listPinnedFoundations`; garantir tipos em `@/lib/legal-research/types`. |
+| C | Trocar fetches para `GET /api/cases/[id]/case-brain` e novas rotas REST com `[entityId]` quando conveniente. |
+| D | Consumir snapshot + pins para estratégia e peças. |
+| E | Registrar `lex/case.ready-for-research` se necessário; rodar lint/typecheck/test/build; registrar função Inngest se criada. |
+
+## Referências de código
+
+- `src/lib/cases/case-brain/` — módulo canônico P0.
+- `src/lib/cases/brain.ts` — consolidação + `persistBrainEntities`.
+- `src/lib/inngest/functions/ingest-document.ts` — opt-out de indexação semântica para docs do caso.
