@@ -28,6 +28,11 @@ function isJurisprudence(c: LegalFoundationCandidate | JurisprudenceCandidate): 
   return "court" in c && typeof (c as JurisprudenceCandidate).court === "string";
 }
 
+/** `CaseLegalSource.chunkId` sintético para pins da pesquisa assistida (sem corpus/RAG). */
+export function assistedPinChunkId(kind: PinnedFoundationKind, pinnedId: string): string {
+  return kind === "jurisprudence" ? `lex-assisted-juris:${pinnedId}` : `lex-assisted-pin:${pinnedId}`;
+}
+
 function readPinnedList(meta: Record<string, unknown>): PinnedFoundation[] {
   const cb = (meta["caseBrain"] ?? {}) as Record<string, unknown>;
   const raw = cb["pinnedFoundations"];
@@ -67,13 +72,17 @@ export async function addPinnedFoundationToCase(
     return { id: dup.pinnedId, status: "already_pinned" };
   }
   const pinnedId = nanoid();
-  const entry: PinnedFoundation = {
+  const kind: PinnedFoundationKind = isJurisprudence(candidate) ? "jurisprudence" : "foundation";
+  const pinnedStatus =
+    pinnedByUserId && pinnedByUserId !== "system" ? ("USER_PINNED" as const) : candidate.verificationStatus;
+  const entry = {
     ...candidate,
+    verificationStatus: pinnedStatus,
     pinnedId,
-    kind: isJurisprudence(candidate) ? "jurisprudence" : "foundation",
+    kind,
     pinnedAt: new Date().toISOString(),
     pinnedBy: pinnedByUserId ?? "system",
-  };
+  } as PinnedFoundation;
   const nextList = [...list, entry];
   const fp = await computeCaseFingerprint(caseId, workspaceId);
   const nextMeta = mergeCaseMetadataJson(meta, {
@@ -87,6 +96,40 @@ export async function addPinnedFoundationToCase(
     where: { id: caseId },
     data: { metadataJson: nextMeta as Prisma.InputJsonValue },
   });
+
+  const chunkId = assistedPinChunkId(kind, pinnedId);
+  const excerpt =
+    kind === "jurisprudence"
+      ? `${(entry as JurisprudenceCandidate).title}\n${(entry as JurisprudenceCandidate).summary || (entry as JurisprudenceCandidate).excerpt || ""}`.slice(0, 8000)
+      : (entry as LegalFoundationCandidate).excerpt;
+  const articleRef =
+    kind === "jurisprudence"
+      ? [(entry as JurisprudenceCandidate).court, (entry as JurisprudenceCandidate).processNumber]
+          .filter(Boolean)
+          .join(" · ") || "Jurisprudência fixada"
+      : (entry as LegalFoundationCandidate).article ?? (entry as LegalFoundationCandidate).citation;
+  try {
+    await prisma.caseLegalSource.upsert({
+      where: { caseId_chunkId: { caseId, chunkId } },
+      create: {
+        caseId,
+        chunkId,
+        excerpt: excerpt.slice(0, 20_000),
+        articleRef: articleRef?.slice(0, 500) ?? undefined,
+        query: "Pesquisa assistida (DeepSeek) — fixado no caso",
+        pinnedById: pinnedByUserId ?? undefined,
+      },
+      update: {
+        excerpt: excerpt.slice(0, 20_000),
+        articleRef: articleRef?.slice(0, 500) ?? undefined,
+        query: "Pesquisa assistida (DeepSeek) — fixado no caso",
+        pinnedById: pinnedByUserId ?? undefined,
+      },
+    });
+  } catch {
+    /* não bloqueia pin no Case Brain se a linha espelho falhar */
+  }
+
   await recordCaseMutationActivity({
     workspaceId,
     kind: "case.pinned_foundation",
@@ -109,7 +152,9 @@ export async function removePinnedFoundation(
     throw Object.assign(new Error("Caso não encontrado"), { status: 404 });
   }
   const meta = (c.metadataJson ?? {}) as Record<string, unknown>;
-  const list = readPinnedList(meta).filter((p) => p.pinnedId !== pinnedId);
+  const fullList = readPinnedList(meta);
+  const removed = fullList.find((p) => p.pinnedId === pinnedId);
+  const list = fullList.filter((p) => p.pinnedId !== pinnedId);
   const fp = await computeCaseFingerprint(caseId, workspaceId);
   const nextMeta = mergeCaseMetadataJson(meta, {
     caseBrain: {
@@ -122,6 +167,11 @@ export async function removePinnedFoundation(
     where: { id: caseId },
     data: { metadataJson: nextMeta as Prisma.InputJsonValue },
   });
+
+  if (removed) {
+    const cid = assistedPinChunkId(removed.kind, pinnedId);
+    await prisma.caseLegalSource.deleteMany({ where: { caseId, chunkId: cid } });
+  }
 }
 
 export async function markPinnedFoundationVerified(
@@ -129,6 +179,7 @@ export async function markPinnedFoundationVerified(
   workspaceId: string,
   pinnedId: string,
   verifiedBy: string,
+  opts?: { officialSourceUrl?: string },
 ): Promise<{ id: string; verificationStatus: string }> {
   const c = await prisma.case.findFirst({
     where: { id: caseId, workspaceId },
@@ -145,11 +196,16 @@ export async function markPinnedFoundationVerified(
   }
   const cur = list[idx]!;
   const now = new Date().toISOString();
+  const official = Boolean(opts?.officialSourceUrl?.trim());
+  const nextStatus = official ? "VERIFIED_BY_OFFICIAL_SOURCE" : "USER_VERIFIED";
   const updated: PinnedFoundation = {
     ...cur,
     verifiedAt: now,
     verifiedBy,
-    verificationStatus: "VERIFIED_BY_OFFICIAL_SOURCE",
+    verificationStatus: nextStatus,
+    ...(official && opts?.officialSourceUrl
+      ? { sourceUrl: opts.officialSourceUrl.trim() }
+      : {}),
   };
   const nextList = [...list];
   nextList[idx] = updated;

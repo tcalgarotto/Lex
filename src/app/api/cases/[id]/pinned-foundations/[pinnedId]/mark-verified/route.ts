@@ -12,7 +12,7 @@ import { markPinnedFoundationVerified } from "@/lib/cases/case-brain/pinned-foun
 
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; pinnedId: string }> },
 ) {
   const { workspaceId, user } = await getWorkspaceContext();
@@ -20,8 +20,19 @@ export async function POST(
   if (!(await findCaseInWorkspace(workspaceId, caseId))) {
     return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
   }
+  let officialSourceUrl: string | undefined;
   try {
-    const r = await markPinnedFoundationVerified(caseId, workspaceId, pinnedId, user.id);
+    const body = (await req.json()) as { officialSourceUrl?: string };
+    if (typeof body?.officialSourceUrl === "string" && body.officialSourceUrl.trim()) {
+      officialSourceUrl = body.officialSourceUrl.trim();
+    }
+  } catch {
+    /* sem body */
+  }
+  try {
+    const r = await markPinnedFoundationVerified(caseId, workspaceId, pinnedId, user.id, {
+      officialSourceUrl,
+    });
     return NextResponse.json(r);
   } catch (e) {
     const st = (e as { status?: number }).status;

@@ -9,6 +9,7 @@
 import { generateText } from "ai";
 import { CasePartyRole } from "@prisma/client";
 import { getPieceLanguageModel } from "@/lib/ai/llm";
+import { prisma } from "@/lib/prisma";
 import {
   getCaseBrainSnapshot,
   listPinnedFoundations,
@@ -31,6 +32,14 @@ export async function generateDraft(
     throw Object.assign(new Error("Caso não encontrado neste workspace."), { status: 404 });
   }
 
+  const caseMeta = await prisma.case.findFirst({
+    where: { id: caseId, workspaceId },
+    select: { metadataJson: true },
+  });
+  const meta = (caseMeta?.metadataJson ?? {}) as Record<string, unknown>;
+  const draftingStrategyExists = Boolean(meta["draftingStrategy"]);
+  const draftingStrategyApproved = Boolean(meta["draftingStrategyApproved"]);
+
   const pinnedFoundations = await listPinnedFoundations(workspaceId, caseId);
   const jurisprudenceCandidates = await listPinnedJurisprudenceCandidates(workspaceId, caseId);
 
@@ -39,6 +48,8 @@ export async function generateDraft(
     pinnedFoundations,
     jurisprudenceCandidates,
     confirmUnverifiedFoundations: options?.confirmUnverifiedFoundations === true,
+    draftingStrategyExists,
+    draftingStrategyApproved,
   });
   if (!guard.ok) {
     return { status: "blocked", reasons: guard.reasons };
@@ -48,7 +59,8 @@ export async function generateDraft(
     ref: p.id,
     origin:
       p.verificationStatus === "VERIFIED_BY_INTERNAL_RAG" ||
-      p.verificationStatus === "VERIFIED_BY_OFFICIAL_SOURCE"
+      p.verificationStatus === "VERIFIED_BY_OFFICIAL_SOURCE" ||
+      p.verificationStatus === "USER_VERIFIED"
         ? "verified"
         : "pinned",
     label: p.citation,
@@ -88,6 +100,11 @@ export async function generateDraft(
     return `- ${j.title} — ${j.court} — ${proc} ${tag}`.trim();
   });
 
+  const strategyBlock =
+    draftingStrategyExists && meta["draftingStrategy"]
+      ? JSON.stringify(meta["draftingStrategy"]).slice(0, 14_000)
+      : "(sem estratégia salva)";
+
   const prompt = `Elabore uma minuta processual em Markdown (pt-BR), com seções:
 # Endereçamento
 # Qualificação das partes
@@ -118,6 +135,9 @@ ${pinText}
 
 Julgados de apoio (candidatos — linguagem cautelosa):
 ${jurisNotes.length ? jurisNotes.join("\n") : "(nenhum)"}
+
+Estratégia processual aprovada / consolidada no caso (siga a linha; não contradiga sem marcar lacuna):
+${strategyBlock}
 
 Nome sugerido da parte autora: ${authorLine}
 `;

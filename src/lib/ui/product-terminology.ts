@@ -27,6 +27,7 @@ export const PRODUCT_TERMINOLOGY = {
   "AI_RECOMMENDED_UNVERIFIED": "A conferir",
   Verified: "Verificado",
   USER_PINNED: "Fixado no caso",
+  USER_VERIFIED: "Conferido pelo advogado",
   VERIFIED_BY_INTERNAL_RAG: "Verificado (acervo interno)",
   VERIFIED_BY_OFFICIAL_SOURCE: "Verificado (fonte oficial)",
   Pin: "Fixar no caso",

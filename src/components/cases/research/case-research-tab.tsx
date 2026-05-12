@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LegalSearchPanel } from "@/components/legal-search/legal-search-panel";
 import { CaseDataOriginButton } from "@/components/cases/case-data-origin";
-import type { LegalResearchResponse } from "@/lib/legal-research/types";
+import type { LegalResearchResponse, JurisprudenceCandidate } from "@/lib/legal-research/types";
 import type { CaseBrainSnapshot } from "@/lib/cases/case-brain/snapshot";
 import {
  translateTerm,
@@ -70,7 +70,6 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  const router = useRouter();
  const [busy, setBusy] = useState<string | null>(null);
  const [error, setError] = useState<string | null>(null);
- const [stubNotice, setStubNotice] = useState<string | null>(null);
  const [cbSnap, setCbSnap] = useState<CaseBrainSnapshot | null>(null);
  const [recoLoading, setRecoLoading] = useState(false);
  const [recoError, setRecoError] = useState<string | null>(null);
@@ -192,17 +191,18 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  if (!res.ok) {
  throw new Error(data.error || `Não foi possível fixar (${res.status}).`);
  }
- setStubNotice(null);
  router.refresh();
  } catch (e) {
  setError(e instanceof Error ? e.message : String(e));
  }
  }
 
- async function sendToStrategy(_payload: unknown) {
- setStubNotice(
- "O envio direto para a estratégia será concluído nas próximas integrações. Use a aba Estratégia e peças para consolidar a linha de defesa.",
- );
+ async function pinJurisprudence(j: JurisprudenceCandidate) {
+ await pinFoundation({ caseId, jurisprudence: j });
+ }
+
+ async function goToStrategy() {
+ router.push(`/cases/${caseId}/estrategia`);
  }
 
  return (
@@ -210,24 +210,6 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  <Card className="border-primary/20 bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
  {USER_FACING_MESSAGES.DEEPSEEK_TRANSPARENCY_TOP}
  </Card>
-
- {stubNotice ? (
- <Card
- role="status"
- className="border-border bg-muted/40 p-3 text-sm text-muted-foreground"
- >
- {stubNotice}
- <Button
- type="button"
- variant="ghost"
- size="sm"
- className="mt-2 h-8 px-2"
- onClick={() => setStubNotice(null)}
- >
- Fechar
- </Button>
- </Card>
- ) : null}
 
  {brainEmpty ? (
  <Card className="flex flex-col items-center gap-3 border-dashed p-8 text-center">
@@ -325,8 +307,8 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  <Pin className="mr-1 size-3" aria-hidden />
  {translateTerm("Pin")}
  </Button>
- <Button type="button" size="sm" variant="ghost" onClick={() => void sendToStrategy(f)}>
- Adicionar à estratégia
+ <Button type="button" size="sm" variant="ghost" onClick={() => void goToStrategy()}>
+ Abrir Estratégia e peças
  </Button>
  <Button type="button" size="sm" variant="ghost" asChild>
  <Link href={`/cases/${caseId}/estrategia`}>Usar na minuta</Link>
@@ -369,9 +351,20 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  ) : null}
  <p className="text-xs text-muted-foreground">{j.summary}</p>
  </div>
- <Button type="button" size="sm" variant="secondary" className="shrink-0" asChild>
- <Link href={`/cases/${caseId}/estrategia`}>Adicionar à estratégia</Link>
+ <div className="flex shrink-0 flex-col gap-1">
+ <Button
+ type="button"
+ size="sm"
+ variant="secondary"
+ onClick={() => void pinJurisprudence(j)}
+ >
+ <Pin className="mr-1 size-3" aria-hidden />
+ Fixar julgado
  </Button>
+ <Button type="button" size="sm" variant="ghost" onClick={() => void goToStrategy()}>
+ Estratégia e peças
+ </Button>
+ </div>
  </div>
  </Card>
  </li>

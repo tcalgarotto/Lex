@@ -4,7 +4,7 @@ Sign-off provisório F-1: escopo interno e demo controlada; promoção a produç
 
 ## Objetivo
 
-Centralizar **estratégia assistida**, **minuta (Markdown)**, **revisão heurística** e **exportação estruturada** (DOCX / PDF / Markdown) com **guardas de geração** e transparência sobre lacunas e julgados candidatos.
+Centralizar **estratégia assistida (DeepSeek)**, **minuta (Markdown, DeepSeek)**, **revisão assistida (DeepSeek + heurísticas locais)**, **promoção para `LegalPiece`**, **exportação** (DOCX / PDF / Markdown) com **guardas de geração** e transparência sobre lacunas e julgados candidatos.
 
 ## Arquitetura de UI
 
@@ -33,28 +33,30 @@ Bloqueios principais:
 
 1. Parte autora ausente (parte relacional `AUTHOR` ou parte do cérebro com papel `assisted_party`).
 2. Nenhum fato essencial (tabela `CaseFact` ou fatos do cérebro).
-3. Nenhum fundamento pinado (`CaseLegalSource`).
-4. Fundamentos ou julgados com **indicação automática** (`AI_RECOMMENDED_UNVERIFIED`) sem confirmação explícita (`confirmUnverifiedFoundations: true` no POST de geração ou checkbox na UI).
+3. Nenhum fundamento pinado (`CaseLegalSource` e/ou pins assistidos espelhados).
+4. Estratégia P0 ausente ou não aprovada (`draftingStrategy` + `draftingStrategyApproved`).
+5. Fundamentos ou julgados com **indicação automática** (`AI_RECOMMENDED_UNVERIFIED`) sem confirmação explícita (`confirmUnverifiedFoundations: true` no POST de geração ou checkbox na UI).
 
 Resposta bloqueada: `{ status: "blocked", reasons: string[] }` (HTTP **409** na rota de geração).
 
 ## Estratégia assistida
 
-- `POST /api/cases/[id]/strategy/generate` — LLM (`getPieceLanguageModel`) com dados do caso + pins; persiste em `metadataJson.draftingStrategy`.
-- `GET /api/cases/[id]/strategy` — estratégia legada (`strategy`), estratégia P0, aprovação, prontidão e **jurisprudências candidatas** (metadado provisório).
+- `GET /api/cases/[id]/strategy` — estratégia legada (`strategy`), estratégia P0 (`draftingStrategy`), aprovação, prontidão e jurisprudências candidatas.
+- `POST /api/cases/[id]/strategy` — gera `draftingStrategy` via **DeepSeek** (`generateStrategy`); atualiza objeto legado `strategy` para compatibilidade; **sem** `retrieveLegalContext`.
+- `POST /api/cases/[id]/strategy/generate` — mesmo núcleo que `POST /strategy` (preferir um dos dois na UI para evitar duplicidade).
 - `POST /api/cases/[id]/strategy/approve` — grava `metadataJson.draftingStrategyApproved`.
-- `POST /api/cases/[id]/strategy` (legado) — continua disponível; fluxo determinístico com pesquisa indexada (não alterado aqui além do GET).
 
 ## Minutas
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
 | GET | `/api/cases/[id]/drafts` | Lista versões. |
-| POST | `/api/cases/[id]/drafts` | Cria minuta vazia (Markdown inicial). |
+| POST | `/api/cases/[id]/drafts` | Cria versão com **minuta gerada por DeepSeek** (`generateDraft`) e guardas; HTTP 409 se bloqueado. |
 | GET | `/api/cases/[id]/drafts/[draftId]` | Detalhe. |
 | PATCH | `/api/cases/[id]/drafts/[draftId]` | Salva edição manual como **nova versão** (F5). |
-| POST | `/api/cases/[id]/drafts/[draftId]/generate` | Gera conteúdo com guardas. |
-| POST | `/api/cases/[id]/drafts/[draftId]/review` | Revisão heurística + persistência em `CaseReview`. |
+| POST | `/api/cases/[id]/drafts/[draftId]/generate` | Regenera conteúdo com guardas (mesmo núcleo). |
+| POST | `/api/cases/[id]/drafts/[draftId]/review` | Revisão **DeepSeek** + heurísticas; persiste em `CaseReview`. |
+| POST | `/api/cases/[id]/drafts/[draftId]/promote` | Promove Markdown → `LegalPiece` (TipTap) e abre `/editor/[pieceId]`. |
 | GET/POST | `/api/cases/[id]/drafts/[draftId]/export` | DOCX / PDF / Markdown com estrutura (títulos, listas, citações). |
 
 ## Exportação

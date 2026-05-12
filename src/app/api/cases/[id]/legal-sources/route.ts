@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getLogger } from "@/lib/logger";
+import { removePinnedFoundation } from "@/lib/cases/case-brain/pinned-foundations";
 
 const log = getLogger("lex.api.cases.legal-sources");
 
@@ -112,11 +113,30 @@ export async function DELETE(
     return NextResponse.json({ error: "id ausente" }, { status: 400 });
   }
 
-  const result = await prisma.caseLegalSource.deleteMany({
+  const row = await prisma.caseLegalSource.findFirst({
     where: { id: sourceId, caseId: id },
+    select: { chunkId: true },
   });
-  if (result.count === 0) {
+  if (!row) {
     return NextResponse.json({ error: "Fundamento não encontrado" }, { status: 404 });
   }
+
+  const assisted = row.chunkId.match(/^lex-assisted-(?:pin|juris):(.+)$/);
+  if (assisted?.[1]) {
+    try {
+      await removePinnedFoundation(id, workspaceId, assisted[1]);
+    } catch (e) {
+      log.warn("removePinnedFoundation failed after assisted delete", {
+        caseId: id,
+        pinnedId: assisted[1],
+        err: e instanceof Error ? e.message : String(e),
+      });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  await prisma.caseLegalSource.deleteMany({
+    where: { id: sourceId, caseId: id },
+  });
   return NextResponse.json({ ok: true });
 }

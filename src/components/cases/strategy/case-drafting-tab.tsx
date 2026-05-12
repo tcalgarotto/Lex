@@ -175,9 +175,12 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
     hasAuthor,
     hasFact,
     pinCount: pinsCount,
-    hasUnverifiedFoundation: false,
-    hasUnverifiedJuris,
-    confirmUnverified,
+    hasUnverifiedFoundation:
+      boot?.payload.drafting.draftingGuards?.hasUnverifiedFoundationPin ?? false,
+    hasUnverifiedJuris: boot?.payload.drafting.draftingGuards?.hasUnverifiedJuris ?? hasUnverifiedJuris,
+    confirmUnverified: confirmUnverified,
+    draftingStrategyExists: Boolean(bundle?.draftingStrategy),
+    draftingStrategyApproved: Boolean(bundle?.approved),
   });
 
   const bannerMessages = [
@@ -257,6 +260,10 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
               <TabsTrigger value="juris">Julgados</TabsTrigger>
             </TabsList>
             <TabsContent value="ia" className="mt-3 space-y-3 text-sm">
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-100/90">
+                Sugestão de IA — revise antes de usar. Jurisprudência candidata — confirme a fonte oficial antes de
+                citar.
+              </div>
               <p className="text-muted-foreground">
                 Gere a estratégia assistida com base nos dados confirmados e nos pins. Aprove quando fizer sentido
                 jurídico.

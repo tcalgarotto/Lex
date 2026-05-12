@@ -40,10 +40,10 @@ function badgeFor(status: FoundationVerificationStatus) {
       </Badge>
     );
   }
-  if (status === "VERIFIED_BY_INTERNAL_RAG" || status === "VERIFIED_BY_OFFICIAL_SOURCE") {
-    return <Badge variant="secondary">Verificado</Badge>;
+  if (status === "USER_VERIFIED" || status === "VERIFIED_BY_INTERNAL_RAG" || status === "VERIFIED_BY_OFFICIAL_SOURCE") {
+    return <Badge variant="secondary">Verificado / conferido</Badge>;
   }
-  return <Badge variant="default">Pin do workspace</Badge>;
+  return <Badge variant="default">Fixado no caso</Badge>;
 }
 
 export function StrategyFoundationsPanel({ caseId, onInsert, onChanged, initialSources }: Props) {
@@ -88,7 +88,7 @@ export function StrategyFoundationsPanel({ caseId, onInsert, onChanged, initialS
         </Card>
       ) : null}
       {sources.map((s) => {
-        const status: FoundationVerificationStatus = "USER_PINNED";
+        const status = "USER_PINNED" as FoundationVerificationStatus;
         return (
           <Card key={s.id} className="space-y-2 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">

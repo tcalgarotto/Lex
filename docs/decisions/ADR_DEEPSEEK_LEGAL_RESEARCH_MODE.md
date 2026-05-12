@@ -9,6 +9,8 @@
 - Feedback real de advogado tester indicou que a entrega comercial não pode depender, no curto prazo, da pesquisa interna quando esta ainda não atinge confiabilidade suficiente para citação e estratégia.
 - O motor interno de recuperação de normas e jurisprudência permanece valioso para diagnóstico e evolução, mas **não** deve bloquear demo controlada e piloto interno (F0–Auditoria).
 
+- O fluxo **principal do caso** (estratégia salva em `draftingStrategy`, minuta em `CaseDraft`, promoção ao editor) **não chama** `retrieveLegalContext` nem depende de Qdrant/embeddings. O código em `src/lib/retrieval/**` permanece para diagnóstico, buscas globais e pipelines legados, conforme este ADR.
+
 ## Decisão
 
 - Expor um **modo de pesquisa jurídica assistida** que usa a **DeepSeek API** como provedor temporário de geração estruturada (`LEGAL_RESEARCH_PROVIDER=deepseek`, variáveis `DEEPSEEK_*`).

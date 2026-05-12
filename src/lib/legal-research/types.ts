@@ -24,12 +24,14 @@ export type LegalFoundationType =
 export type FoundationVerificationStatus =
   | "AI_RECOMMENDED_UNVERIFIED"
   | "USER_PINNED"
+  | "USER_VERIFIED"
   | "VERIFIED_BY_INTERNAL_RAG"
   | "VERIFIED_BY_OFFICIAL_SOURCE";
 
 export type JurisprudenceVerificationStatus =
   | "AI_RECOMMENDED_UNVERIFIED"
   | "USER_PINNED"
+  | "USER_VERIFIED"
   | "VERIFIED_BY_OFFICIAL_SOURCE";
 
 export interface LegalResearchRequest {

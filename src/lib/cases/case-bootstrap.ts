@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { listPinnedJurisprudenceCandidates } from "@/lib/cases/drafting/case-brain-shim";
 import type { PinnedJurisprudenceListItem } from "@/lib/cases/drafting/drafting-types";
 import { loadCaseChecklistStateForBootstrap, type CaseChecklistStatePayload } from "@/lib/cases/case-checklist-state";
+import { listPinnedFoundations } from "@/lib/cases/case-brain/pinned-foundations";
 
 export type InterviewTemplateSummary = {
   id: string;
@@ -35,6 +36,10 @@ export type CaseDraftingBootstrapSlice = {
   jurisprudenceCandidates: PinnedJurisprudenceListItem[];
   legalSources: CaseLegalSource[];
   drafts: CaseDraft[];
+  draftingGuards: {
+    hasUnverifiedFoundationPin: boolean;
+    hasUnverifiedJuris: boolean;
+  };
 };
 
 export type CaseBootstrapPayload = {
@@ -90,6 +95,7 @@ export async function gatherCaseBootstrap(
     legalSources,
     drafts,
     jurisprudenceCandidates,
+    brainPins,
   ] = await Promise.all([
     prisma.caseComment.findMany({
       where: { caseId },
@@ -141,11 +147,19 @@ export async function gatherCaseBootstrap(
       orderBy: { version: "desc" },
     }),
     listPinnedJurisprudenceCandidates(workspaceId, caseId),
+    listPinnedFoundations(caseId, workspaceId),
   ]);
 
   if (!checklist || !caseRow) return null;
 
   const strategy = strategySliceFromMetadata(caseRow.metadataJson, jurisprudenceCandidates);
+
+  const hasUnverifiedFoundationPin = brainPins.some(
+    (p) => p.kind === "foundation" && p.verificationStatus === "AI_RECOMMENDED_UNVERIFIED",
+  );
+  const hasUnverifiedJuris = jurisprudenceCandidates.some(
+    (j) => j.verificationStatus === "AI_RECOMMENDED_UNVERIFIED",
+  );
 
   const drafting: CaseDraftingBootstrapSlice = {
     casePartiesFacts: {
@@ -158,6 +172,10 @@ export async function gatherCaseBootstrap(
     jurisprudenceCandidates: strategy.jurisprudenceCandidates,
     legalSources,
     drafts,
+    draftingGuards: {
+      hasUnverifiedFoundationPin,
+      hasUnverifiedJuris,
+    },
   };
 
   return {

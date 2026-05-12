@@ -10,11 +10,21 @@ import type { FoundationVerificationStatus } from "@/lib/legal-research/types";
 
 export type StrategyResult = {
   theses: string[];
+  /** Tese principal (P0 — DeepSeek). */
+  mainThesis?: string;
+  alternativeTheses?: string[];
   factualRequirements: string[];
   evidenceNeeded: string[];
   risks: string[];
   recommendedActions: string[];
   relatedFoundations: string[];
+  suggestedLegalFoundations?: string[];
+  candidateJurisprudence?: string[];
+  recommendedClaims?: string[];
+  proceduralRisks?: string[];
+  gaps?: string[];
+  suggestedPieceStructure?: string[];
+  humanReviewWarnings?: string[];
   generatedAt: string;
 };
 

@@ -73,7 +73,9 @@ export async function POST(req: Request) {
 
   const t0 = Date.now();
   try {
-    const r = await markPinnedFoundationVerified(caseId, workspaceId, resolvedPinnedId, userId);
+    const r = await markPinnedFoundationVerified(caseId, workspaceId, resolvedPinnedId, userId, {
+      officialSourceUrl: parsed.data.officialSourceUrl,
+    });
     logLegalResearchJsonLine({
       event: "legal_research.mark_verified",
       workspaceId,

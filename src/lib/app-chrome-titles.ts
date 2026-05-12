@@ -15,7 +15,7 @@ const PREFIX_TITLES: { prefix: string; title: string }[] = [
   { prefix: "/biblioteca/documentos/", title: "Documento" },
   { prefix: "/biblioteca/fundamentos/", title: "Fundamento" },
   { prefix: "/biblioteca", title: "Biblioteca" },
-  { prefix: "/cases/new", title: "Novo caso" },
+  { prefix: "/cases/new", title: "Entrevista fundamental" },
   { prefix: "/documentos", title: "Documentos" },
   { prefix: "/pesquisa-juridica", title: "Pesquisa jurídica" },
   { prefix: "/retrieval/explain", title: "Retrieval auditável" },

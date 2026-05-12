@@ -20,6 +20,7 @@ import {
 } from "@/lib/legal-research";
 import { legalResearchRecommendBodySchema } from "@/lib/legal-research/request-body";
 import type { LegalResearchRequest, LegalResearchResponse } from "@/lib/legal-research/types";
+import { getCaseBrainSnapshot } from "@/lib/cases/case-brain/snapshot";
 
 
 export async function POST(req: Request) {
@@ -70,9 +71,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Não encontrado." }, { status: 404, headers: rl.headers });
   }
 
+  let caseBrainText = parsed.data.caseBrain ?? "";
+  if (!caseBrainText.trim()) {
+    const snap = await getCaseBrainSnapshot(parsed.data.caseId, workspaceId);
+    if (snap) {
+      caseBrainText = JSON.stringify({
+        narrative: snap.brain?.narrative ?? "",
+        parties: snap.parties,
+        facts: snap.facts,
+        claims: snap.claims,
+        risks: snap.risks,
+        documents: snap.documents?.map((d) => ({
+          id: d.id,
+          name: d.originalName,
+          preview: d.extractedPreview,
+        })),
+        fingerprint: snap.caseFingerprint,
+      }).slice(0, 12_000);
+    }
+  }
+
   const { workspaceId: _clientWorkspace, ...rest } = parsed.data;
   void _clientWorkspace;
-  const full: LegalResearchRequest = { ...rest, workspaceId };
+  const full: LegalResearchRequest = { ...rest, workspaceId, caseBrain: caseBrainText || rest.caseBrain };
 
   const hash = legalResearchRequestHash(full);
   const cached = getCachedLegalResearch("recommend", hash);

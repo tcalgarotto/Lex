@@ -85,10 +85,27 @@ function readInconsistencies(metadataJson: unknown): DocInconsistency[] {
  .slice(0, 6);
 }
 
+function readIntakeFundamental(metadataJson: unknown): {
+  nextSteps: string[];
+  missingQuestions: string[];
+} | null {
+  if (!metadataJson || typeof metadataJson !== "object") return null;
+  const m = metadataJson as { intakeFundamental?: unknown };
+  const x = m.intakeFundamental;
+  if (!x || typeof x !== "object") return null;
+  const o = x as { nextSteps?: unknown; missingQuestions?: unknown };
+  const nextSteps = Array.isArray(o.nextSteps) ? o.nextSteps.filter((s): s is string => typeof s === "string") : [];
+  const missingQuestions = Array.isArray(o.missingQuestions)
+    ? o.missingQuestions.filter((s): s is string => typeof s === "string")
+    : [];
+  if (nextSteps.length === 0 && missingQuestions.length === 0) return null;
+  return { nextSteps, missingQuestions };
+}
+
 function readProceduralReadiness(metadataJson: unknown): ProceduralReadiness | null {
- if (!metadataJson || typeof metadataJson !== "object") return null;
- const m = metadataJson as { brain?: { proceduralReadiness?: unknown } };
- const r = m.brain?.proceduralReadiness;
+  if (!metadataJson || typeof metadataJson !== "object") return null;
+  const m = metadataJson as { brain?: { proceduralReadiness?: unknown } };
+  const r = m.brain?.proceduralReadiness;
  if (!r || typeof r !== "object") return null;
  const x = r as Partial<ProceduralReadiness>;
  if (typeof x.score !== "number" || typeof x.status !== "string") return null;
@@ -114,6 +131,7 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  const preProcessual = isCasePreProcessual(c);
  const narrative = readBrainNarrative(c.metadataJson);
  const readiness = readProceduralReadiness(c.metadataJson);
+ const intakeFundamental = readIntakeFundamental(c.metadataJson);
  const inconsistencies = readInconsistencies(c.metadataJson);
  const docInconsistencyRisks = c.risks.filter(
  (r) => r.kind === "DOCUMENT_INCONSISTENCY" && !r.resolvedAt,
@@ -192,6 +210,34 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  ) : null}
 
  {readiness ? <ReadinessCard readiness={readiness} /> : null}
+
+ {intakeFundamental ? (
+ <Card className="border-violet-500/25 bg-violet-500/[0.04] p-4">
+ <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+ Próximas ações e lacunas (entrevista fundamental)
+ </p>
+ {intakeFundamental.nextSteps.length > 0 ? (
+ <ul className="mb-3 space-y-1.5 text-sm text-foreground/90">
+ {intakeFundamental.nextSteps.slice(0, 10).map((s, i) => (
+ <li key={`ns-${i}`} className="flex gap-2 leading-snug">
+ <span className="font-mono text-[10px] text-violet-300/90">{i + 1}.</span>
+ <span>{s}</span>
+ </li>
+ ))}
+ </ul>
+ ) : null}
+ {intakeFundamental.missingQuestions.length > 0 ? (
+ <div className="text-xs text-muted-foreground">
+ <p className="mb-1 font-medium text-foreground/80">Perguntas sugeridas ao cliente</p>
+ <ul className="list-disc space-y-1 pl-4">
+ {intakeFundamental.missingQuestions.slice(0, 8).map((q, i) => (
+ <li key={`mq-${i}`}>{q}</li>
+ ))}
+ </ul>
+ </div>
+ ) : null}
+ </Card>
+ ) : null}
 
  {docInconsistencyRisks.length > 0 || inconsistencies.length > 0 ? (
  <Card className="border-amber-500/40 bg-amber-500/5 p-3">

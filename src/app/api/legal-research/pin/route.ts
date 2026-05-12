@@ -35,6 +35,7 @@ function coerceFoundation(raw: unknown): LegalFoundationCandidate | null {
   const verificationStatus =
     vs === "AI_RECOMMENDED_UNVERIFIED" ||
     vs === "USER_PINNED" ||
+    vs === "USER_VERIFIED" ||
     vs === "VERIFIED_BY_INTERNAL_RAG" ||
     vs === "VERIFIED_BY_OFFICIAL_SOURCE"
       ? vs
@@ -68,7 +69,10 @@ function coerceJurisprudence(raw: unknown): JurisprudenceCandidate | null {
   const classOrType = typeof o["classOrType"] === "string" ? o["classOrType"] : "Acórdão";
   const vs = o["verificationStatus"];
   const verificationStatus =
-    vs === "AI_RECOMMENDED_UNVERIFIED" || vs === "USER_PINNED" || vs === "VERIFIED_BY_OFFICIAL_SOURCE"
+    vs === "AI_RECOMMENDED_UNVERIFIED" ||
+    vs === "USER_PINNED" ||
+    vs === "USER_VERIFIED" ||
+    vs === "VERIFIED_BY_OFFICIAL_SOURCE"
       ? vs
       : "AI_RECOMMENDED_UNVERIFIED";
   const w = o["warnings"];

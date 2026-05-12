@@ -59,9 +59,8 @@ describe("/api/search (workspace + pesquisa assistida)", () => {
   });
 
   it("inclui href quando há origem (documento/processo/peça)", () => {
-    // Garantia estrutural: hits de Qdrant (lex_main) devem ser navegáveis
-    // para a origem (documento/processo/peça). Sem isso vira "trecho solto".
-    expect(ROUTE_SRC).toMatch(/const href\s*=/);
+    // Workspace hits devem ser navegáveis (href inline nos objetos).
+    expect(ROUTE_SRC).toMatch(/href:\s*`?\/cases\/\$\{/);
     expect(ROUTE_SRC).toMatch(/processos\/\$\{/);
     expect(ROUTE_SRC).toMatch(/\/documentos/);
     expect(ROUTE_SRC).toMatch(/\/editor\/\$\{/);

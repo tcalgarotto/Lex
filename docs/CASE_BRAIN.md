@@ -25,7 +25,7 @@ Não há migration nova no P0: tudo que não couber em colunas usa `metadataJson
 - **`brain`**: objeto `CaseBrain` (consolidação LLM + heurísticas) — ver `src/lib/cases/brain-types.ts`.
 - **`brainVersion`**: número incrementado a cada consolidação bem-sucedida.
 - **`caseBrain`**: envelope estável para consumo cross-lane:
-  - `pinnedFoundations[]`: fundamento ou jurisprudência pinada (ver abaixo).
+  - `pinnedFoundations[]`: fundamento ou jurisprudência pinada (ver abaixo). Ao fixar pela pesquisa assistida, o servidor cria também uma linha em `CaseLegalSource` com `chunkId` sintético (`lex-assisted-pin:` / `lex-assisted-juris:`) para unificar a lista “Fundamentos fixados” nas abas do caso.
   - `caseFingerprint`: hash do estado relacional (ver `computeCaseFingerprint`).
   - `documentSemanticIndexDocIds[]` (opcional): ids de `Document` do caso com **opt-in** para indexação semântica no acervo. **Padrão:** documentos do caso **não** entram nessa indexação; apenas leitura de texto + uso no caso.
 

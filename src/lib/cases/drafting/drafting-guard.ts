@@ -15,10 +15,21 @@ export type DraftingGuardInput = {
   pinnedFoundations: PinnedFoundationListItem[];
   jurisprudenceCandidates: PinnedJurisprudenceListItem[];
   confirmUnverifiedFoundations?: boolean;
+  /** Quando há estratégia P0 salva, exige aprovação explícita antes da minuta. */
+  draftingStrategyApproved?: boolean;
+  draftingStrategyExists?: boolean;
 };
 
 export function runDraftingGuard(input: DraftingGuardInput): { ok: true } | { ok: false; reasons: string[] } {
   const reasons: string[] = [];
+
+  if (!input.draftingStrategyExists) {
+    reasons.push(
+      "Gere a estratégia assistida (DeepSeek) na aba Estratégia e Peças antes de redigir a minuta.",
+    );
+  } else if (!input.draftingStrategyApproved) {
+    reasons.push("Aprove a estratégia assistida antes de redigir a minuta.");
+  }
 
   const hasAuthor =
     input.snapshot.parties.some((p) => p.role === CasePartyRole.AUTHOR) ||
@@ -68,8 +79,17 @@ export function previewDraftingGuardMessages(input: {
   hasUnverifiedFoundation: boolean;
   hasUnverifiedJuris: boolean;
   confirmUnverified?: boolean;
+  draftingStrategyExists?: boolean;
+  draftingStrategyApproved?: boolean;
 }): string[] {
   const reasons: string[] = [];
+  if (!input.draftingStrategyExists) {
+    reasons.push(
+      "Gere a estratégia assistida (DeepSeek) na aba Estratégia e Peças antes de redigir a minuta.",
+    );
+  } else if (!input.draftingStrategyApproved) {
+    reasons.push("Aprove a estratégia assistida antes de redigir a minuta.");
+  }
   if (!input.hasAuthor) {
     reasons.push("Confirme ao menos uma parte autora antes de gerar a minuta.");
   }

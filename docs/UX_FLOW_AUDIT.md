@@ -2,6 +2,12 @@
 
 **Status:** F-1 sign-off provisório. Release público bloqueado. Owners Legal / Security / QA Lead: **PROVISÓRIO** (dupla revisão Thales PO + Cursor CTO interim).
 
+## Atualização (2026-05-12)
+
+- Pesquisa do caso: pins assistidos aparecem em **Estratégia e peças** via espelho `CaseLegalSource`.
+- Estratégia: `POST /api/cases/[id]/strategy` gera `draftingStrategy` com **DeepSeek**, sem `retrieveLegalContext`.
+- Minuta: `POST /api/cases/[id]/drafts` chama `generateDraft` (DeepSeek). Botão **Editor final** → `POST .../drafts/[draftId]/promote` → `/editor/[pieceId]`.
+
 ## Fluxo canônico (6 seções)
 
 Ordem fixa na subnavegação persistente (`CaseSubnav`):

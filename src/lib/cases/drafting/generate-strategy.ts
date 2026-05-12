@@ -19,13 +19,32 @@ function safeJsonParse(text: string): StrategyResult | null {
     const o = v as Record<string, unknown>;
     const pickStrArr = (k: string): string[] =>
       Array.isArray(o[k]) ? o[k]!.filter((x): x is string => typeof x === "string") : [];
+    const mainThesis = typeof o["mainThesis"] === "string" ? o["mainThesis"] : undefined;
+    const theses = pickStrArr("theses");
+    const mergedTheses =
+      theses.length > 0
+        ? theses
+        : mainThesis
+          ? [mainThesis]
+          : pickStrArr("alternativeTheses");
+    const risksRaw = pickStrArr("risks");
+    const procRisks = pickStrArr("proceduralRisks");
     return {
-      theses: pickStrArr("theses"),
+      theses: mergedTheses.length ? mergedTheses : mainThesis ? [mainThesis] : [],
+      mainThesis,
+      alternativeTheses: pickStrArr("alternativeTheses"),
       factualRequirements: pickStrArr("factualRequirements"),
       evidenceNeeded: pickStrArr("evidenceNeeded"),
-      risks: pickStrArr("risks"),
+      risks: risksRaw.length > 0 ? risksRaw : procRisks,
       recommendedActions: pickStrArr("recommendedActions"),
       relatedFoundations: pickStrArr("relatedFoundations"),
+      suggestedLegalFoundations: pickStrArr("suggestedLegalFoundations"),
+      candidateJurisprudence: pickStrArr("candidateJurisprudence"),
+      recommendedClaims: pickStrArr("recommendedClaims"),
+      proceduralRisks: procRisks,
+      gaps: pickStrArr("gaps"),
+      suggestedPieceStructure: pickStrArr("suggestedPieceStructure"),
+      humanReviewWarnings: pickStrArr("humanReviewWarnings"),
       generatedAt: new Date().toISOString(),
     };
   } catch {
@@ -68,17 +87,27 @@ export async function generateStrategy(
 
   const prompt = `Você é assistente jurídico interno do Lex. Produza APENAS JSON válido (sem markdown ao redor) com o formato:
 {
+  "mainThesis": string,
   "theses": string[],
+  "alternativeTheses": string[],
   "factualRequirements": string[],
   "evidenceNeeded": string[],
   "risks": string[],
+  "proceduralRisks": string[],
   "recommendedActions": string[],
+  "suggestedLegalFoundations": string[],
+  "candidateJurisprudence": string[],
+  "recommendedClaims": string[],
+  "gaps": string[],
+  "suggestedPieceStructure": string[],
+  "humanReviewWarnings": string[],
   "relatedFoundations": string[]
 }
 
 Regras:
-- Use somente os dados fornecidos abaixo e os fundamentos pinados. Não invente normas fora dos trechos pinados.
-- "relatedFoundations" deve conter apenas rótulos curtos que correspondam aos pins numerados (ex.: "[1]").
+- Use somente os dados fornecidos abaixo e os fundamentos pinados. Não invente normas verificadas fora dos trechos pinados.
+- Em candidateJurisprudence, liste apenas rótulos curtos como CANDIDATO — nunca afirme que foi verificado em tribunal.
+- "humanReviewWarnings" deve alertar revisão humana obrigatória antes de protocolar.
 - Texto em pt-BR, tom profissional, sem jargão interno de software.
 
 Partes:
@@ -94,7 +123,7 @@ Riscos consolidados:
 ${risks || "(nenhum)"}
 
 Fundamentos pinados:
-${pinBlock || "(nenhum — sinalize lacuna nas teses)"}
+${pinBlock || "(nenhum — descreva lacunas em gaps)"}
 `;
 
   const { text } = await generateText({
@@ -109,11 +138,13 @@ ${pinBlock || "(nenhum — sinalize lacuna nas teses)"}
 
   return {
     theses: [text.slice(0, 800)],
+    mainThesis: text.slice(0, 400),
     factualRequirements: [],
     evidenceNeeded: [],
     risks: [],
     recommendedActions: [],
     relatedFoundations: [],
+    humanReviewWarnings: ["Falha ao interpretar JSON do modelo — revise o texto bruto e tente gerar novamente."],
     generatedAt: new Date().toISOString(),
   };
 }

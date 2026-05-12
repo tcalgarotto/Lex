@@ -120,7 +120,7 @@ export function normalizeDeepSeekJsonContent(
     confidence: clamp01(f.confidence),
     verificationStatus: "AI_RECOMMENDED_UNVERIFIED" as const,
     sourceUrl: f.sourceUrl ?? undefined,
-    warnings: [] as string[],
+    warnings: ["Sugestão de IA — a conferir.", "Não invente fatos nem cite como se fosse verificado em fonte oficial sem conferência humana."] as string[],
   }));
 
   const jurisprudenceCandidates = (d.jurisprudenceCandidates ?? []).map((j, i) => ({
@@ -141,7 +141,9 @@ export function normalizeDeepSeekJsonContent(
     confidence: clamp01(j.confidence),
     verificationStatus: "AI_RECOMMENDED_UNVERIFIED" as const,
     sourceUrl: j.sourceUrl ?? undefined,
-    warnings: [] as string[],
+    warnings: [
+      "Jurisprudência candidata — confirme a fonte oficial antes de citar em peça.",
+    ] as string[],
   }));
 
   const strategyNotes = (d.strategyNotes ?? []).map((s) => ({

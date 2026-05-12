@@ -1,26 +1,23 @@
 /**
  * P0 — Estratégia e Peças (drafting + review + export).
  * Drafting-guard ativo; jurisprudência candidata não promovida sem confirmação humana.
- * Sign-off provisório F-1; dupla revisão Thales (PO) + Cursor (CTO interim).
- * Owners de Legal/Security/QA Lead ainda PROVISÓRIOS — release público bloqueado.
  * Ver: docs/features/CASE_DRAFTING_TAB.md
  */
 
 import { NextResponse } from "next/server";
-import { CaseDraftStatus, Prisma } from "@prisma/client";
+import { z } from "zod";
+import { CaseDraftStatus, CaseTimelineKind, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getPieceModelId, getChatProviderId } from "@/lib/ai/llm";
+import { listPinnedFoundations } from "@/lib/cases/drafting/case-brain-shim";
+import { generateDraft } from "@/lib/cases/drafting/generate-draft";
 import { enforceDraftingRateLimit, loadCaseScoped } from "@/lib/cases/drafting/drafting-route-common";
+import { createHash } from "node:crypto";
 
-
-const STARTER = `# Minuta
-
-_Em elaboração — preencha com geração assistida ou edição manual._
-
-## Lacunas para revisão
-
-- Confirmar endereçamento e juízo competente após revisão humana.
-`;
+const PostBodySchema = z.object({
+  confirmUnverifiedFoundations: z.boolean().optional(),
+});
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { workspaceId, user } = await getWorkspaceContext();
@@ -56,6 +53,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const c = await loadCaseScoped(workspaceId, id);
   if (!c) return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
 
+  const json = await req.json().catch(() => ({}));
+  const parsed = PostBodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Body inválido", detail: parsed.error.message }, { status: 400 });
+  }
+
+  const out = await generateDraft(id, workspaceId, {
+    confirmUnverifiedFoundations: parsed.data.confirmUnverifiedFoundations === true,
+  });
+
+  if (out.status === "blocked") {
+    return NextResponse.json({ status: "blocked", reasons: out.reasons }, { status: 409 });
+  }
+
+  const pins = await listPinnedFoundations(workspaceId, id);
+  const groundingChunkIds = pins.map((p) => p.chunkId);
+
   const last = await prisma.caseDraft.findFirst({
     where: { caseId: c.id },
     orderBy: { version: "desc" },
@@ -63,16 +77,50 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
   const version = (last?.version ?? 0) + 1;
 
-  const draft = await prisma.caseDraft.create({
-    data: {
-      caseId: c.id,
-      version,
-      status: CaseDraftStatus.PENDING,
-      content: STARTER,
-      groundingChunkIds: [],
-      metadataJson: { createdVia: "drafting-tab-p0" } as Prisma.InputJsonValue,
-    },
+  const meta = (c.metadataJson ?? {}) as Record<string, unknown>;
+  const strat = meta["draftingStrategy"];
+  const stratHash =
+    strat !== undefined && strat !== null
+      ? createHash("sha256").update(JSON.stringify(strat)).digest("hex").slice(0, 16)
+      : null;
+
+  const draft = await prisma.$transaction(async (tx) => {
+    const d = await tx.caseDraft.create({
+      data: {
+        caseId: c.id,
+        version,
+        status: CaseDraftStatus.GENERATED,
+        content: out.content,
+        groundingChunkIds,
+        metadataJson: {
+          createdVia: "drafting-tab-p0",
+          provider: getChatProviderId(),
+          model: getPieceModelId(),
+          promptVersion: "case-draft-generate-v1",
+          generatedAt: new Date().toISOString(),
+          generatedById: user.id,
+          basedOnStrategyHash: stratHash,
+          foundationsUsed: out.foundationsUsed,
+          inlineNotes: out.inlineNotes,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await tx.caseTimelineEvent.create({
+      data: {
+        caseId: c.id,
+        kind: CaseTimelineKind.DRAFT_GENERATED,
+        message: `Minuta v${version} gerada (DeepSeek, guardas P0).`,
+        userId: user.id,
+        retrievalChunkIds: groundingChunkIds,
+        payloadJson: {
+          draftId: d.id,
+          foundationsUsed: out.foundationsUsed,
+        } as Prisma.InputJsonValue,
+      },
+    });
+    return d;
   });
 
-  return NextResponse.json({ draft }, { status: 201 });
+  return NextResponse.json({ draft, inlineNotes: out.inlineNotes, foundationsUsed: out.foundationsUsed }, { status: 201 });
 }

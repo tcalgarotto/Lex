@@ -1,5 +1,11 @@
 # Feature — Pesquisa jurídica assistida (modo temporário DeepSeek)
 
+## Atualização (2026-05-12) — fluxo principal do caso
+
+- `POST /api/legal-research/recommend-for-case` enriquece `caseBrain` a partir do snapshot do caso quando o cliente não envia texto.
+- `POST /api/legal-research/pin` persiste em `Case.metadataJson.caseBrain.pinnedFoundations` **e** espelha em `CaseLegalSource` com `chunkId` prefixado `lex-assisted-pin:` / `lex-assisted-juris:` para a aba Estratégia e Peças listar os mesmos fixados.
+- `DELETE /api/cases/[id]/legal-sources` remove o espelho assistido e o pin no Case Brain quando aplicável.
+
 ## Visão
 
 Modo provisório em que a **pesquisa jurídica** e a **recomendação para caso** podem ser atendidas por respostas **estruturadas em JSON** geradas via **DeepSeek API**, com rótulos de confiança conservadores e avisos explícitos ao usuário final.
@@ -14,7 +20,7 @@ Modo provisório em que a **pesquisa jurídica** e a **recomendação para caso*
 
 - Jurisprudência sugerida é **candidata** — pode não existir ou estar imprecisa.
 - Fundamentos sem citação clara ou sem URL de referência geram **avisos** automáticos.
-- Fixação no caso (`POST .../pin`) e marcação como conferido em fonte oficial (`POST .../mark-verified`) retornam **202** com shim até a Lane B/E persistir em modelo de dados adequado.
+- Fixação no caso (`POST .../pin`) persiste no Postgres (`Case.metadataJson` + `CaseLegalSource` para UX). Marcação humana (`POST .../mark-verified`) grava `USER_VERIFIED` ou `VERIFIED_BY_OFFICIAL_SOURCE` conforme URL oficial informada.
 - O modo **não substui** conferência humana nem base oficial (tribunal, diário da justiça, banco normativo).
 
 ## Copy ao usuário (PARTE 12 — PROMPT MASTER)
