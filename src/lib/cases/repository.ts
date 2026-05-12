@@ -294,40 +294,6 @@ export async function restoreCase(args: { workspaceId: string; caseId: string; u
   });
 }
 
-export async function archiveCase(args: { workspaceId: string; caseId: string; userId?: string }) {
-  await ensureCaseInWorkspace(args.workspaceId, args.caseId);
-  await prisma.case.update({
-    where: { id: args.caseId },
-    data: { archivedAt: new Date() },
-  });
-  await prisma.caseTimelineEvent.create({
-    data: {
-      caseId: args.caseId,
-      kind: CaseTimelineKind.NOTE,
-      message: "Caso arquivado.",
-      ...(args.userId ? { userId: args.userId } : {}),
-      payloadJson: { action: "case.archived" } as Prisma.InputJsonValue,
-    },
-  });
-}
-
-export async function restoreCase(args: { workspaceId: string; caseId: string; userId?: string }) {
-  await ensureCaseInWorkspace(args.workspaceId, args.caseId);
-  await prisma.case.update({
-    where: { id: args.caseId },
-    data: { archivedAt: null },
-  });
-  await prisma.caseTimelineEvent.create({
-    data: {
-      caseId: args.caseId,
-      kind: CaseTimelineKind.NOTE,
-      message: "Caso restaurado do arquivo.",
-      ...(args.userId ? { userId: args.userId } : {}),
-      payloadJson: { action: "case.restored" } as Prisma.InputJsonValue,
-    },
-  });
-}
-
 export async function setCaseStatus(workspaceId: string, caseId: string, status: CaseStatus, userId?: string) {
   await ensureCaseInWorkspace(workspaceId, caseId);
   await prisma.case.update({ where: { id: caseId }, data: { status } });

@@ -26,6 +26,7 @@ export function BibliotecaOfficeDocumentCard({
   thumbnailVersion,
   topBadge,
   showCaseRow = true,
+  lqipLoading = "lazy",
 }: {
   href: string;
   documentId: string;
@@ -39,6 +40,8 @@ export function BibliotecaOfficeDocumentCard({
   topBadge?: string;
   /** Quando falso, não mostra linha de caso (ex.: catálogo sem vínculo). */
   showCaseRow?: boolean;
+  /** Primeiros cards visíveis: `eager` para o LQIP do PDF começar logo. */
+  lqipLoading?: "eager" | "lazy";
 }) {
   const pdf = isPdfMime(mimeType, title);
   const fileKind = shortKind(mimeType, title);
@@ -70,6 +73,7 @@ export function BibliotecaOfficeDocumentCard({
             label={title}
             className="size-full"
             thumbnailVersion={thumbnailVersion}
+            lqipLoading={lqipLoading}
           />
         ) : (
           <div

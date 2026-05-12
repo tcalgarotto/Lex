@@ -124,7 +124,7 @@ export default async function BibliotecaPage() {
             </p>
           ) : (
             <BibliotecaShelfCarousel>
-              {sharedLegal.map((d) => (
+              {sharedLegal.map((d, i) => (
                 <BibliotecaOfficeDocumentCard
                   key={d.id}
                   href={workspaceDocumentHref(d)}
@@ -136,6 +136,7 @@ export default async function BibliotecaPage() {
                   thumbnailVersion={d.updatedAt.getTime()}
                   topBadge="Catálogo: leis e normas"
                   showCaseRow={false}
+                  lqipLoading={i < 8 ? "eager" : "lazy"}
                 />
               ))}
             </BibliotecaShelfCarousel>
@@ -157,7 +158,7 @@ export default async function BibliotecaPage() {
             </p>
           ) : (
             <BibliotecaShelfCarousel>
-              {sharedBooks.map((d) => (
+              {sharedBooks.map((d, i) => (
                 <BibliotecaOfficeDocumentCard
                   key={d.id}
                   href={workspaceDocumentHref(d)}
@@ -169,6 +170,7 @@ export default async function BibliotecaPage() {
                   thumbnailVersion={d.updatedAt.getTime()}
                   topBadge="Catálogo: livros"
                   showCaseRow={false}
+                  lqipLoading={i < 8 ? "eager" : "lazy"}
                 />
               ))}
             </BibliotecaShelfCarousel>
@@ -195,7 +197,7 @@ export default async function BibliotecaPage() {
             </p>
           ) : (
             <BibliotecaShelfCarousel>
-              {privateOffice.map((d) => (
+              {privateOffice.map((d, i) => (
                 <BibliotecaOfficeDocumentCard
                   key={d.id}
                   href={workspaceDocumentHref(d)}
@@ -207,6 +209,7 @@ export default async function BibliotecaPage() {
                   thumbnailVersion={d.updatedAt.getTime()}
                   topBadge="Privado"
                   showCaseRow
+                  lqipLoading={i < 8 ? "eager" : "lazy"}
                 />
               ))}
             </BibliotecaShelfCarousel>

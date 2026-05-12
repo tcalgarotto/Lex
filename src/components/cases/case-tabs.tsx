@@ -75,8 +75,6 @@ export type CaseTabKey =
 
 type TabKey = CaseTabKey;
 
-type TabKey = CaseTabKey;
-
 function readStrategy(metadataJson: unknown): CaseStrategyView | null {
  if (!metadataJson || typeof metadataJson !== "object") return null;
  const m = metadataJson as { strategy?: unknown };

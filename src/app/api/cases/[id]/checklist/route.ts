@@ -30,39 +30,6 @@ const PostBody = z.object({
   answers: z.record(z.unknown()),
 });
 
-async function resolveTemplate(workspaceId: string, templateId: string) {
-  // 1) templates estáticos (registry.ts)
-  const staticTpl = getChecklistTemplate(templateId);
-  if (staticTpl) return staticTpl;
-
-  // 2) templates do banco (F6)
-  const tpl = await prisma.interviewTemplate.findFirst({
-    where: { id: templateId, workspaceId },
-    select: { id: true, title: true, schemaJson: true, updatedAt: true },
-  });
-  if (!tpl) return null;
-
-  // Esperamos que `schemaJson` seja compatível com `ChecklistTemplate`.
-  // Se estiver malformado, retornamos null (sem quebrar a UX).
-  if (!tpl.schemaJson || typeof tpl.schemaJson !== "object") return null;
-  const schema = tpl.schemaJson as Record<string, unknown>;
-  if (!Array.isArray(schema["sections"])) return null;
-  if (!Array.isArray(schema["area"])) return null;
-  if (!Array.isArray(schema["triggers"])) return null;
-
-  const labelFromSchema = typeof schema["label"] === "string" ? (schema["label"] as string) : null;
-  const versionFromSchema = typeof schema["version"] === "number" ? (schema["version"] as number) : null;
-
-  const normalized: ChecklistTemplate = {
-    ...(tpl.schemaJson as ChecklistTemplate),
-    id: tpl.id,
-    label: labelFromSchema ?? tpl.title,
-    version: versionFromSchema ?? Math.max(1, Math.floor(tpl.updatedAt.getTime() / 1000)),
-  };
-
-  return normalized;
-}
-
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },

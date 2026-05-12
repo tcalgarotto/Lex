@@ -45,34 +45,6 @@ export async function GET(
   return NextResponse.json({ draft });
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string; draftId: string }> },
-) {
-  const { workspaceId, user } = await getWorkspaceContext();
-  const { id: caseId, draftId } = await params;
-
-  const limited = await enforceDraftingRateLimit({
-    req,
-    userId: user.id,
-    bucket: "draft-get",
-  });
-  if (limited) return limited;
-
-  const c = await prisma.case.findFirst({
-    where: { id: caseId, workspaceId },
-    select: { id: true },
-  });
-  if (!c) return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
-
-  const draft = await prisma.caseDraft.findFirst({
-    where: { id: draftId, caseId },
-  });
-  if (!draft) return NextResponse.json({ error: "Minuta não encontrada" }, { status: 404 });
-
-  return NextResponse.json({ draft });
-}
-
 const PatchSchema = z.object({
   content: z
     .string()

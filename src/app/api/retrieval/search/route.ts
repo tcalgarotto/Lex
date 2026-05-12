@@ -29,19 +29,6 @@ const LAYER_KEYS = [
 
 type LayerKey = (typeof LAYER_KEYS)[number];
 
-const log = getLogger("lex.api.retrieval.search");
-
-const LAYER_KEYS = [
-  "legislacao",
-  "escritorio",
-  "fundamentos",
-  "caso",
-  "pecas",
-  "jurisprudencia",
-] as const;
-
-type LayerKey = (typeof LAYER_KEYS)[number];
-
 export async function GET(req: Request) {
   const requestId = randomUUID();
   const url = new URL(req.url);

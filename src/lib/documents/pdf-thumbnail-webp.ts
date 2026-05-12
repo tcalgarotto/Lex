@@ -27,10 +27,14 @@ const PREVIEW_QUALITY = 55;
 
 /**
  * Redimensiona miniatura já gravada (WebP ou PNG) para pré-carregamento nos cards
- * (`?w=120`): payload pequeno; resposta sempre WebP.
+ * (`?w=` 40–240): payload pequeno; resposta sempre WebP.
  */
 export async function encodeThumbnailWebpLowRes(input: Buffer, maxWidth: number): Promise<Buffer> {
-  const w = Math.min(240, Math.max(48, Math.trunc(maxWidth)));
+  const w = Math.min(240, Math.max(40, Math.trunc(maxWidth)));
+  const ultraTiny = w <= 48;
+  const tiny = w <= 72;
+  const quality = ultraTiny ? 42 : tiny ? 50 : PREVIEW_QUALITY;
+  const effort = ultraTiny ? 1 : tiny ? 2 : 3;
   return sharp(input)
     .rotate()
     .resize({
@@ -39,6 +43,6 @@ export async function encodeThumbnailWebpLowRes(input: Buffer, maxWidth: number)
       fit: "inside",
     })
     .flatten({ background: { r: 255, g: 255, b: 255 } })
-    .webp({ quality: PREVIEW_QUALITY, effort: 3 })
+    .webp({ quality, effort })
     .toBuffer();
 }

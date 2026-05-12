@@ -219,87 +219,6 @@ function relevanceLabel(score: number): { label: string; hint: string } {
  return { label: "Baixa", hint: "Pode ajudar como apoio, mas não é o principal." };
 }
 
-const LAYER_OPTS: { id: string; label: string; needsCase?: boolean }[] = [
-  { id: "legislacao", label: "Legislação (corpus indexado)" },
-  { id: "escritorio", label: "Acervo do escritório" },
-  { id: "fundamentos", label: "Fundamentos salvos (texto)" },
-  { id: "caso", label: "Deste caso (fixados)", needsCase: true },
-  { id: "pecas", label: "Peças (títulos)" },
-  { id: "jurisprudencia", label: "Jurisprudência (em breve)" },
-];
-
-function defaultLayerSet(caseId: string | null): Set<string> {
-  const s = new Set(["legislacao", "escritorio", "fundamentos", "pecas"]);
-  if (caseId) s.add("caso");
-  return s;
-}
-
-function parseLayersFromUrl(raw: string | null, caseId: string | null): Set<string> {
-  const d = defaultLayerSet(caseId);
-  if (!raw?.trim()) return d;
-  const parts = raw.split(",").map((p) => p.trim().toLowerCase());
-  const next = new Set<string>();
-  for (const p of parts) {
-    if (LAYER_OPTS.some((o) => o.id === p)) {
-      if (p === "caso" && !caseId) continue;
-      next.add(p);
-    }
-  }
-  return next.size > 0 ? next : d;
-}
-
-function totalHits(d: SearchResponse): number {
-  return (
-    d.results.length +
-    (d.libraryMatches?.length ?? 0) +
-    (d.casePins?.length ?? 0) +
-    (d.pieceMatches?.length ?? 0)
-  );
-}
-
-function normKindLabel(r: SearchResult): string | null {
-  if (r.norm.urn.toLowerCase().includes("!adct")) return "ADCT";
-  const raw = (r.norm.kind ?? "").trim();
-  if (!raw) return null;
-  const k = raw.toLowerCase().replace(/_/g, "");
-  const byEnum: Record<string, string> = {
-    constitution: "Constituição",
-    constitutionalamendment: "Emenda constitucional",
-    ordinarylaw: "Lei",
-    complementarylaw: "Lei complementar",
-    delegatedlaw: "Lei delegada",
-    decreelaw: "Decreto-lei",
-    decree: "Decreto",
-    provisionalmeasure: "Medida provisória",
-    code: "Código",
-    resolution: "Resolução",
-    portaria: "Portaria",
-    normativeinstruction: "Instrução normativa",
-    circular: "Circular",
-    regiment: "Regimento interno",
-    sumulastf: "Súmula (STF)",
-    sumulastj: "Súmula (STJ)",
-    sumulavinculante: "Súmula vinculante",
-    repetitivetheme: "Tema repetitivo",
-    jurisprudencestf: "Jurisprudência (STF)",
-    jurisprudencestj: "Jurisprudência (STJ)",
-    jurisprudencetst: "Jurisprudência (TST)",
-    jurisprudenceother: "Jurisprudência",
-    other: "Norma",
-  };
-  if (byEnum[k]) return byEnum[k];
-  if (k.includes("jurisprudence")) return "Jurisprudência";
-  if (k.includes("sumula")) return "Súmula";
-  if (k.includes("constitution")) return "Constituição";
-  return null;
-}
-
-function relevanceLabel(score: number): { label: string; hint: string } {
-  if (score >= 0.86) return { label: "Alta", hint: "Muito relacionado ao que você buscou." };
-  if (score >= 0.72) return { label: "Média", hint: "Relacionado ao tema, com alguma distância." };
-  return { label: "Baixa", hint: "Pode ajudar como apoio, mas não é o principal." };
-}
-
 export function LegalSearchPanel({
  embeddedCaseId,
 }: {
@@ -743,26 +662,6 @@ function MetaLine({
  date ? `Data: ${new Date(date).toLocaleDateString("pt-BR")}` : null,
  ].filter(Boolean);
  return <p className="text-[11px] leading-snug text-muted-foreground">{parts.join(" · ")}</p>;
-}
-
-function MetaLine({
-  source,
-  origin,
-  reason,
-  date,
-}: {
-  source: string;
-  origin?: string;
-  reason?: string;
-  date?: string;
-}) {
-  const parts = [
-    `Fonte: ${source}`,
-    origin ? `Origem: ${origin}` : null,
-    reason ? `Motivo: ${reason}` : null,
-    date ? `Data: ${new Date(date).toLocaleDateString("pt-BR")}` : null,
-  ].filter(Boolean);
-  return <p className="text-[11px] leading-snug text-muted-foreground">{parts.join(" · ")}</p>;
 }
 
 function BasesBadges({ bases }: { bases: SearchBase[] }) {

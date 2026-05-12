@@ -28,43 +28,6 @@ type State =
  | { kind: "error"; message: string };
 
 function labelForType(type: string): string {
- const t = type.toLowerCase();
- if (t === "vetorial") return "Trecho de documento";
- if (t === "trecho") return "Trecho";
- if (t === "lei") return "Legislação";
- if (t === "jurisprudência" || t === "jurisprudencia") return "Jurisprudência";
- if (t === "peça" || t === "peca") return "Peça";
- if (t === "documento") return "Documento";
- if (t === "processo") return "Processo";
- if (t === "caso") return "Caso";
- return type;
-}
-
-function labelForScope(scope: Scope): string {
- switch (scope) {
- case "tudo":
- return "Tudo";
- case "casos":
- return "Casos";
- case "documentos":
- return "Documentos";
- case "peças":
- return "Peças";
- case "legislação":
- return "Legislação";
- default:
- return scope;
- }
-}
-
-/** Alinhado à pesquisa jurídica: evita % cru como “certeza” do sistema. */
-function buscaRelevanceTier(score: number): { label: string; hint: string } {
- if (score >= 0.86) return { label: "Alta", hint: "Muito relacionado ao que você buscou." };
- if (score >= 0.72) return { label: "Média", hint: "Relacionado ao tema, com alguma distância." };
- return { label: "Baixa", hint: "Pode ajudar como apoio, mas não é o principal." };
-}
-
-function labelForType(type: string): string {
   const t = type.toLowerCase();
   if (t === "vetorial") return "Trecho de documento";
   if (t === "trecho") return "Trecho";

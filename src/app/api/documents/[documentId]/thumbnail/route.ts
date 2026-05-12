@@ -45,7 +45,7 @@ async function loadAuthorizedDoc(documentId: string, workspaceId: string) {
 
 /**
  * Miniatura da primeira página do PDF (WebP quando disponível; fallback PNG legado).
- * Query opcional `w=48–240`: devolve WebP de baixa resolução (para LQIP progressivo na UI).
+ * Query opcional `w=40–240`: devolve WebP de baixa resolução (para LQIP progressivo na UI).
  * 1) Se existir no Storage, serve de imediato.
  * 2) Caso contrário, gera (Inngest/after ou sync em `ensurePdfThumbnailInStorage`) e devolve.
  */
@@ -60,7 +60,7 @@ export async function GET(
   if (wRaw != null && wRaw !== "") {
     const n = Math.trunc(parseInt(wRaw, 10) || 0);
     if (Number.isFinite(n) && n > 0) {
-      previewMaxWidth = Math.min(240, Math.max(48, n));
+      previewMaxWidth = Math.min(240, Math.max(40, n));
     }
   }
   const tAuth = performance.now();

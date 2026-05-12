@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
 
 type Phase = "progressive" | "error";
 
-/** Prévia rápida na variante `full` (API aceita 48–240). */
+/** Prévia rápida na variante `full` (API `w=` opcional 40–240). */
 const FULL_PREVIEW_MAX_W = 120;
 /**
- * Listagens: um só pedido com a maior largura que a API permite em `w=`
- * (nitidez nos cards sem segundo fetch ao storage).
+ * Lista: 1.º pedido no mínimo da API (`w=40`) para menos bytes e encode mais rápido;
+ * 2.º `w=240`. Não é “instantâneo” se o servidor ainda tiver de gerar a miniatura a partir do PDF.
  */
-const LIST_THUMB_MAX_W = 240;
+const LIST_LQIP_MAX_W = 40;
+const LIST_HQ_MAX_W = 240;
 
 function buildThumbSearchParams(thumbnailVersion?: number, previewWidth?: number): string {
   const p = new URLSearchParams();
@@ -28,8 +29,8 @@ function buildThumbSearchParams(thumbnailVersion?: number, previewWidth?: number
 
 /**
  * Miniatura PDF via rota API autenticada.
- * - `list` (default): um pedido com `w=240` (melhor qualidade possível num único encode).
- * - `full`: prévia `w=120` → ficheiro completo do storage, com crossfade.
+ * - `list`: `w=40` (1.º frame) → `w=240`; LQIP fica `opacity-0` até `onLoad` (spinner só até lá).
+ * - `full`: prévia `w=120` → ficheiro completo do storage; prévia invisível até `onLoad`.
  */
 export function DocumentPdfThumbnail({
   documentId,
@@ -37,6 +38,7 @@ export function DocumentPdfThumbnail({
   className,
   thumbnailVersion,
   variant = "list",
+  lqipLoading = "lazy",
 }: {
   documentId: string;
   label: string;
@@ -44,15 +46,22 @@ export function DocumentPdfThumbnail({
   /** Query `v=` na rota de miniatura para bust de cache após alteração do documento. */
   thumbnailVersion?: number;
   variant?: "list" | "full";
+  /**
+   * Só na variante `list`: `eager` pede o LQIP de imediato (útil nos primeiros cards visíveis).
+   * `lazy` evita centenas de pedidos paralelos em listas longas.
+   */
+  lqipLoading?: "eager" | "lazy";
 }) {
   const [phase, setPhase] = useState<Phase>("progressive");
-  const [listReady, setListReady] = useState(false);
+  const [listLqipPainted, setListLqipPainted] = useState(false);
+  const [listHqPainted, setListHqPainted] = useState(false);
+  const [listHqFailed, setListHqFailed] = useState(false);
   const [previewPainted, setPreviewPainted] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [fullReady, setFullReady] = useState(false);
   const [loadFull, setLoadFull] = useState(false);
 
-  const { previewQuery, fullQuery, listSingleQuery } = useMemo(() => {
+  const { previewQuery, fullQuery, listLqipQuery, listHqQuery } = useMemo(() => {
     const baseV =
       typeof thumbnailVersion === "number" && Number.isFinite(thumbnailVersion)
         ? thumbnailVersion
@@ -60,7 +69,8 @@ export function DocumentPdfThumbnail({
     return {
       previewQuery: buildThumbSearchParams(baseV, FULL_PREVIEW_MAX_W),
       fullQuery: buildThumbSearchParams(baseV),
-      listSingleQuery: buildThumbSearchParams(baseV, LIST_THUMB_MAX_W),
+      listLqipQuery: buildThumbSearchParams(baseV, LIST_LQIP_MAX_W),
+      listHqQuery: buildThumbSearchParams(baseV, LIST_HQ_MAX_W),
     };
   }, [thumbnailVersion]);
 
@@ -95,13 +105,15 @@ export function DocumentPdfThumbnail({
   }
 
   if (variant === "list") {
+    const showListSpinner = !listLqipPainted;
+
     return (
       <div
         className={cn("relative size-full overflow-hidden bg-[color:var(--surface-overlay-strong)]", className)}
         role="img"
         aria-label={label ? `Pré-visualização de ${label}` : "Primeira página do PDF"}
       >
-        {!listReady ? (
+        {showListSpinner ? (
           <div
             className="absolute inset-0 z-10 flex items-center justify-center bg-[color:var(--surface-overlay-strong)]"
             aria-hidden
@@ -110,17 +122,39 @@ export function DocumentPdfThumbnail({
           </div>
         ) : null}
 
+        {/* LQIP (`w=` baixo): invisível até `onLoad` — o spinner some quando a 1.ª miniatura está pronta. */}
         {/* eslint-disable-next-line @next/next/no-img-element -- rota API autenticada */}
         <img
-          src={`/api/documents/${documentId}/thumbnail${listSingleQuery}`}
+          src={`/api/documents/${documentId}/thumbnail${listLqipQuery}`}
           alt=""
-          className="absolute inset-0 size-full object-cover object-top opacity-100"
-          loading="lazy"
+          className={cn(
+            "absolute inset-0 z-0 size-full object-cover object-top transition-opacity duration-200 ease-out",
+            !listLqipPainted && "opacity-0",
+            listLqipPainted && (!listHqPainted || listHqFailed) && "opacity-100",
+            listLqipPainted && listHqPainted && !listHqFailed && "pointer-events-none opacity-0",
+          )}
+          loading={lqipLoading}
           decoding="async"
-          fetchPriority="low"
-          onLoad={() => setListReady(true)}
+          onLoad={() => setListLqipPainted(true)}
           onError={() => setPhase("error")}
         />
+
+        {listLqipPainted && !listHqFailed ? (
+          // eslint-disable-next-line @next/next/no-img-element -- rota API autenticada
+          <img
+            src={`/api/documents/${documentId}/thumbnail${listHqQuery}`}
+            alt=""
+            className={cn(
+              "absolute inset-0 z-[1] size-full object-cover object-top transition-opacity duration-300 ease-out",
+              listHqPainted ? "opacity-100" : "opacity-0",
+            )}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            onLoad={() => setListHqPainted(true)}
+            onError={() => setListHqFailed(true)}
+          />
+        ) : null}
       </div>
     );
   }
@@ -150,7 +184,7 @@ export function DocumentPdfThumbnail({
           aria-hidden
           className={cn(
             "absolute inset-0 z-0 size-full object-cover object-top transition-opacity duration-500 ease-out",
-            fullReady ? "pointer-events-none opacity-0" : "opacity-100",
+            previewPainted ? (fullReady ? "pointer-events-none opacity-0" : "opacity-100") : "opacity-0",
           )}
           loading="lazy"
           decoding="async"

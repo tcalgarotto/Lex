@@ -61,11 +61,6 @@ function legalHitsFromDeepSeek(
     });
 }
 
-function withRequestId(res: NextResponse, requestId: string): NextResponse {
-  res.headers.set("x-request-id", requestId);
-  return res;
-}
-
 export async function GET(req: Request) {
   const requestId = randomUUID();
   const { searchParams } = new URL(req.url);

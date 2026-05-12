@@ -132,7 +132,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
           </EmptyState>
         ) : (
           <ul className="flex flex-col gap-5">
-            {documents.map((d) => {
+            {documents.map((d, i) => {
               const status = deriveDocumentDisplayStatus(d);
               const updated = formatDistanceToNow(d.updatedAt, { addSuffix: true, locale: ptBR });
               const pdf = isPdfMime(d.mimeType, d.originalName);
@@ -148,6 +148,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
                               label={d.originalName}
                               className="size-full"
                               thumbnailVersion={d.updatedAt.getTime()}
+                              lqipLoading={i < 6 ? "eager" : "lazy"}
                             />
                           </div>
                         </div>
