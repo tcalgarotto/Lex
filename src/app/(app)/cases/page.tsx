@@ -12,7 +12,6 @@ import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 import { CaseCardActions } from "@/components/cases/case-card-actions";
 
-export const dynamic = "force-dynamic";
 
 export default async function CasesListPage({
  searchParams,

@@ -21,7 +21,6 @@ import { CaseLegacyQueryRedirect } from "@/components/cases/case-legacy-query-re
 import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext, getWorkspacesForUser } from "@/lib/auth/session";
 
-export const dynamic = "force-dynamic";
 
 function readReadiness(metadataJson: unknown): ProceduralReadiness | null {
  if (!metadataJson || typeof metadataJson !== "object") return null;

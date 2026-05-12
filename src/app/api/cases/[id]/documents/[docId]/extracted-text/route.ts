@@ -10,7 +10,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,

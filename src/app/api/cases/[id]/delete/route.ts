@@ -6,7 +6,6 @@ import { removeDocumentBuffer, removeDocumentThumbnails } from "@/lib/storage";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
 
-export const dynamic = "force-dynamic";
 
 const log = getLogger("lex.api.cases.delete");
 

@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button";
 import { SentinelJourneysPanel } from "@/components/test-guide/sentinel-journeys-panel";
 import { INTERNAL_SEARCH_SCOPE_REMINDER } from "@/lib/ui/product-terminology";
 
-export const dynamic = "force-dynamic";
 
 const STEPS = [
  {

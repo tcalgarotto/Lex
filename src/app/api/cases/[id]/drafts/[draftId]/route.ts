@@ -16,7 +16,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { enforceDraftingRateLimit } from "@/lib/cases/drafting/drafting-route-common";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(
   req: Request,

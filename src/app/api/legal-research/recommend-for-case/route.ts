@@ -21,7 +21,6 @@ import {
 import { legalResearchRecommendBodySchema } from "@/lib/legal-research/request-body";
 import type { LegalResearchRequest, LegalResearchResponse } from "@/lib/legal-research/types";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   let workspaceId = "";

@@ -5,7 +5,6 @@ import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   scope: z.enum(["USER", "WORKSPACE"]).optional(),

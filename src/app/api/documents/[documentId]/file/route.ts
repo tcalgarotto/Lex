@@ -8,7 +8,6 @@ import { getLogger } from "@/lib/logger";
 
 const log = getLogger("lex.api.documents.file");
 
-export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**

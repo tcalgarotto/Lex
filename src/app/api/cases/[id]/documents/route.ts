@@ -19,7 +19,6 @@ import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const log = getLogger("lex.api.cases.documents");
 

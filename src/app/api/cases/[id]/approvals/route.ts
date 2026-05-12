@@ -8,7 +8,6 @@ import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { listApprovals, requestApproval } from "@/lib/cases/collaboration";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   draftId: z.string().min(1),

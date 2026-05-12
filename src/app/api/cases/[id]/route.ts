@@ -8,7 +8,6 @@ import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { getCaseById } from "@/lib/cases/repository";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { workspaceId } = await getWorkspaceContext();

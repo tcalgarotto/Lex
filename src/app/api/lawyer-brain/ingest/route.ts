@@ -7,7 +7,6 @@ import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { ingestWinningPiece } from "@/lib/lawyer-brain/ingest";
 
-export const dynamic = "force-dynamic";
 
 const Body = z.object({
   title: z.string().min(3).max(200),

@@ -15,7 +15,6 @@ import {
   type DocumentDisplayKind,
 } from "@/lib/documents/status-display";
 
-export const dynamic = "force-dynamic";
 
 function shelfLabel(shelf: DocumentLibraryShelf, scope: "workspace" | "lex-platform"): string {
   if (scope === "lex-platform") {

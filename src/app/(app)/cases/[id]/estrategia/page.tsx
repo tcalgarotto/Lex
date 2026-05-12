@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
  * Ver: docs/UX_FLOW_AUDIT.md
  */
 
-export const dynamic = "force-dynamic";
 
 function EstrategiaFallback() {
  return (

@@ -8,7 +8,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { WINNING_SAMPLE_KIND } from "@/lib/lawyer-brain/ingest";
 
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   const { workspaceId, user } = await getWorkspaceContext();

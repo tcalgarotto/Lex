@@ -11,7 +11,6 @@ import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { reconcileCaseBrainFromWorkspaceCase } from "@/lib/cases/reconcile-case-brain";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,

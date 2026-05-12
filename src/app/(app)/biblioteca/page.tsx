@@ -9,7 +9,6 @@ import { BibliotecaShelfCarousel, BibliotecaShelfSection } from "@/components/bi
 import { BibliotecaOfficeDocumentCard } from "@/components/biblioteca/biblioteca-office-document-card";
 import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 
-export const dynamic = "force-dynamic";
 
 const docSelect = {
   id: true,

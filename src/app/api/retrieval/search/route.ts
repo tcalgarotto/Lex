@@ -15,7 +15,6 @@ import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/lex-rag-backend";
  * Camada legislação via pesquisa assistida (DeepSeek); demais camadas em
  * Postgres. Para trilha técnica/admin, use `/api/retrieval/explain`.
  */
-export const dynamic = "force-dynamic";
 
 const log = getLogger("lex.api.retrieval.search");
 

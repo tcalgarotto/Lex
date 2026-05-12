@@ -10,7 +10,6 @@ import { loadCaseForWorkspace } from "../_load-case";
  * Ver: docs/UX_FLOW_AUDIT.md
  */
 
-export const dynamic = "force-dynamic";
 
 export default async function CaseInterviewPage({ params }: { params: Promise<{ id: string }> }) {
  const { id } = await params;

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { archiveCase, restoreCase } from "@/lib/cases/repository";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { workspaceId, user } = await getWorkspaceContext();

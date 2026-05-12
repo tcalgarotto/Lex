@@ -18,7 +18,6 @@ import { DocumentRowActions } from "@/components/documents/document-row-actions"
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
 import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 
-export const dynamic = "force-dynamic";
 
 interface DocumentosPageProps {
   searchParams: Promise<{

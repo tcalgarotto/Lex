@@ -10,7 +10,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { markPinnedFoundationVerified } from "@/lib/cases/case-brain/pinned-foundations";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,

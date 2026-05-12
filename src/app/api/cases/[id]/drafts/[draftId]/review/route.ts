@@ -13,7 +13,6 @@ import { persistReview } from "@/lib/cases/repository";
 import { reviewDraft } from "@/lib/cases/review/review-draft";
 import { enforceDraftingRateLimit } from "@/lib/cases/drafting/drafting-route-common";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(
   req: Request,

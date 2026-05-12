@@ -13,7 +13,6 @@ import { inngest } from "@/lib/inngest/client";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,

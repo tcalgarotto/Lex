@@ -25,7 +25,6 @@ import { inngest } from "@/lib/inngest/client";
 import type { ChecklistTemplate } from "@/lib/cases/checklists/registry";
 import { reconcileCaseBrainFromWorkspaceCase } from "@/lib/cases/reconcile-case-brain";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   templateId: z.string().min(2).max(120),

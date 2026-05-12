@@ -6,7 +6,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
 
 /**
  * Listagem de peças (LegalPiece) do workspace. As peças são geradas pelo

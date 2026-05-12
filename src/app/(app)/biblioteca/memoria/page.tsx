@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { officeMemoryReadableWhere } from "@/lib/office-memory/visibility";
 import { OfficeMemoryPanel, type OfficeMemoryRow } from "@/components/biblioteca/office-memory-panel";
 
-export const dynamic = "force-dynamic";
 
 export default async function BibliotecaMemoriaPage() {
  const { workspaceId, user } = await getWorkspaceContext();

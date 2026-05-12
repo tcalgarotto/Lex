@@ -17,7 +17,6 @@ const log = getLogger("lex.api.documents.thumbnail");
 
 const THUMB_CACHE_CONTROL = "private, max-age=604800, stale-while-revalidate=86400";
 
-export const dynamic = "force-dynamic";
 /** `unpdf` + `@napi-rs/canvas` + `sharp` não são suportados no Edge. */
 export const runtime = "nodejs";
 

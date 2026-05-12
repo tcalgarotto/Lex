@@ -13,7 +13,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const { workspaceId, user } = await getWorkspaceContext();

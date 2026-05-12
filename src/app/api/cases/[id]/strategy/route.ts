@@ -24,7 +24,6 @@ import { synthesizeStrategy } from "@/lib/legal/reasoning/strategy";
 import { retrieveLegalContext } from "@/lib/retrieval/legal";
 import { listPinnedJurisprudenceCandidates } from "@/lib/cases/drafting/case-brain-shim";
 
-export const dynamic = "force-dynamic";
 
 /**
  * GET /api/cases/[id]/strategy

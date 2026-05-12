@@ -17,7 +17,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getAdapter } from "@/lib/integrations/registry";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   provider: z.nativeEnum(IntegrationProvider),
