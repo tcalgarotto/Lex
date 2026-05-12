@@ -6,7 +6,6 @@ import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { markAsRead } from "@/lib/notifications/repository";
 
-export const dynamic = "force-dynamic";
 
 export async function PATCH(
   _req: Request,

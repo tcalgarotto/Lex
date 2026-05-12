@@ -15,7 +15,6 @@ import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { touchCaseBrainFingerprintAfterMutation } from "@/lib/cases/case-brain/fingerprint";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
-export const dynamic = "force-dynamic";
 
 function asObject(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" ? (v as Record<string, unknown>) : {};

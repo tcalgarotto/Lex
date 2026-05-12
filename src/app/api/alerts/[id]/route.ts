@@ -9,7 +9,6 @@ import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { ackAlert, dismissAlert, resolveAlert } from "@/lib/alerts/repository";
 
-export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
   action: z.enum(["ack", "dismiss", "resolve"]),

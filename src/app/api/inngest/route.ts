@@ -31,6 +31,7 @@ import { corpusIngestNorm } from "@/lib/inngest/functions/corpus-ingest-norm";
 import { ingestConstitution } from "@/lib/inngest/functions/ingest-constitution";
 import { consolidateCaseBrainFn } from "@/lib/inngest/functions/consolidate-case-brain";
 import { checkDocumentConsistencyFn } from "@/lib/inngest/functions/check-document-consistency";
+import { generateDocumentThumbnailFn } from "@/lib/inngest/functions/generate-document-thumbnail";
 import { getLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -50,6 +51,7 @@ const handlers = serve({
     ingestConstitution,
     consolidateCaseBrainFn,
     checkDocumentConsistencyFn,
+    generateDocumentThumbnailFn,
   ],
 });
 

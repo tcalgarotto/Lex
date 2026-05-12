@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { CaseTimelineKind } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { removeDocumentBuffer } from "@/lib/storage";
+import { removeDocumentBuffer, removeDocumentThumbnails } from "@/lib/storage";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
 
-export const dynamic = "force-dynamic";
 
 const log = getLogger("lex.api.cases.delete");
 
@@ -55,6 +54,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
     try {
       await removeDocumentBuffer(d.storagePath);
+      await removeDocumentThumbnails(d.workspaceId, d.id);
     } catch (err) {
       log.warn("storage remove failed (non-fatal)", {
         workspaceId,

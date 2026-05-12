@@ -11,11 +11,13 @@
 export const LIBRARY_BADGE_OPT_IN_SEARCH = "Incluir na busca assistida";
 
 /** Texto curto para lembrar limite do acervo em superfícies de produto (sem jargão interno). */
-export const RAG_SCOPE_REMINDER =
+export const INTERNAL_SEARCH_SCOPE_REMINDER =
   "As respostas usam apenas trechos do acervo indexado; se o tema não estiver coberto, o sistema deve sinalizar lacuna — sem inventar fundamento.";
 
+/** @deprecated use INTERNAL_SEARCH_SCOPE_REMINDER */
+export const RAG_SCOPE_REMINDER = INTERNAL_SEARCH_SCOPE_REMINDER;
+
 export const PRODUCT_TERMINOLOGY = {
-  "RAG indisponível": "Pesquisa interna em otimização",
   "Chunk recuperado": "Trecho encontrado",
   Embedding: "Índice de busca",
   embedding: "Índice de busca",
@@ -29,13 +31,11 @@ export const PRODUCT_TERMINOLOGY = {
   VERIFIED_BY_OFFICIAL_SOURCE: "Verificado (fonte oficial)",
   Pin: "Fixar no caso",
   "ApprovedLegalFoundation": "Fundamento aprovado",
-  Qdrant: "Base de busca do escritório",
-  qdrant: "Base de busca do escritório",
+  Qdrant: "Base de busca do workspace",
+  qdrant: "Base de busca do workspace",
   rerank: "Reordenação de relevância",
   vector: "Representação semântica",
   pipeline: "Fluxo de processamento",
-  RAG: "Pesquisa interna no acervo",
-  rag: "Pesquisa interna no acervo",
   chunk: "Trecho",
   Chunk: "Trecho",
 } as const;
@@ -55,10 +55,10 @@ export const USER_FACING_MESSAGES = {
   JURISPRUDENCE_CONFIRM: "Jurisprudência candidata. Confirme a fonte antes de citar.",
   FOUNDATION_REQUIRES_PIN:
     "Este fundamento será usado na estratégia e na peça apenas se você fixar ou aprovar.",
-  RAG_TEMPORARY_NOTICE:
+  INTERNAL_SEARCH_TEMPORARY_NOTICE:
     "O acervo interno está em otimização; esta busca usa assistência de IA externa temporariamente.",
   DEEPSEEK_TRANSPARENCY_TOP:
-    "Pesquisa assistida por IA via DeepSeek. Resultados devem ser revisados pelo advogado. A pesquisa interna no acervo será reativada após otimização e validação.",
+    "Pesquisa assistida por IA via DeepSeek. Resultados são sugestões — revise e confirme fontes antes de protocolar.",
   GLOBAL_RESEARCH_EMPTY:
     "Nenhum resultado ainda. Ajuste os filtros ou refine a pergunta para encontrar fundamentos aplicáveis.",
 } as const;

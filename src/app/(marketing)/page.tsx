@@ -1,298 +1,483 @@
-"use client";
-
 import Link from "next/link";
-import { ArrowRight, Brain, Check, Layers, Scale, Shield, Sparkles, Zap } from "lucide-react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+ ArrowRight,
+ Check,
+ FileText,
+ Layers,
+ Scale,
+ Search,
+ Shield,
+ Sparkles,
+ Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LexThemeToggle } from "@/components/ui/theme-toggle";
 
-const tribunals = ["STF", "STJ", "TST", "TSE", "STM", "TJSP", "TJRJ", "TJMG", "TRF", "TRT"];
+const NAV = [
+ { href: "#funcionalidades", label: "Funcionalidades" },
+ { href: "#precos", label: "Preços" },
+ { href: "#sobre", label: "Sobre" },
+] as const;
+
+const FEATURES = [
+ {
+ icon: FileText,
+ title: "Análise de documentos com IA",
+ desc: "Extração estruturada, inconsistências sinalizadas e rastreabilidade por caso e workspace.",
+ },
+ {
+ icon: Sparkles,
+ title: "Geração de peças no seu estilo",
+ desc: "Perfil de escrita e memória processual orientam minutas coerentes com o que você já protocolou.",
+ },
+ {
+ icon: Search,
+ title: "Pesquisa jurídica multicamada",
+ desc: "Legislação, jurisprudência e autos do caso em camadas separadas, com citações verificáveis.",
+ },
+ {
+ icon: Layers,
+ title: "Progresso inteligente do caso",
+ desc: "Fases e próximos passos visíveis para o time avançar sem perder o fio da meada.",
+ },
+ {
+ icon: Users,
+ title: "Colaboração da equipe",
+ desc: "Comentários internos, timeline auditável e workspaces preparados para escalar o escritório.",
+ },
+ {
+ icon: Shield,
+ title: "Segurança e privacidade",
+ desc: "Isolamento por workspace, opt-in de memória e governança pensada para dado sensível de clientes.",
+ },
+] as const;
+
+const TESTIMONIALS = [
+ {
+ initials: "MV",
+ name: "Dra. Mariana Vieira",
+ oab: "OAB/SP 412.883",
+ quote:
+ "O fluxo lembra produto de engenharia séria: cada tela tem intenção. A pesquisa com camadas separadas reduziu retrabalho na equipe.",
+ },
+ {
+ initials: "RA",
+ name: "Dr. Ricardo Almeida",
+ oab: "OAB/MG 128.440",
+ quote:
+ "Saímos do ‘colar PDF no chat’. O Lex força contexto do caso e deixa claro quando falta fundamento — isso é maturidade de produto.",
+ },
+ {
+ initials: "HM",
+ name: "Dra. Helena Monteiro",
+ oab: "OAB/RJ 201.902",
+ quote:
+ "A visão de progresso e os próximos passos viraram ritual de abertura de reunião. Menos improviso, mais previsibilidade.",
+ },
+] as const;
+
+const PLANS = [
+ {
+ name: "Starter",
+ price: "R$ 0",
+ period: "para experimentar",
+ desc: "Até 3 usuários, 1 workspace, limites de ingestão educacionais.",
+ features: ["Casos e documentos", "Pesquisa jurídica básica", "Suporte por e-mail"],
+ cta: "Começar grátis",
+ href: "/register",
+ highlight: false,
+ primary: false,
+ },
+ {
+ name: "Pro",
+ price: "Sob consulta",
+ period: "escritórios em crescimento",
+ desc: "Memória de escritório, pesquisa assistida por IA, peças e revisão com governança.",
+ features: [
+ "Workspaces ilimitados",
+ "Ingestão prioritária",
+ "Estratégia e peças com IA",
+ "Suporte prioritário",
+ ],
+ cta: "Falar com vendas",
+ href: "/pricing",
+ highlight: true,
+ primary: true,
+ },
+ {
+ name: "Enterprise",
+ price: "Custom",
+ period: "grandes operações",
+ desc: "SSO, SLA dedicado, retenção e conformidade sob medida do seu escritório.",
+ features: ["Implantação assistida", "Treinamento do time", "Roadmap conjunto", "Ambiente dedicado"],
+ cta: "Agendar conversa",
+ href: "/pricing",
+ highlight: false,
+ primary: false,
+ },
+] as const;
 
 export default function MarketingHomePage() {
-  return (
-    <div className="relative min-h-screen overflow-hidden bg-zinc-950 text-zinc-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(139,92,246,0.22),transparent),radial-gradient(ellipse_60%_40%_at_100%_0%,rgba(59,130,246,0.12),transparent)]" />
-      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-8">
-        <span className="text-lg font-semibold tracking-tight">Lex</span>
-        <nav className="hidden gap-6 text-sm text-zinc-400 md:flex">
-          <a href="#pilares" className="hover:text-zinc-200">
-            Pilares
-          </a>
-          <a href="#comparativo" className="hover:text-zinc-200">
-            Comparativo
-          </a>
-          <a href="#depoimentos" className="hover:text-zinc-200">
-            Depoimentos
-          </a>
-          <Link href="/pricing" className="hover:text-zinc-200">
-            Preços
-          </Link>
-        </nav>
-        <div className="flex gap-3">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">
-              Entrar
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button size="sm">Começar</Button>
-          </Link>
-        </div>
-      </header>
+ return (
+ <div className="relative min-h-screen overflow-x-hidden lex-hero-gradient">
+ <header className="sticky top-0 z-50 border-b border-[color:var(--glass-border)]">
+ <div className="lex-glass-strong mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6">
+ <Link
+ href="/"
+ className="flex items-center gap-2.5 font-semibold tracking-tight text-[color:var(--text-primary)] lex-transition hover:opacity-90"
+ aria-label="Lex — início"
+ >
+ <span
+ className="flex size-8 items-center justify-center rounded-md text-sm font-semibold text-[color:var(--text-inverse)]"
+ style={{
+ background: "var(--brand-primary)",
+ boxShadow: "var(--shadow-violet)",
+ }}
+ >
+ L
+ </span>
+ <span className="hidden sm:inline">Lex</span>
+ </Link>
+ <nav className="hidden items-center gap-6 md:flex" aria-label="Principal">
+ {NAV.map((item) => (
+ <a
+ key={item.href}
+ href={item.href}
+ className="text-[13px] font-medium text-[color:var(--text-secondary)] lex-transition hover:text-[color:var(--text-primary)]"
+ >
+ {item.label}
+ </a>
+ ))}
+ </nav>
+ <div className="flex items-center gap-2 md:gap-3">
+ <LexThemeToggle className="inline-flex shrink-0" />
+ <Link href="/login">
+ <Button
+ variant="ghost"
+ size="sm"
+ className="text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-primary)]"
+ >
+ Entrar
+ </Button>
+ </Link>
+ <Link href="/register">
+ <Button
+ size="sm"
+ className="rounded-md border border-[color:var(--brand-border)] text-[color:var(--text-inverse)] lex-transition hover:opacity-95"
+ style={{
+ background: "var(--brand-primary)",
+ boxShadow: "var(--shadow-violet)",
+ }}
+ >
+ Começar grátis
+ </Button>
+ </Link>
+ </div>
+ </div>
+ </header>
 
-      <main>
-        <section className="relative z-10 mx-auto flex max-w-6xl flex-col gap-16 px-6 pb-20 pt-8 md:flex-row md:items-center md:gap-12">
-          <div className="flex-1 space-y-8">
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300 backdrop-blur"
-            >
-              <Sparkles className="size-3 text-violet-400" />
-              A referência em copiloto jurídico no Brasil — arquitetura séria, UX de produto premium
-            </motion.p>
-            <motion.h1
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="text-4xl font-semibold tracking-tight md:text-5xl md:leading-tight"
-            >
-              O copiloto que{" "}
-              <span className="bg-gradient-to-r from-violet-400 to-blue-400 bg-clip-text text-transparent">
-                aprende seu estilo
-              </span>
-              , fundamenta com fontes e lembra cada processo.
-            </motion.h1>
-            <p className="max-w-xl text-lg leading-relaxed text-zinc-400">
-              RAG multicamada (legislação, jurisprudência, seus autos, peças e memória processual),
-              retrieval híbrido com reranking, editor TipTap com IA inline e infra pronta para
-              multi-workspace — sem atalhos de MVP.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/register">
-                <Button size="lg" className="gap-2 shadow-lg shadow-violet-500/20">
-                  Garantir minha vaga <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-              <Link href="/pricing">
-                <Button size="lg" variant="outline" className="border-white/15 bg-white/5">
-                  Ver planos
-                </Button>
-              </Link>
-            </div>
-            <p className="text-xs text-zinc-500">Compatível com o stack que você já usa: Supabase, Vercel, Qdrant, Inngest.</p>
-          </div>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15 }}
-            className="flex-1 rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-6 shadow-2xl shadow-violet-500/10 backdrop-blur-xl"
-          >
-            <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Fluxo ao vivo</p>
-            <div className="mt-4 space-y-3 font-mono text-sm">
-              <div className="rounded-lg border border-white/5 bg-black/30 p-3 text-violet-300/90">
-                ▸ Query expansion · embeddings BGE-M3 · Qdrant filtrado por workspace
-              </div>
-              <div className="rounded-lg border border-white/5 bg-black/20 p-3 text-zinc-300">
-                ▸ BM25 + vetorial + RRF · rerank BGE · citações [fonte:N]
-              </div>
-              <div className="rounded-lg border border-white/5 bg-black/20 p-3 text-zinc-400">
-                ▸ Memória longitudinal + perfil de escrita injetados no prompt
-              </div>
-            </div>
-          </motion.div>
-        </section>
+ <main>
+ <section className="mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-12 md:grid-cols-2 md:items-center md:gap-16 md:px-6 md:pt-16">
+ <div className="space-y-6">
+ <p
+ className="inline-flex w-fit items-center gap-2 rounded-full border border-[color:var(--brand-border)] px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-[color:var(--brand-text)]"
+ style={{ background: "var(--brand-subtle)" }}
+ >
+ Copiloto jurídico com IA
+ </p>
+ <h1 className="font-serif text-[2.5rem] font-normal leading-[1.08] tracking-tight text-[color:var(--text-primary)] md:text-[52px]">
+ Advocacia com{" "}
+ <em className="text-[color:var(--brand-text)]" style={{ fontStyle: "italic" }}>
+ inteligência
+ </em>{" "}
+ operacional
+ </h1>
+ <p className="max-w-lg text-base leading-relaxed text-[color:var(--text-secondary)]">
+ Memória persistente, pesquisa jurídica assistida por IA e geração de peças alinhadas ao seu estilo — com
+ interface pensada para jornadas longas e leitura confortável.
+ </p>
+ <div className="flex flex-wrap gap-3">
+ <Link href="/register">
+ <Button
+ size="lg"
+ className="gap-2 rounded-md border border-[color:var(--brand-border)] text-[color:var(--text-inverse)] lex-transition hover:opacity-95"
+ style={{
+ background: "var(--brand-primary)",
+ boxShadow: "var(--shadow-violet)",
+ }}
+ >
+ Começar grátis <ArrowRight className="size-4" aria-hidden />
+ </Button>
+ </Link>
+ <Link href="/pricing">
+ <Button
+ size="lg"
+ variant="outline"
+ className="rounded-md border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--glass-bg)] text-[color:var(--text-primary)] backdrop-blur-xl lex-transition hover:bg-[color:var(--surface-overlay-strong)]"
+ >
+ Ver preços
+ </Button>
+ </Link>
+ </div>
+ </div>
+ <div
+ className="lex-glass relative overflow-hidden rounded-2xl p-6 md:p-8"
+ style={{ boxShadow: "var(--shadow-lg), var(--glass-shadow)" }}
+ aria-label="Prévia do painel"
+ >
+ <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,var(--brand-subtle),transparent_55%)]" />
+ <div className="relative space-y-3 font-mono text-[13px]">
+ <p className="text-[10px] font-medium uppercase tracking-widest text-[color:var(--text-muted)]">
+ Painel
+ </p>
+ <div
+ className="rounded-lg border-[0.5px] border-[color:var(--border-default)] p-3 text-[color:var(--text-secondary)]"
+ style={{ background: "var(--surface-elevated)" }}
+ >
+ ▸ Casos · progresso por fases · próximo passo sugerido
+ </div>
+ <div
+ className="rounded-lg border-[0.5px] border-[color:var(--border-subtle)] p-3 text-[color:var(--text-secondary)]"
+ style={{ background: "var(--surface-card)" }}
+ >
+ ▸ Pesquisa · legislação + jurisprudência + autos do caso
+ </div>
+ <div
+ className="rounded-lg border-[0.5px] border-[color:var(--border-subtle)] p-3 text-[color:var(--text-muted)]"
+ style={{ background: "var(--surface-card)" }}
+ >
+ ▸ Peças · revisão assistida · exportação profissional
+ </div>
+ </div>
+ </div>
+ </section>
 
-        <section className="relative z-10 border-y border-white/5 bg-white/[0.02] py-12">
-          <p className="mx-auto mb-6 max-w-6xl px-6 text-center text-xs font-medium uppercase tracking-widest text-zinc-500">
-            Estruturado para o ecossistema jurídico brasileiro
-          </p>
-          <div className="mx-auto flex max-w-6xl flex-wrap justify-center gap-4 px-6">
-            {tribunals.map((t) => (
-              <span
-                key={t}
-                className="rounded-lg border border-white/10 bg-zinc-900/50 px-4 py-2 text-sm font-medium text-zinc-400"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        </section>
+ <section
+ id="funcionalidades"
+ className="mx-auto max-w-6xl scroll-mt-24 px-4 py-20 md:px-6"
+ aria-labelledby="features-heading"
+ >
+ <h2
+ id="features-heading"
+ className="text-center text-2xl font-medium tracking-tight text-[color:var(--text-primary)] md:text-[26px]"
+ >
+ Funcionalidades que sustentam o trabalho do advogado
+ </h2>
+ <p className="mx-auto mt-3 max-w-2xl text-center text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ Cada módulo foi desenhado para reduzir atrito entre coleta, inteligência e produção documental.
+ </p>
+ <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+ {FEATURES.map(({ icon: Icon, title, desc }) => (
+ <article
+ key={title}
+ className="lex-glass lex-transition flex flex-col rounded-xl p-5 hover:border-[color:var(--border-strong)]"
+ >
+ <div
+ className="mb-4 flex size-10 items-center justify-center rounded-lg border-[0.5px] border-[color:var(--brand-border)]"
+ style={{ background: "var(--brand-subtle)" }}
+ >
+ <Icon className="size-5 text-[color:var(--brand-text)]" aria-hidden />
+ </div>
+ <h3 className="text-[15px] font-medium leading-snug text-[color:var(--text-primary)]">{title}</h3>
+ <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">{desc}</p>
+ </article>
+ ))}
+ </div>
+ </section>
 
-        <section id="pilares" className="relative z-10 mx-auto max-w-6xl scroll-mt-24 px-6 py-24">
-          <h2 className="text-center text-3xl font-semibold tracking-tight">Por que o Lex é diferente</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center text-zinc-400">
-            Três pilares que transformam IA genérica em sistema operacional jurídico.
-          </p>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {[
-              {
-                icon: Brain,
-                t: "Memória persistente",
-                d: "Estratégia, teses, clientes e histórico por processo — a IA não “esquece” o caso quando você fecha a aba.",
-              },
-              {
-                icon: Layers,
-                t: "RAG jurídico real",
-                d: "Camadas separadas para legislação, jurisprudência, documentos, peças e memória — com grounding obrigatório.",
-              },
-              {
-                icon: Zap,
-                t: "Seu estilo, sempre",
-                d: "Engine de perfil de escrita aprende com suas peças e orienta geração e reescrita no editor.",
-              },
-            ].map(({ icon: Icon, t, d }, i) => (
-              <motion.div
-                key={t}
-                initial={{ opacity: 0, y: 14 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-white/10 bg-zinc-900/40 p-6 backdrop-blur"
-              >
-                <Icon className="mb-3 size-6 text-violet-400" />
-                <h3 className="text-lg font-medium">{t}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-500">{d}</p>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+ <section className="border-y border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] py-16">
+ <div className="mx-auto max-w-6xl px-4 md:px-6">
+ <h2 className="text-center text-2xl font-medium tracking-tight text-[color:var(--text-primary)]">
+ Escrito para quem vive o processo
+ </h2>
+ <div className="mt-10 grid gap-4 md:grid-cols-3">
+ {TESTIMONIALS.map((t) => (
+ <figure
+ key={t.oab}
+ className="lex-glass flex h-full flex-col rounded-xl p-5"
+ >
+ <div className="flex items-center gap-3">
+ <div
+ className="flex size-10 shrink-0 items-center justify-center rounded-full border-[0.5px] border-[color:var(--border-default)] text-xs font-semibold text-[color:var(--brand-text)]"
+ style={{ background: "var(--brand-subtle)" }}
+ aria-hidden
+ >
+ {t.initials}
+ </div>
+ <div>
+ <figcaption className="text-sm font-medium text-[color:var(--text-primary)]">
+ {t.name}
+ </figcaption>
+ <p className="text-[11px] text-[color:var(--text-muted)]">{t.oab}</p>
+ </div>
+ </div>
+ <blockquote className="mt-4 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ &ldquo;{t.quote}&rdquo;
+ </blockquote>
+ </figure>
+ ))}
+ </div>
+ </div>
+ </section>
 
-        <section id="comparativo" className="relative z-10 mx-auto max-w-6xl px-6 py-24">
-          <h2 className="text-center text-3xl font-semibold tracking-tight">Lex vs. o resto</h2>
-          <div className="mt-10 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/30">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 bg-white/5">
-                  <th className="p-4 font-medium">Capacidade</th>
-                  <th className="p-4 font-medium text-violet-300">Lex</th>
-                  <th className="p-4 text-zinc-500">Chat genérico</th>
-                  <th className="p-4 text-zinc-500">Ferramentas “PDF único”</th>
-                </tr>
-              </thead>
-              <tbody className="text-zinc-300">
-                {[
-                  ["Memória por processo e cliente", true, false, false],
-                  ["RAG multicamada + rerank", true, false, false],
-                  ["Editor jurídico + autosave + IA inline", true, false, false],
-                  ["Multi-workspace / RBAC-ready", true, false, false],
-                  ["Ingestão assíncrona (OCR, chunk, vetor)", true, false, false],
-                ].map(([label, lex, chat, pdf]) => (
-                  <tr key={String(label)} className="border-b border-white/5">
-                    <td className="p-4">{label}</td>
-                    <td className="p-4">
-                      {lex ? <Check className="size-5 text-emerald-400" /> : "—"}
-                    </td>
-                    <td className="p-4 text-zinc-600">
-                      {chat ? <Check className="size-5 text-zinc-500" /> : "—"}
-                    </td>
-                    <td className="p-4 text-zinc-600">
-                      {pdf ? <Check className="size-5 text-zinc-500" /> : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+ <section id="precos" className="mx-auto max-w-6xl scroll-mt-24 px-4 py-20 md:px-6" aria-labelledby="pricing-heading">
+ <h2
+ id="pricing-heading"
+ className="text-center text-2xl font-medium tracking-tight text-[color:var(--text-primary)] md:text-[26px]"
+ >
+ Planos
+ </h2>
+ <p className="mx-auto mt-3 max-w-xl text-center text-[13px] text-[color:var(--text-secondary)]">
+ Escale conforme o tamanho do escritório. O plano Pro concentra o que a maioria dos times jurídicos precisa
+ no dia a dia.
+ </p>
+ <div className="mt-10 grid gap-4 md:grid-cols-3">
+ {PLANS.map((plan) => (
+ <div
+ key={plan.name}
+ className="lex-glass relative flex flex-col rounded-xl p-6 lex-transition"
+ style={
+ plan.highlight
+ ? {
+ borderColor: "var(--brand-primary)",
+ boxShadow: "var(--shadow-violet), var(--glass-shadow)",
+ }
+ : undefined
+ }
+ >
+ {plan.highlight ? (
+ <span
+ className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full border-[0.5px] border-[color:var(--brand-border)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--brand-text)]"
+ style={{ background: "var(--brand-subtle)" }}
+ >
+ Mais popular
+ </span>
+ ) : null}
+ <h3 className="text-lg font-semibold text-[color:var(--text-primary)]">{plan.name}</h3>
+ <p className="mt-1 text-2xl font-medium tracking-tight text-[color:var(--text-primary)]">{plan.price}</p>
+ <p className="text-[12px] text-[color:var(--text-muted)]">{plan.period}</p>
+ <p className="mt-3 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">{plan.desc}</p>
+ <ul className="mt-5 flex-1 space-y-2 text-[13px] text-[color:var(--text-secondary)]">
+ {plan.features.map((f) => (
+ <li key={f} className="flex items-start gap-2">
+ <Check className="mt-0.5 size-4 shrink-0 text-[color:var(--success-text)]" aria-hidden />
+ <span>{f}</span>
+ </li>
+ ))}
+ </ul>
+ <div className="mt-6">
+ <Link href={plan.href} className="block w-full">
+ {plan.primary ? (
+ <Button
+ className="w-full rounded-md border border-[color:var(--brand-border)] text-[color:var(--text-inverse)] lex-transition hover:opacity-95"
+ style={{
+ background: "var(--brand-primary)",
+ boxShadow: "var(--shadow-violet)",
+ }}
+ >
+ {plan.cta}
+ </Button>
+ ) : (
+ <Button
+ variant="outline"
+ className="w-full rounded-md border-[0.5px] border-[color:var(--border-default)] bg-transparent text-[color:var(--text-primary)] hover:bg-[color:var(--surface-overlay)]"
+ >
+ {plan.cta}
+ </Button>
+ )}
+ </Link>
+ </div>
+ </div>
+ ))}
+ </div>
+ </section>
 
-        <section id="depoimentos" className="relative z-10 mx-auto max-w-6xl px-6 py-24">
-          <h2 className="text-center text-3xl font-semibold tracking-tight">Quem já vive o futuro do escritório</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {[
-              {
-                q: "Parecia Cursor, mas para processo civil. O chat puxa a contestação antiga e já cita o CPC certo.",
-                a: "Dra. Mariana V.",
-                r: "Advogada · São Paulo",
-              },
-              {
-                q: "Finalmente deixamos de colar PDF no ChatGPT. O Lex é o único que respeita o meu tom e a linha da defesa.",
-                a: "Dr. Ricardo A.",
-                r: "Sócio · Belo Horizonte",
-              },
-              {
-                q: "A busca híbrida acha ementa e cláusula contratual no mesmo lugar. Isso é produto, não demo.",
-                a: "Dra. Helena M.",
-                r: "Coordenadora · Rio de Janeiro",
-              },
-            ].map((d) => (
-              <div
-                key={d.a}
-                className="rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900/80 to-zinc-950/80 p-6"
-              >
-                <Scale className="mb-3 size-5 text-violet-400/80" />
-                <p className="text-sm leading-relaxed text-zinc-300">&ldquo;{d.q}&rdquo;</p>
-                <p className="mt-4 text-sm font-medium text-zinc-100">{d.a}</p>
-                <p className="text-xs text-zinc-500">{d.r}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+ <section id="sobre" className="mx-auto max-w-3xl scroll-mt-24 px-4 py-16 md:px-6" aria-labelledby="about-heading">
+ <div className="lex-glass rounded-xl p-8 text-center">
+ <Scale className="mx-auto size-8 text-[color:var(--brand-text)]" aria-hidden />
+ <h2 id="about-heading" className="mt-4 text-xl font-medium text-[color:var(--text-primary)]">
+ Sobre o Lex
+ </h2>
+ <p className="mt-3 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ Somos um time que acredita que software jurídico de primeira linha combina engenharia de dados, UX
+ operacional e respeito à responsabilidade profissional do advogado. O Lex existe para ser o sistema onde
+ estratégia, fundamentação e peça se encontram — sem atalhos que comprometam a defesa.
+ </p>
+ <Link href="/manifesto" className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-[color:var(--brand-text)] lex-transition hover:underline">
+ Ler manifesto <ArrowRight className="size-4" aria-hidden />
+ </Link>
+ </div>
+ </section>
+ </main>
 
-        <section className="relative z-10 mx-auto max-w-3xl px-6 py-24">
-          <div className="flex items-center justify-center gap-2 text-center">
-            <Shield className="size-5 text-violet-400" />
-            <h2 className="text-2xl font-semibold tracking-tight">Perguntas frequentes</h2>
-          </div>
-          <Accordion type="single" collapsible className="mt-8 w-full">
-            {[
-              {
-                q: "O Lex substitui o advogado?",
-                a: "Não. Lex é instrumento de produtividade e fundamentação; a responsabilidade profissional permanece com você.",
-              },
-              {
-                q: "Funciona offline?",
-                a: "O núcleo depende de APIs (DeepSeek, DeepInfra) e serviços cloud. Você pode rodar stack local com Docker para desenvolvimento.",
-              },
-              {
-                q: "Meus dados ficam isolados por workspace?",
-                a: "Sim. O modelo multi-tenant separa vetores e registros por workspace; corpus global de legislação é compartilhado e somente leitura.",
-              },
-              {
-                q: "Posso levar para meu escritório inteiro depois?",
-                a: "A arquitetura já prevê memberships, RBAC e workspaces — evolução natural sem reescrever o produto.",
-              },
-            ].map((item, i) => (
-              <AccordionItem key={item.q} value={`item-${i}`} className="border-white/10">
-                <AccordionTrigger className="text-left hover:no-underline">{item.q}</AccordionTrigger>
-                <AccordionContent className="text-sm text-zinc-400">{item.a}</AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </section>
-
-        <section className="relative z-10 mx-auto max-w-6xl px-6 pb-32">
-          <div className="rounded-3xl border border-violet-500/30 bg-gradient-to-br from-violet-950/50 to-zinc-950 px-8 py-16 text-center backdrop-blur">
-            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              Pronto para o sistema operacional do seu direito?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-zinc-400">
-              Onboarding em minutos. Infra pensada para escala. UX que seus clientes sentem na qualidade das peças.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Link href="/register">
-                <Button size="lg" className="gap-2">
-                  Começar agora <ArrowRight className="size-4" />
-                </Button>
-              </Link>
-              <Link href="/manifesto">
-                <Button size="lg" variant="outline" className="border-white/20 bg-transparent">
-                  Ler manifesto
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="relative z-10 border-t border-white/10 py-10 text-center text-xs text-zinc-600">
-        Lex — copiloto jurídico © {new Date().getFullYear()}
-      </footer>
-    </div>
-  );
+ <footer className="lex-marketing-footer mt-12">
+ <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-4 md:px-6">
+ <div>
+ <div className="flex items-center gap-2">
+ <span
+ className="flex size-8 items-center justify-center rounded-md text-xs font-semibold text-[color:var(--text-inverse)]"
+ style={{ background: "var(--brand-primary)", boxShadow: "var(--shadow-violet)" }}
+ >
+ L
+ </span>
+ <span className="font-semibold text-[color:var(--text-primary)]">Lex</span>
+ </div>
+ <p className="mt-3 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ Copiloto jurídico com memória, pesquisa multicamada e peças no seu estilo.
+ </p>
+ </div>
+ <div>
+ <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+ Produto
+ </p>
+ <ul className="mt-3 space-y-2 text-[13px]">
+ <li>
+ <a href="#funcionalidades" className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]">
+ Funcionalidades
+ </a>
+ </li>
+ <li>
+ <Link href="/pricing" className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]">
+ Preços
+ </Link>
+ </li>
+ <li>
+ <Link href="/login" className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]">
+ Entrar
+ </Link>
+ </li>
+ </ul>
+ </div>
+ <div>
+ <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+ Recursos
+ </p>
+ <ul className="mt-3 space-y-2 text-[13px]">
+ <li>
+ <Link href="/register" className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]">
+ Criar conta
+ </Link>
+ </li>
+ <li>
+ <Link href="/manifesto" className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]">
+ Manifesto
+ </Link>
+ </li>
+ </ul>
+ </div>
+ <div>
+ <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+ Legal
+ </p>
+ <p className="mt-3 text-[12px] text-[color:var(--text-muted)]">
+ Uso profissional. Revise minutas antes de protocolar.
+ </p>
+ </div>
+ </div>
+ <div className="border-t border-[color:var(--border-subtle)] py-6 text-center text-[11px] text-[color:var(--text-muted)]">
+ Lex — copiloto jurídico © {new Date().getFullYear()}
+ </div>
+ </footer>
+ </div>
+ );
 }

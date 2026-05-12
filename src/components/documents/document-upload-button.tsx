@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { lexGlassCtaClassName } from "@/lib/lex-ds";
 import { cn } from "@/lib/utils";
 
 interface UploadResult {
@@ -36,6 +37,8 @@ interface Props {
   accept?: string;
   /** Callback após upload bem-sucedido. */
   onUploaded?: (result: UploadResult) => void;
+  /** Estilo do CTA em vidro (igual a «Novo caso» em Casos). */
+  ctaGlass?: boolean;
 }
 
 const DEFAULT_ACCEPT = ".pdf,.docx,.doc,.txt,application/pdf";
@@ -55,6 +58,7 @@ export function DocumentUploadButton({
   className,
   accept = DEFAULT_ACCEPT,
   onUploaded,
+  ctaGlass = false,
 }: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -98,9 +102,10 @@ export function DocumentUploadButton({
       />
       <Button
         type="button"
-        size={size}
-        variant={variant}
+        size={ctaGlass ? "default" : size}
+        variant={ctaGlass ? "secondary" : variant}
         disabled={busy}
+        className={cn(ctaGlass && lexGlassCtaClassName)}
         onClick={() => inputRef.current?.click()}
       >
         {busy ? (

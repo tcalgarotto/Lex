@@ -7,7 +7,6 @@ import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { decideApproval } from "@/lib/cases/collaboration";
 
-export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
   decision: z.enum(["APPROVED", "CHANGES_REQUESTED", "REJECTED"]),

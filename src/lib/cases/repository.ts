@@ -133,6 +133,18 @@ export async function getCaseById(workspaceId: string, caseId: string) {
   });
 }
 
+function countMapFromGroupBy(rows: { caseId: string | null; _count: { _all: number } }[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const r of rows) {
+    if (r.caseId != null) m.set(r.caseId, r._count._all);
+  }
+  return m;
+}
+
+/**
+ * Lista casos com contagens agregadas — `groupBy` em lote em vez de `_count`
+ * correlacionado por linha (costuma ser mais rápido em Postgres remoto).
+ */
 export async function listCases(
   workspaceId: string,
   opts: {
@@ -146,43 +158,138 @@ export async function listCases(
   } = {},
 ) {
   const take = Math.min(50, Math.max(1, opts.take ?? 20));
-  return prisma.case.findMany({
-    where: {
-      workspaceId,
-      deletedAt: null,
-      ...(opts.includeArchived ? {} : { archivedAt: null }),
-      ...(opts.status ? { status: opts.status } : {}),
-      ...(opts.q
-        ? {
-            OR: [
-              { title: { contains: opts.q, mode: "insensitive" } },
-              { summary: { contains: opts.q, mode: "insensitive" } },
-              { processNumber: { contains: opts.q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(typeof opts.hasProcess === "boolean"
-        ? opts.hasProcess
-          ? { processNumber: { not: null } }
-          : { processNumber: null }
-        : {}),
-      ...(typeof opts.hasDocuments === "boolean"
-        ? opts.hasDocuments
-          ? { documents: { some: { deletedAt: null, ...(opts.includeArchived ? {} : { archivedAt: null }) } } }
-          : { documents: { none: { deletedAt: null } } }
-        : {}),
-      ...(typeof opts.hasDrafts === "boolean"
-        ? opts.hasDrafts
-          ? { drafts: { some: {} } }
-          : { drafts: { none: {} } }
-        : {}),
-    },
+  const where: Prisma.CaseWhereInput = {
+    workspaceId,
+    deletedAt: null,
+    ...(opts.includeArchived ? {} : { archivedAt: null }),
+    ...(opts.status ? { status: opts.status } : {}),
+    ...(opts.q
+      ? {
+          OR: [
+            { title: { contains: opts.q, mode: "insensitive" } },
+            { summary: { contains: opts.q, mode: "insensitive" } },
+            { processNumber: { contains: opts.q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+    ...(typeof opts.hasProcess === "boolean"
+      ? opts.hasProcess
+        ? { processNumber: { not: null } }
+        : { processNumber: null }
+      : {}),
+    ...(typeof opts.hasDocuments === "boolean"
+      ? opts.hasDocuments
+        ? { documents: { some: { deletedAt: null, ...(opts.includeArchived ? {} : { archivedAt: null }) } } }
+        : { documents: { none: { deletedAt: null } } }
+      : {}),
+    ...(typeof opts.hasDrafts === "boolean"
+      ? opts.hasDrafts
+        ? { drafts: { some: {} } }
+        : { drafts: { none: {} } }
+      : {}),
+  };
+
+  const rows = await prisma.case.findMany({
+    where,
     orderBy: { updatedAt: "desc" },
     take,
-    include: {
-      _count: {
-        select: { facts: true, requests: true, risks: true, drafts: true },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      status: true,
+      tribunalCode: true,
+      uf: true,
+      processNumber: true,
+      archivedAt: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.id);
+
+  const [factGs, reqGs, riskGs, draftGs, docGs] = await Promise.all([
+    prisma.caseFact.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids } },
+      _count: { _all: true },
+    }),
+    prisma.caseRequest.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids } },
+      _count: { _all: true },
+    }),
+    prisma.caseRisk.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids } },
+      _count: { _all: true },
+    }),
+    prisma.caseDraft.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids } },
+      _count: { _all: true },
+    }),
+    prisma.document.groupBy({
+      by: ["caseId"],
+      where: {
+        caseId: { in: ids },
+        deletedAt: null,
       },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const mFact = countMapFromGroupBy(factGs);
+  const mReq = countMapFromGroupBy(reqGs);
+  const mRisk = countMapFromGroupBy(riskGs);
+  const mDraft = countMapFromGroupBy(draftGs);
+  const mDoc = countMapFromGroupBy(docGs);
+
+  return rows.map((r) => ({
+    ...r,
+    _count: {
+      facts: mFact.get(r.id) ?? 0,
+      requests: mReq.get(r.id) ?? 0,
+      risks: mRisk.get(r.id) ?? 0,
+      drafts: mDraft.get(r.id) ?? 0,
+      documents: mDoc.get(r.id) ?? 0,
+    },
+  }));
+}
+
+export async function archiveCase(args: { workspaceId: string; caseId: string; userId?: string }) {
+  await ensureCaseInWorkspace(args.workspaceId, args.caseId);
+  await prisma.case.update({
+    where: { id: args.caseId },
+    data: { archivedAt: new Date() },
+  });
+  await prisma.caseTimelineEvent.create({
+    data: {
+      caseId: args.caseId,
+      kind: CaseTimelineKind.NOTE,
+      message: "Caso arquivado.",
+      ...(args.userId ? { userId: args.userId } : {}),
+      payloadJson: { action: "case.archived" } as Prisma.InputJsonValue,
+    },
+  });
+}
+
+export async function restoreCase(args: { workspaceId: string; caseId: string; userId?: string }) {
+  await ensureCaseInWorkspace(args.workspaceId, args.caseId);
+  await prisma.case.update({
+    where: { id: args.caseId },
+    data: { archivedAt: null },
+  });
+  await prisma.caseTimelineEvent.create({
+    data: {
+      caseId: args.caseId,
+      kind: CaseTimelineKind.NOTE,
+      message: "Caso restaurado do arquivo.",
+      ...(args.userId ? { userId: args.userId } : {}),
+      payloadJson: { action: "case.restored" } as Prisma.InputJsonValue,
     },
   });
 }

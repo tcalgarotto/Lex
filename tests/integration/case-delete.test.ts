@@ -66,6 +66,7 @@ async function createDoc(workspaceId: string, caseId: string) {
       storagePath: `documents/${workspaceId}/${Math.random().toString(16).slice(2)}.pdf`,
       status: "UPLOADED",
       progress: 0,
+      libraryShelf: "OFFICE_PRIVATE",
     },
     select: { id: true, storagePath: true },
   });

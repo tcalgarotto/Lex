@@ -18,7 +18,7 @@ const MISSING_SOURCE =
 const JURIS_NO_PROCESS =
   "Jurisprudência candidata sem número de processo — confirme a fonte antes de citar.";
 const STRIP_AUTO_VERIFY =
-  "Verificação em fonte oficial ou RAG interno não aplicável neste fluxo — exige confirmação humana no produto.";
+  "Verificação em fonte oficial ou índice interno não aplicável neste fluxo — exige confirmação humana no produto.";
 
 /**
  * Regras de segurança e rotulagem: nunca promove automaticamente para

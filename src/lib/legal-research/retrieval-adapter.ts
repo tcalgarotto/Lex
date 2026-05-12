@@ -213,7 +213,7 @@ export async function buildRetrievalSearchCompatiblePayload(args: {
       label: "Sugestão assistida",
       score: 0.35,
       reason:
-        "Resultado sugerido por IA. Revise antes de usar. A busca interna priorizada está em otimização.",
+        "Resultado sugerido por IA. Confira sempre em fonte oficial antes de citar.",
     },
     cached: false,
     legalResearchAdapter: "deepseek",

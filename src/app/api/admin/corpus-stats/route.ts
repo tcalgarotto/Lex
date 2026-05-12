@@ -16,7 +16,6 @@ import { snapshotProviderStatuses } from "@/lib/corpus/providers/registry";
 import { CORPUS_COLLECTIONS } from "@/lib/corpus/qdrant-collections";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 async function probeQdrantCounts(): Promise<Record<string, number | string>> {
   const url = process.env["QDRANT_URL"];

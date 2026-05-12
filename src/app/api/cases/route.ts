@@ -26,7 +26,6 @@ import { listCases } from "@/lib/cases/repository";
 import { intakeWorkflow } from "@/lib/cases/orchestrator";
 import { inngest } from "@/lib/inngest/client";
 
-export const dynamic = "force-dynamic";
 
 const RawSchema = z.object({
   mode: z.literal("raw").optional(),

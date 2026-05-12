@@ -6,19 +6,19 @@
  */
 
 import { NextResponse } from "next/server";
-import { DocumentStatus } from "@prisma/client";
+import { DocumentLibraryShelf, DocumentStatus } from "@prisma/client";
 import { nanoid } from "nanoid";
 import { inngest } from "@/lib/inngest/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
+import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const log = getLogger("lex.api.cases.documents");
 
@@ -130,6 +130,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       id: documentId,
       workspaceId,
       caseId,
+      uploadedByUserId: user.id,
+      libraryShelf: DocumentLibraryShelf.OFFICE_PRIVATE,
       originalName: file.name,
       mimeType: file.type || "application/octet-stream",
       sizeBytes: buffer.length,
@@ -146,6 +148,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       documentId: doc.id,
       err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
     });
+  }
+
+  if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+    scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
   }
 
   await recordCaseMutationActivity({

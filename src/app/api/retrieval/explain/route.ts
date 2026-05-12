@@ -18,7 +18,6 @@ import { detectContradictions } from "@/lib/legal/reasoning/contradiction";
 import { synthesizeStrategy } from "@/lib/legal/reasoning/strategy";
 import { buildTimelines } from "@/lib/legal/reasoning/timeline";
 
-export const dynamic = "force-dynamic";
 
 function flag(value: string | null, def: boolean): boolean {
   if (value == null) return def;

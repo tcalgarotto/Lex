@@ -4,7 +4,6 @@ import { MembershipRole, Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
   title: z.string().min(2).max(160).optional(),

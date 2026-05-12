@@ -19,7 +19,6 @@ import {
 } from "@/lib/legal-research";
 import { legalResearchMarkVerifiedBodySchema } from "@/lib/legal-research/request-body";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   let workspaceId = "";

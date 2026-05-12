@@ -9,36 +9,36 @@ import { CaseRisksTab } from "./case-risks-tab";
  * tinham abas próprias. Mantém os componentes existentes intactos.
  */
 export function CaseFactsPartiesTab(props: {
-  facts: CaseFact[];
-  parties: CaseParty[];
-  requests: CaseRequest[];
-  risks: CaseRisk[];
+ facts: CaseFact[];
+ parties: CaseParty[];
+ requests: CaseRequest[];
+ risks: CaseRisk[];
 }) {
-  return (
-    <div className="space-y-6">
-      <Section title={`Fatos · ${props.facts.length}`}>
-        <CaseFactsTab facts={props.facts} />
-      </Section>
-      <Section title={`Partes · ${props.parties.length}`}>
-        <CasePartiesTab parties={props.parties} />
-      </Section>
-      <Section title={`Pedidos · ${props.requests.length}`}>
-        <CaseRequestsTab requests={props.requests} />
-      </Section>
-      <Section title={`Riscos · ${props.risks.length}`}>
-        <CaseRisksTab risks={props.risks} />
-      </Section>
-    </div>
-  );
+ return (
+ <div className="space-y-6">
+ <Section title={`Fatos · ${props.facts.length}`}>
+ <CaseFactsTab facts={props.facts} />
+ </Section>
+ <Section title={`Partes · ${props.parties.length}`}>
+ <CasePartiesTab parties={props.parties} />
+ </Section>
+ <Section title={`Pedidos · ${props.requests.length}`}>
+ <CaseRequestsTab requests={props.requests} />
+ </Section>
+ <Section title={`Riscos · ${props.risks.length}`}>
+ <CaseRisksTab risks={props.risks} />
+ </Section>
+ </div>
+ );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      {children}
-    </section>
-  );
+ return (
+ <section>
+ <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+ {title}
+ </h3>
+ {children}
+ </section>
+ );
 }

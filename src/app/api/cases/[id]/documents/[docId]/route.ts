@@ -12,7 +12,6 @@ import { prisma } from "@/lib/prisma";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { classifyDocumentFromNameAndText } from "@/lib/cases/case-brain/document-suggestions";
 
-export const dynamic = "force-dynamic";
 
 function mapUiStatus(status: DocumentStatus, hasText: boolean): string {
   if (status === DocumentStatus.FAILED) return "FAILED";

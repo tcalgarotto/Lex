@@ -8,7 +8,6 @@ import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { touchCaseBrainFingerprintAfterMutation } from "@/lib/cases/case-brain/fingerprint";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 
-export const dynamic = "force-dynamic";
 
 async function ensureCase(workspaceId: string, caseId: string) {
   const c = await findCaseInWorkspace(workspaceId, caseId);

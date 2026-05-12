@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppShell } from "@/components/app/app-shell";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { LegalEditor } from "@/components/editor/legal-editor";
+import { LegalEditorLazy } from "@/components/editor/legal-editor-lazy";
 import { Button } from "@/components/ui/button";
 
 export default async function EditorPage({
@@ -23,10 +23,12 @@ export default async function EditorPage({
   const aiMeta = piece.aiMetaJson as Record<string, unknown> | null;
 
   return (
-    <AppShell title={piece.title}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <>
+      <SetPageTitle title={piece.title} />
+      <div className="mb-6 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {piece.kind} {piece.processId ? (
+          {piece.kind}{" "}
+          {piece.processId ? (
             <Link href={`/processos/${piece.processId}`} className="text-violet-400 hover:underline">
               · processo
             </Link>
@@ -40,12 +42,13 @@ export default async function EditorPage({
           </Button>
         </div>
       </div>
-      <LegalEditor
+      <LegalEditorLazy
         pieceId={piece.id}
         initialContent={initial}
         processId={piece.processId}
         aiMeta={aiMeta}
       />
-    </AppShell>
+    </>
   );
 }
+

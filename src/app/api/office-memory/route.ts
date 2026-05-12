@@ -5,7 +5,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { officeMemoryReadableWhere } from "@/lib/office-memory/visibility";
 
-export const dynamic = "force-dynamic";
 
 const CreateSchema = z.object({
   title: z.string().min(2),

@@ -28,6 +28,8 @@ type Props = {
   caseId: string;
   onInsert: (snippet: string) => void;
   onChanged: () => Promise<void>;
+  /** Quando definido (ex.: bootstrap do caso), evita GET inicial duplicado de legal-sources. */
+  initialSources?: Source[];
 };
 
 function badgeFor(status: FoundationVerificationStatus) {
@@ -41,11 +43,11 @@ function badgeFor(status: FoundationVerificationStatus) {
   if (status === "VERIFIED_BY_INTERNAL_RAG" || status === "VERIFIED_BY_OFFICIAL_SOURCE") {
     return <Badge variant="secondary">Verificado</Badge>;
   }
-  return <Badge variant="default">Pin do escritório</Badge>;
+  return <Badge variant="default">Pin do workspace</Badge>;
 }
 
-export function StrategyFoundationsPanel({ caseId, onInsert, onChanged }: Props) {
-  const [sources, setSources] = useState<Source[]>([]);
+export function StrategyFoundationsPanel({ caseId, onInsert, onChanged, initialSources }: Props) {
+  const [sources, setSources] = useState<Source[]>(() => initialSources ?? []);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/cases/${caseId}/legal-sources`);
@@ -55,8 +57,14 @@ export function StrategyFoundationsPanel({ caseId, onInsert, onChanged }: Props)
   }, [caseId]);
 
   useEffect(() => {
+    if (initialSources === undefined) return;
+    setSources(initialSources);
+  }, [initialSources]);
+
+  useEffect(() => {
+    if (initialSources !== undefined) return;
     void load();
-  }, [load]);
+  }, [load, initialSources]);
 
   async function remove(id: string) {
     try {

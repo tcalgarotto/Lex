@@ -15,7 +15,6 @@ import { normalizeTextKey } from "@/lib/cases/case-brain/merge-policy";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 import { touchCaseBrainFingerprintAfterMutation } from "@/lib/cases/case-brain/fingerprint";
 
-export const dynamic = "force-dynamic";
 
 export async function POST(
   _req: Request,

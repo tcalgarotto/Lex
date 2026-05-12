@@ -12,7 +12,6 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { enforceDraftingRateLimit, loadCaseScoped } from "@/lib/cases/drafting/drafting-route-common";
 
-export const dynamic = "force-dynamic";
 
 const STARTER = `# Minuta
 

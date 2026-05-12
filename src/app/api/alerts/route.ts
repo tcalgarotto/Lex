@@ -10,7 +10,6 @@ import { CaseAlertSeverity, CaseAlertStatus } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { listAlerts } from "@/lib/alerts/repository";
 
-export const dynamic = "force-dynamic";
 
 function parseEnumList<T extends string>(
   value: string | null,

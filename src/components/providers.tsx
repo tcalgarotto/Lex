@@ -1,10 +1,7 @@
-"use client";
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
-
+/**
+ * Extensão futura do layout (tema, telemetria de cliente, etc.).
+ * Mantém um único import no `app/layout.tsx`.
+ */
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [client] = useState(() => new QueryClient());
-
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return children;
 }

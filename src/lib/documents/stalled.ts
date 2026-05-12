@@ -1,6 +1,13 @@
-import { DocumentStatus, type Document } from "@prisma/client";
+import { DocumentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { STALLED_THRESHOLDS_MS } from "./status-display";
+
+export type StalledDocumentBrief = {
+  id: string;
+  originalName: string;
+  status: DocumentStatus;
+  updatedAt: Date;
+};
 
 /**
  * Lista documentos travados em um workspace. "Travado" = ficou em um
@@ -12,7 +19,7 @@ import { STALLED_THRESHOLDS_MS } from "./status-display";
 export async function findStalledDocuments(
   workspaceId: string,
   options: { take?: number; now?: Date } = {},
-): Promise<Document[]> {
+): Promise<StalledDocumentBrief[]> {
   const now = options.now ?? new Date();
   const take = options.take ?? 50;
 
@@ -36,6 +43,12 @@ export async function findStalledDocuments(
     },
     orderBy: { updatedAt: "asc" },
     take: Math.max(take * 2, take),
+    select: {
+      id: true,
+      originalName: true,
+      status: true,
+      updatedAt: true,
+    },
   });
 
   return candidates

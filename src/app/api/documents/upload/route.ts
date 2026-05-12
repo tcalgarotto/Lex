@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { DocumentStatus } from "@prisma/client";
+import { DocumentLibraryShelf, DocumentStatus } from "@prisma/client";
 import { nanoid } from "nanoid";
 import { inngest } from "@/lib/inngest/client";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
+import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 
@@ -22,7 +23,7 @@ const ALLOWED_MIME = new Set([
 ]);
 
 export async function POST(req: Request) {
-  const { workspaceId, user } = await getWorkspaceContext();
+  const { workspaceId, user } = await getWorkspaceContextWithRole();
 
   const rl = await rateLimit({
     key: `upload:${user.id}`,
@@ -44,6 +45,12 @@ export async function POST(req: Request) {
   const caseIdRaw = form.get("caseId");
   const caseId =
     typeof caseIdRaw === "string" && caseIdRaw.length > 0 ? caseIdRaw : null;
+
+  /**
+   * Catálogo global (leis/livros) só entra pela operação (scripts → workspace
+   * `lex-platform-catalog`). Upload pela app fica sempre privado da equipa.
+   */
+  const libraryShelf = DocumentLibraryShelf.OFFICE_PRIVATE;
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
@@ -98,6 +105,8 @@ export async function POST(req: Request) {
       workspaceId,
       processId,
       caseId,
+      uploadedByUserId: user.id,
+      libraryShelf,
       originalName: file.name,
       mimeType: file.type || "application/octet-stream",
       sizeBytes: buffer.length,
@@ -116,12 +125,16 @@ export async function POST(req: Request) {
     });
   }
 
+  if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+    scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
+  }
+
   await prisma.activity.create({
     data: {
       workspaceId,
       kind: "document.uploaded",
       title: `Documento enviado: ${file.name}`,
-      metaJson: { documentId: doc.id, processId, caseId },
+      metaJson: { documentId: doc.id, processId, caseId, libraryShelf },
     },
   });
 

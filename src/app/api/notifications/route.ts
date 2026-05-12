@@ -13,7 +13,6 @@ import {
   markAllAsRead,
 } from "@/lib/notifications/repository";
 
-export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
   action: z.literal("markAllRead"),

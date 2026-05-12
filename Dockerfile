@@ -55,7 +55,7 @@ RUN rm -rf .next/cache
 # 3) runner — imagem final, mínima, non-root
 # ----------------------------------------------------------------------------
 FROM node:${NODE_VERSION}-alpine AS runner
-RUN apk add --no-cache libc6-compat openssl wget
+RUN apk add --no-cache libc6-compat openssl wget poppler-utils
 WORKDIR /app
 
 ENV NODE_ENV=production \

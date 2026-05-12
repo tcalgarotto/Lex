@@ -1,212 +1,217 @@
 import Link from "next/link";
-import { AppShell } from "@/components/app/app-shell";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Badge } from "@/components/ui/badge";
+import { DocumentLibraryShelf, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { prisma } from "@/lib/prisma";
-import { BibliotecaRecentDocuments } from "@/components/biblioteca/biblioteca-recent-documents";
-import { ScrollText } from "lucide-react";
+import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
+import { workspaceDocumentHref } from "@/lib/biblioteca/document-href";
+import { workspaceIdsForSharedCatalog, getPlatformLibraryWorkspaceId } from "@/lib/biblioteca/platform-library";
+import { BibliotecaShelfCarousel, BibliotecaShelfSection } from "@/components/biblioteca/biblioteca-shelf-section";
+import { BibliotecaOfficeDocumentCard } from "@/components/biblioteca/biblioteca-office-document-card";
+import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 
-export const dynamic = "force-dynamic";
+
+const docSelect = {
+  id: true,
+  originalName: true,
+  mimeType: true,
+  createdAt: true,
+  updatedAt: true,
+  processId: true,
+  caseId: true,
+  case: { select: { id: true, title: true } },
+} as const;
+
+/** Filtros reutilizáveis (evita duplicar literais e ajuda o inferidor do Prisma). */
+const shelfLegal = { libraryShelf: DocumentLibraryShelf.SHARED_LEGAL } satisfies Prisma.DocumentWhereInput;
+const shelfBooks = { libraryShelf: DocumentLibraryShelf.SHARED_BOOKS } satisfies Prisma.DocumentWhereInput;
 
 export default async function BibliotecaPage() {
-  const { workspaceId } = await getWorkspaceContext();
+  const pageT0 = performance.now();
+  const tWs = performance.now();
+  const { workspaceId, user } = await getWorkspaceContext();
+  devLogLexTiming("biblioteca.getWorkspaceContext", performance.now() - tWs);
+  const tCat = performance.now();
+  const [catalogWorkspaceIds, platformCatalogId] = await Promise.all([
+    workspaceIdsForSharedCatalog(workspaceId),
+    getPlatformLibraryWorkspaceId(),
+  ]);
+  devLogLexTiming("biblioteca.catalogLookups", performance.now() - tCat);
 
-  const [foundations, documents, pieces, cases] = await Promise.all([
-    prisma.libraryFoundation.findMany({
-      where: { workspaceId, deletedAt: null, archivedAt: null },
-      orderBy: { updatedAt: "desc" },
-      take: 40,
-      select: {
-        id: true,
-        title: true,
-        tags: true,
-        optInRag: true,
-        optInMemory: true,
-        useAsModel: true,
-        useAsStyle: true,
+  /** Mesmo critério que a lista em `/documentos` (sem filtros de URL). */
+  const privateOfficeAnd = [...officePrivateDocumentsAndParts(user.id)];
+
+  const tDb = performance.now();
+  const [sharedLegal, sharedBooks, privateOffice] = await Promise.all([
+    prisma.document.findMany({
+      where: {
+        workspaceId: { in: catalogWorkspaceIds },
+        deletedAt: null,
+        archivedAt: null,
+        ...shelfLegal,
       },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+      select: docSelect,
     }),
     prisma.document.findMany({
-      where: { workspaceId, deletedAt: null, archivedAt: null },
-      orderBy: { updatedAt: "desc" },
-      take: 12,
-      select: {
-        id: true,
-        originalName: true,
-        status: true,
-        updatedAt: true,
-        processId: true,
-        caseId: true,
-        case: { select: { id: true, title: true } },
+      where: {
+        workspaceId: { in: catalogWorkspaceIds },
+        deletedAt: null,
+        archivedAt: null,
+        ...shelfBooks,
       },
+      orderBy: { createdAt: "desc" },
+      take: 40,
+      select: docSelect,
     }),
-    prisma.legalPiece.findMany({
-      where: { workspaceId, deletedAt: null, archivedAt: null },
-      orderBy: { updatedAt: "desc" },
-      take: 10,
-      select: {
-        id: true,
-        title: true,
-        kind: true,
-        updatedAt: true,
+    prisma.document.findMany({
+      where: {
+        workspaceId,
+        deletedAt: null,
+        archivedAt: null,
+        AND: privateOfficeAnd,
       },
-    }),
-    prisma.case.findMany({
-      where: { workspaceId },
       orderBy: { updatedAt: "desc" },
-      take: 50,
-      select: { id: true, title: true },
+      take: 100,
+      select: docSelect,
     }),
   ]);
 
+  devLogLexTiming("biblioteca.prisma", performance.now() - tDb);
+  devLogLexTiming("biblioteca.page", performance.now() - pageT0);
+
   return (
-    <AppShell title="Biblioteca">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Biblioteca — acervo do escritório</h1>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              Aqui entra o que é <strong className="text-foreground">referência reutilizável</strong>{" "}
-              (fundamentos salvos). <strong className="text-foreground">Insumos</strong> (petições,
-              provas) vivem em Documentos; <strong className="text-foreground">Peças</strong>{" "}
-              (produção) no editor. Use os atalhos abaixo para não misturar conceitos.
+    <>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0 space-y-2">
+            <h1 className={lexPageTitleClassName}>Biblioteca</h1>
+            <p className={lexPageLeadClassName}>
+              Catálogo Lex (global na plataforma) com{" "}
+              <strong className="font-semibold text-[color:var(--text-primary)]">
+                leis, códigos e normas
+              </strong>{" "}
+              e{" "}
+              <strong className="font-semibold text-[color:var(--text-primary)]">
+                leituras em destaque
+              </strong>
+              ; à parte, os{" "}
+              <strong className="font-semibold text-[color:var(--text-primary)]">
+                documentos que a sua equipe envia em Documentos
+              </strong>{" "}
+              ficam na linha «Documentos da equipe». Pré-visualização em PDF quando o ficheiro for compatível.
             </p>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">Biblioteca = acervo + fundamentos</Badge>
-              <Badge variant="secondary">Documento = insumo do caso</Badge>
-              <Badge variant="outline">Peça = produção jurídica</Badge>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href="/documentos">Insumos (documentos)</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/editor">Peças</Link>
-            </Button>
-            <Button asChild variant="secondary" size="sm">
-              <Link href="/pesquisa-juridica?scope=legislacao">Pesquisa jurídica</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/biblioteca/memoria">Memória (opt-in)</Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/biblioteca/fundamentos/novo">Novo fundamento</Link>
-            </Button>
           </div>
         </header>
 
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Insumos recentes (documentos)</h2>
-            <Button asChild variant="ghost" size="sm" className="text-xs">
-              <Link href="/documentos">Gerenciar em Documentos</Link>
-            </Button>
-          </div>
-          <Card className="p-4">
-            <BibliotecaRecentDocuments documents={documents} cases={cases} />
-          </Card>
-        </section>
+        <BibliotecaShelfSection
+          id="shelf-leis-codigos-normas"
+          title="Leis, códigos e normas"
+          subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
+          verMaisHref="/pesquisa-juridica"
+          verMaisLabel="Pesquisa jurídica"
+        >
+          {sharedLegal.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
+              Ainda não há entradas nesta prateleira. O catálogo global é preenchido pela operação Lex
+              (scripts de upload para o workspace de plataforma), não pelo envio em Documentos.
+              {!platformCatalogId ? (
+                <span className="mt-3 block text-xs text-[color:var(--text-secondary)]/90">
+                  Neste ambiente ainda não existe o workspace «lex-platform-catalog». Aplique as migrations
+                  em produção e volte a correr o script de upload com a URL da base de produção.
+                </span>
+              ) : null}
+            </p>
+          ) : (
+            <BibliotecaShelfCarousel>
+              {sharedLegal.map((d) => (
+                <BibliotecaOfficeDocumentCard
+                  key={d.id}
+                  href={workspaceDocumentHref(d)}
+                  documentId={d.id}
+                  title={d.originalName}
+                  mimeType={d.mimeType}
+                  caseTitle={null}
+                  publishedAt={d.createdAt}
+                  thumbnailVersion={d.updatedAt.getTime()}
+                  topBadge="Catálogo: leis e normas"
+                  showCaseRow={false}
+                />
+              ))}
+            </BibliotecaShelfCarousel>
+          )}
+        </BibliotecaShelfSection>
 
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Peças recentes (produção)</h2>
-            <Button asChild variant="ghost" size="sm" className="text-xs">
-              <Link href="/editor">Abrir lista de peças</Link>
-            </Button>
-          </div>
-          <Card className="p-4">
-            {pieces.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Nenhuma peça ainda. Gere minutas a partir de um caso na aba Estratégia &amp; Peças.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {pieces.map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/editor/${p.id}`} className="block rounded-lg border border-white/5 p-3 hover:bg-white/5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">{p.title}</span>
-                        <Badge variant="outline" className="text-[10px]">
-                          {p.kind}
-                        </Badge>
-                      </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        Atualizada {new Date(p.updatedAt).toLocaleDateString("pt-BR")}
-                      </p>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
+        <BibliotecaShelfSection
+          id="shelf-livros-recomendados"
+          title="Livros em destaque"
+          subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
+          verMaisHref="/pesquisa-juridica"
+          verMaisLabel="Pesquisa jurídica"
+        >
+          {sharedBooks.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
+              Ainda não há obras nesta prateleira. Use o script de upload com{" "}
+              <code className="rounded bg-black/20 px-1 py-0.5 text-[11px]">--shelf=SHARED_BOOKS</code> no
+              workspace de catálogo global (mesmo fluxo que leis e normas).
+            </p>
+          ) : (
+            <BibliotecaShelfCarousel>
+              {sharedBooks.map((d) => (
+                <BibliotecaOfficeDocumentCard
+                  key={d.id}
+                  href={workspaceDocumentHref(d)}
+                  documentId={d.id}
+                  title={d.originalName}
+                  mimeType={d.mimeType}
+                  caseTitle={null}
+                  publishedAt={d.createdAt}
+                  thumbnailVersion={d.updatedAt.getTime()}
+                  topBadge="Catálogo: livros"
+                  showCaseRow={false}
+                />
+              ))}
+            </BibliotecaShelfCarousel>
+          )}
+        </BibliotecaShelfSection>
 
-        <section className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Fundamentos de acervo</h2>
-            <Badge variant="secondary">{foundations.length}</Badge>
-          </div>
-          <Card className="p-4">
-            {foundations.length === 0 ? (
-              <EmptyState
-                icon={<ScrollText className="size-5" />}
-                title="Nenhum fundamento salvo ainda"
-                description="Salve trechos e posições reutilizáveis. Por padrão, nada entra em busca ou memória sem opt-in explícito."
-                action={{ label: "Criar fundamento", href: "/biblioteca/fundamentos/novo" }}
-              />
-            ) : (
-              <ul className="divide-y divide-white/5">
-                {foundations.map((f) => (
-                  <li key={f.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
-                    <div className="min-w-0">
-                      <Link
-                        href={`/biblioteca/fundamentos/${f.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {f.title}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {(f.tags ?? []).slice(0, 8).map((t: string) => (
-                          <Badge key={t} variant="outline" className="text-[10px]">
-                            {t}
-                          </Badge>
-                        ))}
-                        {f.optInRag ? (
-                          <Badge className="text-[10px]" title="Pode ser citado em buscas assistidas quando aprovado">
-                            Busca assistida
-                          </Badge>
-                        ) : null}
-                        {f.optInMemory ? (
-                          <Badge variant="secondary" className="text-[10px]">
-                            Memória
-                          </Badge>
-                        ) : null}
-                        {f.useAsModel ? (
-                          <Badge variant="outline" className="text-[10px]">
-                            Modelo de peça
-                          </Badge>
-                        ) : null}
-                        {f.useAsStyle ? (
-                          <Badge variant="outline" className="text-[10px]">
-                            Referência de estilo
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </div>
-                    <Button asChild size="sm" variant="outline">
-                      <Link href={`/biblioteca/fundamentos/${f.id}`}>Abrir</Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </section>
-      </div>
-    </AppShell>
+        <BibliotecaShelfSection
+          id="shelf-documentos-equipe"
+          title="Documentos da equipe"
+          subtitle="Documentos privados e disponíveis apenas para a sua equipe."
+          verMaisHref="/documentos"
+          verMaisLabel="Ir a Documentos"
+        >
+          {privateOffice.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
+              Não há documentos a mostrar. Carregue ficheiros em{" "}
+              <Link
+                href="/documentos"
+                className="font-medium text-[color:var(--text-primary)] underline-offset-2 hover:underline"
+              >
+                Documentos
+              </Link>
+              .
+            </p>
+          ) : (
+            <BibliotecaShelfCarousel>
+              {privateOffice.map((d) => (
+                <BibliotecaOfficeDocumentCard
+                  key={d.id}
+                  href={workspaceDocumentHref(d)}
+                  documentId={d.id}
+                  title={d.originalName}
+                  mimeType={d.mimeType}
+                  caseTitle={d.case?.title ?? null}
+                  publishedAt={d.createdAt}
+                  thumbnailVersion={d.updatedAt.getTime()}
+                  topBadge="Privado"
+                  showCaseRow
+                />
+              ))}
+            </BibliotecaShelfCarousel>
+          )}
+        </BibliotecaShelfSection>
+    </>
   );
 }

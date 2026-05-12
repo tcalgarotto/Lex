@@ -28,7 +28,6 @@ const Body = z.object({
   mergeChecklist: z.boolean().optional().default(true),
 });
 
-export const dynamic = "force-dynamic";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { workspaceId, user } = await getWorkspaceContext();

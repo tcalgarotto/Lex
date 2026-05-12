@@ -1,9 +1,34 @@
+import { cache } from "react";
 import type { User as AuthUser } from "@supabase/supabase-js";
-import { MembershipRole } from "@prisma/client";
+import { MembershipRole, WorkspaceLicense, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+type AuthReadiness = { userExists: boolean; membershipExists: boolean };
+
+/**
+ * Sondagem leve por request (sem write). Usada no hot path de páginas protegidas.
+ */
+const authUserReadiness = cache(async (userId: string): Promise<AuthReadiness> => {
+  const [userRow, memRow] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    prisma.membership.findFirst({ where: { userId }, select: { id: true } }),
+  ]);
+  return { userExists: Boolean(userRow), membershipExists: Boolean(memRow) };
+});
+
+/**
+ * Hot path de leitura: garante que existe `User` + pelo menos uma `Membership`.
+ * Só chama `syncAuthUserToDatabase` (writes) quando falta um dos dois — não faz upsert em toda navegação.
+ */
+export async function ensureAuthUserForRead(authUser: AuthUser): Promise<void> {
+  const r = await authUserReadiness(authUser.id);
+  if (r.userExists && r.membershipExists) return;
+  await syncAuthUserToDatabase(authUser);
+}
 
 /**
  * Sincroniza o usuário Supabase Auth com a tabela `User` e garante workspace + membership.
+ * Usar em login/callback/convites — não no render normal de listagens.
  */
 export async function syncAuthUserToDatabase(authUser: AuthUser): Promise<{
   userId: string;
@@ -34,19 +59,37 @@ export async function syncAuthUserToDatabase(authUser: AuthUser): Promise<{
   });
 
   if (!membership) {
-    const slug = `ws-${user.id.slice(0, 8)}`;
-    const workspace = await prisma.workspace.create({
-      data: {
-        name: "Meu escritório",
-        slug,
+    // Slug único por utilizador (UUID sem hífens). O antigo `ws-` + 8 chars colidia
+    // com estado órfão ou colisão rara de prefixo entre contas.
+    const slug = `ws-${user.id.replace(/-/g, "")}`;
+    let workspace = await prisma.workspace.findUnique({ where: { slug } });
+    if (!workspace) {
+      try {
+        workspace = await prisma.workspace.create({
+          data: {
+            name: "Meu workspace",
+            slug,
+            license: WorkspaceLicense.SOLO,
+          },
+        });
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+          workspace = await prisma.workspace.findUniqueOrThrow({ where: { slug } });
+        } else {
+          throw e;
+        }
+      }
+    }
+    membership = await prisma.membership.upsert({
+      where: {
+        workspaceId_userId: { workspaceId: workspace.id, userId: user.id },
       },
-    });
-    membership = await prisma.membership.create({
-      data: {
+      create: {
         workspaceId: workspace.id,
         userId: user.id,
         role: MembershipRole.OWNER,
       },
+      update: {},
       include: { workspace: true },
     });
 

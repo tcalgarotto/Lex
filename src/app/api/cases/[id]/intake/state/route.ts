@@ -16,7 +16,6 @@ import {
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { resolveInterviewTemplate } from "@/lib/cases/case-brain/intake-checklist-helpers";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { workspaceId } = await getWorkspaceContext();

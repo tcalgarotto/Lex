@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  Activity,
   Briefcase,
   ChevronDown,
   ChevronRight,
@@ -12,24 +11,23 @@ import {
   FileText,
   Library,
   FolderKanban,
-  GitBranch,
   Home,
   PanelLeft,
   PanelLeftClose,
   Search,
   ScrollText,
-  Server,
-  Settings,
-  Sparkles,
   Users,
-  Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useUiStore } from "@/stores/ui-store";
+import { useWorkspaceContext } from "@/components/app/workspace-context";
+import { SidebarAccountFooter } from "@/components/app/sidebar-account-footer";
+import { hasAtLeast } from "@/lib/auth/permissions";
+import { prefetchOnce } from "@/lib/navigation/prefetch-routes";
+import { MembershipRole } from "@prisma/client";
 
 interface NavItem {
   href: string;
@@ -37,7 +35,7 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-const PRIMARY_NAV: NavItem[] = [
+const CORE_NAV: NavItem[] = [
   { href: "/dashboard", label: "Início", icon: Home },
   { href: "/cases", label: "Casos", icon: Briefcase },
   { href: "/documentos", label: "Documentos", icon: FileText },
@@ -45,125 +43,19 @@ const PRIMARY_NAV: NavItem[] = [
   { href: "/pesquisa-juridica", label: "Pesquisa jurídica", icon: Search },
   { href: "/editor", label: "Peças", icon: ScrollText },
   { href: "/processos", label: "Processos judiciais", icon: FolderKanban },
+];
+
+const WORKSPACE_ADMIN_NAV: NavItem[] = [
   { href: "/settings/team", label: "Equipe", icon: Users },
-];
-
-const ADVANCED_NAV: NavItem[] = [
-  { href: "/cockpit", label: "Cockpit operacional", icon: Activity },
-  { href: "/strategy", label: "Laboratório de estratégia", icon: GitBranch },
-  { href: "/retrieval/explain", label: "Retrieval (debug)", icon: Sparkles },
-  { href: "/settings/jobs", label: "Jobs IA", icon: Zap },
   { href: "/settings/roteiros", label: "Roteiros de entrevista", icon: ClipboardList },
-  { href: "/settings/admin", label: "Administração", icon: Server },
-  { href: "/test-guide", label: "Guia de teste", icon: ClipboardList },
 ];
 
-export function AppSidebar() {
-  const pathname = usePathname();
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
-  const toggle = useUiStore((s) => s.toggleSidebar);
-  const setCmd = useUiStore((s) => s.setCommandOpen);
-
-  const advancedActive = ADVANCED_NAV.some(
-    (n) => pathname === n.href || pathname.startsWith(`${n.href}/`),
-  );
-  const [advancedOpen, setAdvancedOpen] = useState<boolean>(advancedActive);
-
-  return (
-    <motion.aside
-      initial={false}
-      animate={{ width: collapsed ? 72 : 240 }}
-      transition={{ type: "spring", stiffness: 280, damping: 30 }}
-      className="fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-white/10 bg-zinc-950/90 backdrop-blur-xl"
-    >
-      <div className="flex h-14 items-center justify-between px-3">
-        <Link
-          href="/dashboard"
-          className={cn(
-            "flex items-center gap-2 font-semibold tracking-tight",
-            collapsed && "justify-center",
-          )}
-        >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-violet-600/20 text-violet-300">
-            L
-          </span>
-          {!collapsed ? <span>Lex</span> : null}
-        </Link>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          onClick={() => toggle()}
-          aria-label="Alternar sidebar"
-        >
-          {collapsed ? <PanelLeft className="size-4" /> : <PanelLeftClose className="size-4" />}
-        </Button>
-      </div>
-      <Separator className="bg-white/10" />
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-        <Button
-          variant="outline"
-          className={cn(
-            "mb-2 justify-start border-white/10 bg-white/5 text-left",
-            collapsed && "justify-center px-0",
-          )}
-          onClick={() => setCmd(true)}
-        >
-          <Search className="size-4 shrink-0" />
-          {!collapsed ? <span className="ml-2">Busca rápida ⌘K</span> : null}
-        </Button>
-
-        {PRIMARY_NAV.map((item) => (
-          <NavLink
-            key={item.href}
-            item={item}
-            pathname={pathname}
-            collapsed={collapsed}
-          />
-        ))}
-
-        <button
-          type="button"
-          onClick={() => setAdvancedOpen((v) => !v)}
-          className={cn(
-            "mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-xs uppercase tracking-wide text-muted-foreground hover:bg-white/5",
-            collapsed && "justify-center px-0",
-          )}
-          aria-expanded={advancedOpen}
-        >
-          {advancedOpen ? (
-            <ChevronDown className="size-3.5" />
-          ) : (
-            <ChevronRight className="size-3.5" />
-          )}
-          {!collapsed ? <span>Avançado</span> : null}
-        </button>
-        {advancedOpen
-          ? ADVANCED_NAV.map((item) => (
-              <NavLink
-                key={item.href}
-                item={item}
-                pathname={pathname}
-                collapsed={collapsed}
-                muted
-              />
-            ))
-          : null}
-      </nav>
-
-      <div className="p-2">
-        <NavLink
-          item={{ href: "/settings/perfil", label: "Configurações", icon: Settings }}
-          pathname={pathname}
-          collapsed={collapsed}
-          muted
-        />
-      </div>
-    </motion.aside>
-  );
+function isAdmin(role: MembershipRole | undefined): boolean {
+  if (!role) return false;
+  return hasAtLeast(role, MembershipRole.ADMIN);
 }
 
-function NavLink({
+const NavLink = memo(function NavLink({
   item,
   pathname,
   collapsed,
@@ -174,21 +66,138 @@ function NavLink({
   collapsed: boolean;
   muted?: boolean;
 }) {
+  const router = useRouter();
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
   const Icon = item.icon;
+  const warm = () => prefetchOnce(router, item.href);
   return (
-    <Link href={item.href}>
+    <Link href={item.href} prefetch={false} onMouseEnter={warm} onFocus={warm}>
       <span
         className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/5",
-          muted && "text-muted-foreground",
-          active && "bg-white/10 text-foreground",
+          "relative flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-lg font-medium leading-snug transition-colors hover:bg-[var(--bg-hover)]",
+          muted && !active && "text-[color:var(--text-muted)]",
+          !muted && !active && "text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]",
+          active &&
+            "bg-[rgba(124,58,237,0.08)] text-[color:var(--violet-400)] before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--violet-500)] before:content-['']",
           collapsed && "justify-center px-0",
         )}
       >
-        <Icon className="size-4 shrink-0 opacity-80" />
+        <Icon className={cn("size-5 shrink-0", active ? "opacity-100" : "opacity-80")} />
         {!collapsed ? item.label : null}
       </span>
     </Link>
   );
-}
+});
+NavLink.displayName = "NavLink";
+
+/** Só esta árvore re-renderiza quando a rota muda (pathname). */
+const SidebarMainNav = memo(function SidebarMainNav({
+  collapsed,
+}: {
+  collapsed: boolean;
+}) {
+  const pathname = usePathname();
+  const ws = useWorkspaceContext();
+  const admin = isAdmin(ws?.current.role);
+
+  const workspaceAdminActive = WORKSPACE_ADMIN_NAV.some(
+    (n) => pathname === n.href || pathname.startsWith(`${n.href}/`),
+  );
+  const [workspaceOpen, setWorkspaceOpen] = useState(workspaceAdminActive);
+
+  return (
+    <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
+      {CORE_NAV.map((item) => (
+        <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+      ))}
+
+      {admin ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setWorkspaceOpen((v) => !v)}
+            className={cn(
+              "mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-widest text-[color:var(--text-muted)] hover:bg-[var(--bg-hover)]",
+              collapsed && "justify-center px-0",
+            )}
+            aria-expanded={workspaceOpen}
+          >
+            {workspaceOpen ? (
+              <ChevronDown className="size-4 shrink-0" />
+            ) : (
+              <ChevronRight className="size-4 shrink-0" />
+            )}
+            {!collapsed ? <span>Workspace</span> : null}
+          </button>
+          {workspaceOpen
+            ? WORKSPACE_ADMIN_NAV.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  pathname={pathname}
+                  collapsed={collapsed}
+                  muted
+                />
+              ))
+            : null}
+        </>
+      ) : null}
+    </nav>
+  );
+});
+SidebarMainNav.displayName = "SidebarMainNav";
+
+const SidebarFooter = memo(function SidebarFooter({ collapsed }: { collapsed: boolean }) {
+  const ws = useWorkspaceContext();
+  if (!ws?.viewer || !ws.current) return null;
+  return (
+    <div className="space-y-2 border-t border-[color:var(--border-subtle)] p-2 pt-3">
+      <SidebarAccountFooter
+        viewer={ws.viewer}
+        role={ws.current.role}
+        collapsed={collapsed}
+        workspace={
+          ws.workspaces?.length ? { current: ws.current, workspaces: ws.workspaces } : null
+        }
+      />
+    </div>
+  );
+});
+SidebarFooter.displayName = "SidebarFooter";
+
+export const AppSidebar = memo(function AppSidebar() {
+  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggle = useUiStore((s) => s.toggleSidebar);
+
+  return (
+    <aside
+      className={cn(
+        "fixed left-0 z-40 flex flex-col border-r border-[color:var(--border-subtle)] bg-[color:var(--bg-sidebar)]",
+        "top-[var(--app-header-h)] h-[calc(100svh-var(--app-header-h))]",
+        "w-[268px] transition-[width] duration-200 ease-out motion-reduce:transition-none",
+        collapsed && "w-20",
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-12 shrink-0 items-center border-b border-[color:var(--border-subtle)] px-2",
+          collapsed ? "justify-center" : "justify-end",
+        )}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={() => toggle()}
+          aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+        >
+          {collapsed ? <PanelLeft className="size-5" /> : <PanelLeftClose className="size-5" />}
+        </Button>
+      </div>
+      <Separator className="bg-[var(--border-subtle)]" />
+      <SidebarMainNav collapsed={collapsed} />
+      <SidebarFooter collapsed={collapsed} />
+    </aside>
+  );
+});
+AppSidebar.displayName = "AppSidebar";

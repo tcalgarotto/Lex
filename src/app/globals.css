@@ -1,37 +1,547 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Lex DS — tokens + vidro: ver docs/DESIGN_SYSTEM.md (HTML legado: docs/model design/lex-design-system-v2.html) */
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 5%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 263.4 70% 50.4%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 263.4 70% 50.4%;
-    --radius: 0.5rem;
+    --font-serif: "DM Serif Display", Georgia, serif;
+    --r-xs: 4px;
+    --r-sm: 6px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --r-xl: 16px;
+    --r-2xl: 20px;
+    --r-3xl: 24px;
+    --r-full: 9999px;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --t-fast: 100ms;
+    --t-base: 180ms;
+    --t-slow: 320ms;
   }
-}
 
-@layer base {
+  [data-theme="dark"] {
+    --surface-base: #040404;
+    --surface-sidebar: #080808;
+    --surface-card: #0c0c0c;
+    --surface-elevated: #121212;
+    --surface-overlay: rgba(255, 255, 255, 0.03);
+    --surface-overlay-strong: rgba(255, 255, 255, 0.055);
+
+    --glass-bg: rgba(255, 255, 255, 0.055);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-bg-strong: rgba(255, 255, 255, 0.1);
+    --glass-blur: blur(26px) saturate(185%);
+    --glass-edge: rgba(255, 255, 255, 0.07);
+    --glass-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.42),
+      0 2px 12px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 var(--glass-edge);
+    --glass-sheen: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.055) 0%,
+      rgba(255, 255, 255, 0.012) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    --glass-card-sheen: radial-gradient(95% 70% at 14% 0%, rgba(255, 255, 255, 0.08), transparent 45%),
+      radial-gradient(65% 50% at 88% 12%, rgba(255, 255, 255, 0.04), transparent 48%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.008) 55%, rgba(255, 255, 255, 0.02) 100%);
+
+    --border-subtle: rgba(255, 255, 255, 0.055);
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --border-focus: rgba(124, 58, 237, 0.6);
+
+    --text-primary: rgba(255, 255, 255, 0.93);
+    --text-secondary: rgba(255, 255, 255, 0.56);
+    --text-muted: rgba(255, 255, 255, 0.32);
+    --text-disabled: rgba(255, 255, 255, 0.18);
+    --text-inverse: rgba(0, 0, 0, 0.88);
+
+    --brand-primary: #7c3aed;
+    --brand-hover: #6d28d9;
+    --brand-subtle: rgba(124, 58, 237, 0.15);
+    --brand-text: #a78bfa;
+    --brand-border: rgba(124, 58, 237, 0.3);
+
+    --success-bg: rgba(5, 46, 22, 0.9);
+    --success-border: rgba(22, 163, 74, 0.28);
+    --success-text: #4ade80;
+    --warning-bg: rgba(41, 16, 0, 0.9);
+    --warning-border: rgba(217, 119, 6, 0.28);
+    --warning-text: #fbbf24;
+    --danger-bg: rgba(45, 6, 6, 0.9);
+    --danger-border: rgba(220, 38, 38, 0.28);
+    --danger-text: #f87171;
+    --info-bg: rgba(15, 31, 74, 0.9);
+    --info-border: rgba(37, 99, 235, 0.28);
+    --info-text: #60a5fa;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.55);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.65);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.75);
+    --shadow-violet: 0 4px 24px rgba(124, 58, 237, 0.28);
+
+    --progress-low: #f97316;
+    --progress-mid: #d97706;
+    --progress-high: #16a34a;
+    --hero-violet-glow: rgba(124, 58, 237, 0.14);
+
+    /* shadcn (HSL channels) */
+    --background: 0 0% 1.8%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 6.7%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 6.7%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 9.4%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 8.6%;
+    --muted-foreground: 0 0% 56%;
+    --accent: 0 0% 10.5%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 62% 32%;
+    --destructive-foreground: 0 91% 71%;
+    --border: 0 0% 14%;
+    --input: 0 0% 7.8%;
+    --ring: 262 83% 58%;
+    --radius: 0.5rem;
+
+    /* compat legado */
+    --bg-page: var(--surface-base);
+    --bg-sidebar: var(--surface-sidebar);
+    --bg-card: var(--surface-card);
+    --bg-elevated: var(--surface-elevated);
+    --bg-input: #141414;
+    --bg-hover: var(--surface-overlay);
+    --bg-active: var(--surface-overlay-strong);
+    --violet-400: var(--brand-text);
+    --violet-500: var(--brand-primary);
+  }
+
+  [data-theme="light"] {
+    --surface-base: #f5f4f2;
+    --surface-sidebar: #eeecea;
+    --surface-card: #ffffff;
+    --surface-elevated: #f9f8f7;
+    --surface-overlay: rgba(0, 0, 0, 0.03);
+    --surface-overlay-strong: rgba(0, 0, 0, 0.06);
+
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-border: rgba(0, 0, 0, 0.09);
+    --glass-bg-strong: rgba(255, 255, 255, 0.78);
+    --glass-blur: blur(26px) saturate(180%);
+    --glass-edge: rgba(255, 255, 255, 0.45);
+    --glass-shadow:
+      0 10px 40px rgba(0, 0, 0, 0.08),
+      0 2px 12px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    --glass-sheen: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.22) 52%,
+      rgba(255, 255, 255, 0.35) 100%
+    );
+    --glass-card-sheen: radial-gradient(95% 68% at 12% 0%, rgba(255, 255, 255, 0.38), transparent 44%),
+      radial-gradient(62% 48% at 90% 10%, rgba(255, 255, 255, 0.14), transparent 46%),
+      linear-gradient(160deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.1) 55%, rgba(255, 255, 255, 0.2) 100%);
+
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-default: rgba(0, 0, 0, 0.1);
+    --border-strong: rgba(0, 0, 0, 0.18);
+    --border-focus: rgba(124, 58, 237, 0.5);
+
+    --text-primary: rgba(0, 0, 0, 0.88);
+    --text-secondary: rgba(0, 0, 0, 0.56);
+    --text-muted: rgba(0, 0, 0, 0.36);
+    --text-disabled: rgba(0, 0, 0, 0.24);
+    --text-inverse: rgba(255, 255, 255, 0.95);
+
+    --brand-primary: #6d28d9;
+    --brand-hover: #5b21b6;
+    --brand-subtle: rgba(109, 40, 217, 0.08);
+    --brand-text: #6d28d9;
+    --brand-border: rgba(109, 40, 217, 0.22);
+
+    --success-bg: #f0fdf4;
+    --success-border: rgba(22, 163, 74, 0.22);
+    --success-text: #15803d;
+    --warning-bg: #fffbeb;
+    --warning-border: rgba(217, 119, 6, 0.22);
+    --warning-text: #b45309;
+    --danger-bg: #fef2f2;
+    --danger-border: rgba(220, 38, 38, 0.22);
+    --danger-text: #dc2626;
+    --info-bg: #eff6ff;
+    --info-border: rgba(37, 99, 235, 0.22);
+    --info-text: #1d4ed8;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.07);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-violet: 0 4px 24px rgba(109, 40, 217, 0.18);
+
+    --progress-low: #f97316;
+    --progress-mid: #d97706;
+    --progress-high: #16a34a;
+    --hero-violet-glow: rgba(109, 40, 217, 0.14);
+
+    --background: 40 12% 96%;
+    --foreground: 0 0% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+    --primary: 263 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 8% 92%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 40 10% 94%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 40 8% 93%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 0 84% 96%;
+    --destructive-foreground: 0 72% 42%;
+    --border: 0 0% 88%;
+    --input: 0 0% 90%;
+    --ring: 263 70% 45%;
+
+    --bg-page: var(--surface-base);
+    --bg-sidebar: var(--surface-sidebar);
+    --bg-card: var(--surface-card);
+    --bg-elevated: var(--surface-elevated);
+    --bg-input: #f3f2f0;
+    --bg-hover: var(--surface-overlay);
+    --bg-active: var(--surface-overlay-strong);
+    --violet-400: var(--brand-text);
+    --violet-500: var(--brand-primary);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 14px;
+  }
+
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply min-h-screen font-sans antialiased;
+    /* Fundo no ::before fixed para não cobrir os blobs (também fixed).
+       O background-color no body criaria camada opaca sobre z-index:0. */
+    background-color: transparent;
+    color: hsl(var(--foreground));
+    line-height: 1.6;
+    transition: color var(--t-slow) var(--ease);
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-color: hsl(var(--background));
+    transition: background-color var(--t-slow) var(--ease);
+  }
+
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .lex-glass {
+    position: relative;
+    isolation: isolate;
+    background-image: var(--glass-sheen), linear-gradient(0deg, var(--glass-bg), var(--glass-bg));
+    background-color: transparent;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .lex-glass-strong {
+    position: relative;
+    isolation: isolate;
+    background-image: var(--glass-sheen), linear-gradient(0deg, var(--glass-bg-strong), var(--glass-bg-strong));
+    background-color: transparent;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /**
+   * Cartões flutuantes estilo vidro (iOS / glassmorphism): gradiente + blur forte + brilho no topo.
+   */
+  .lex-glass-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background-image: var(--glass-card-sheen), var(--glass-sheen),
+      linear-gradient(0deg, var(--glass-bg), var(--glass-bg));
+    background-color: transparent;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition-property: border-color, box-shadow, transform;
+    transition-duration: var(--t-base);
+    transition-timing-function: var(--ease);
+  }
+
+  .lex-glass-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .lex-glass-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    opacity: 0.4;
+  }
+
+  [data-theme="light"] .lex-glass-card::after {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    opacity: 0.55;
+  }
+
+  .lex-glass-card:hover {
+    border-color: color-mix(in srgb, var(--glass-border) 88%, rgba(255, 255, 255, 0.35) 12%);
+    box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  /** Orbes suaves fixos no viewport. Ficam na camada 0; todo o conteúdo
+      real (sidebar, topbar, cards) deve ter z-index ≥ 1 para aparecer
+      por cima. O backdrop-filter dos .lex-glass-card "vê" estes orbes
+      porque eles estão num stacking context separado (fixed). */
+  .lex-glass-mesh {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    /* Orbes mais contidos no topo; zona de conteúdo fica mais preta, menos “névoa” clara. */
+    mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 42%,
+      rgba(0, 0, 0, 0.55) 62%,
+      rgba(0, 0, 0, 0.12) 82%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 42%,
+      rgba(0, 0, 0, 0.55) 62%,
+      rgba(0, 0, 0, 0.12) 82%,
+      transparent 100%
+    );
+  }
+
+  .lex-glass-mesh__blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(72px);
+    opacity: 0.3;
+  }
+
+  [data-theme="dark"] .lex-glass-mesh__blob--a {
+    left: -14%;
+    top: -12%;
+    width: 58vw;
+    height: 58vw;
+    max-width: 720px;
+    max-height: 720px;
+    background: rgba(88, 28, 135, 0.26);
+  }
+
+  [data-theme="dark"] .lex-glass-mesh__blob--b {
+    left: 4%;
+    top: -4%;
+    width: 52vw;
+    height: 52vw;
+    max-width: 640px;
+    max-height: 640px;
+    background: rgba(109, 40, 217, 0.14);
+  }
+
+  [data-theme="dark"] .lex-glass-mesh__blob--c {
+    left: 32%;
+    top: -14%;
+    width: 50vw;
+    height: 50vw;
+    max-width: 600px;
+    max-height: 600px;
+    background: rgba(14, 116, 144, 0.12);
+  }
+
+  [data-theme="dark"] .lex-glass-mesh__blob--d {
+    right: -12%;
+    top: -6%;
+    width: 56vw;
+    height: 56vw;
+    max-width: 700px;
+    max-height: 700px;
+    background: rgba(8, 145, 178, 0.12);
+  }
+
+  [data-theme="light"] .lex-glass-mesh__blob--a {
+    left: -14%;
+    top: -12%;
+    width: 56vw;
+    height: 56vw;
+    max-width: 680px;
+    max-height: 680px;
+    background: rgba(109, 40, 217, 0.14);
+  }
+
+  [data-theme="light"] .lex-glass-mesh__blob--b {
+    left: 4%;
+    top: -4%;
+    width: 50vw;
+    height: 50vw;
+    max-width: 600px;
+    max-height: 600px;
+    background: rgba(124, 58, 237, 0.1);
+  }
+
+  [data-theme="light"] .lex-glass-mesh__blob--c {
+    left: 32%;
+    top: -12%;
+    width: 48vw;
+    height: 48vw;
+    max-width: 560px;
+    max-height: 560px;
+    background: rgba(14, 165, 233, 0.11);
+  }
+
+  [data-theme="light"] .lex-glass-mesh__blob--d {
+    right: -12%;
+    top: -6%;
+    width: 54vw;
+    height: 54vw;
+    max-width: 660px;
+    max-height: 660px;
+    background: rgba(6, 182, 212, 0.1);
+  }
+
+  [data-theme="light"] .lex-glass-mesh__blob {
+    opacity: 0.42;
+  }
+
+  /** Painéis interiores (pré-formatado, sub-secções) — tokens, sem zinc. */
+  .lex-inset {
+    border-radius: var(--r-lg);
+    border: 0.5px dashed var(--border-default);
+    background: var(--surface-overlay-strong);
+    color: var(--text-secondary);
+  }
+
+  .lex-inset-solid {
+    border-radius: var(--r-lg);
+    border: 0.5px solid var(--border-default);
+    background: var(--surface-overlay-strong);
+    color: var(--text-secondary);
+  }
+
+  .lex-transition {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: var(--t-base);
+    transition-timing-function: var(--ease);
+  }
+
+  .lex-btn-primary {
+    background: var(--brand-primary);
+    color: var(--text-inverse);
+    border: 0.5px solid var(--brand-border);
+    box-shadow: var(--shadow-violet);
+  }
+
+  .lex-btn-primary:hover {
+    background: var(--brand-hover);
+  }
+
+  .lex-kbd {
+    font-family: var(--font-geist-mono, ui-monospace, monospace);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    background: var(--surface-elevated);
+    border: 0.5px solid var(--border-strong);
+    border-radius: var(--r-xs);
+    padding: 2px 6px;
+    border-bottom-width: 2px;
+  }
+
+  .lex-marketing-footer {
+    background: var(--surface-sidebar);
+    border-top: 0.5px solid var(--border-subtle);
+  }
+
+  .lex-hero-gradient {
+    background:
+      radial-gradient(ellipse 70% 55% at 50% -15%, var(--hero-violet-glow), transparent 58%),
+      radial-gradient(ellipse 50% 40% at 100% 0%, rgba(99, 102, 241, 0.1), transparent 50%),
+      var(--surface-base);
+  }
+
+  /**
+   * Coluna de conteúdo do AppShell: 70% da largura útil com a sidebar expandida (268px,
+   * igual a `app-sidebar`). O max-width não muda ao recolher a barra (80px) — o bloco
+   * só recentraliza no <main> mais largo.
+   */
+  .lex-app-content-well {
+    width: 100%;
+    max-width: min(100%, max(0px, calc((100vw - 268px) * 0.7)));
+    margin-inline: auto;
+  }
+
+  /**
+   * Páginas `(app)`: shell + ritmo vertical — aplicado uma vez em `AppChrome` (coluna principal).
+   * As rotas deixam de repetir estes wrappers; título/lead/CTA vidro usam as classes abaixo.
+   */
+  .lex-page-shell {
+    @apply relative w-full min-w-0 pb-4;
+  }
+
+  .lex-page-inner {
+    @apply relative z-10 space-y-8;
+  }
+
+  .lex-page-title {
+    @apply text-3xl font-semibold tracking-tight text-[color:var(--text-primary)] md:text-[2rem];
+  }
+
+  .lex-page-lead {
+    @apply max-w-2xl text-base leading-relaxed text-[color:var(--text-secondary)];
+  }
+
+  .lex-glass-cta {
+    @apply lex-glass-card inline-flex h-11 shrink-0 items-center justify-center rounded-2xl px-6 text-[15px] font-semibold text-[color:var(--text-primary)] outline-none lex-transition dark:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-base)];
   }
 }

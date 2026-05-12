@@ -17,7 +17,6 @@ import {
 import { legalResearchPinBodySchema } from "@/lib/legal-research/request-body";
 import type { JurisprudenceCandidate, LegalFoundationCandidate } from "@/lib/legal-research/types";
 
-export const dynamic = "force-dynamic";
 
 function coerceFoundation(raw: unknown): LegalFoundationCandidate | null {
   if (!raw || typeof raw !== "object") return null;

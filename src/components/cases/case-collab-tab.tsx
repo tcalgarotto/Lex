@@ -2,24 +2,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, MessageSquare, Send, ShieldCheck } from "lucide-react";
-import type {
-  CaseAnnotation,
-  CaseComment,
-  DraftApproval,
-} from "@prisma/client";
+import type { CaseAnnotation, CaseComment, DraftApproval } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { useOptionalCaseBootstrap } from "@/components/cases/case-bootstrap-context";
 
 type CommentsResp = { comments: CaseComment[] };
 type AnnotationsResp = { annotations: CaseAnnotation[] };
 type ApprovalsResp = { approvals: DraftApproval[] };
 
 export function CaseCollabTab({ caseId }: { caseId: string }) {
-  const [comments, setComments] = useState<CaseComment[]>([]);
-  const [annotations, setAnnotations] = useState<CaseAnnotation[]>([]);
-  const [approvals, setApprovals] = useState<DraftApproval[]>([]);
-  const [loading, setLoading] = useState(false);
+  const boot = useOptionalCaseBootstrap();
+  const [comments, setComments] = useState<CaseComment[]>(() => boot?.payload.collab.comments ?? []);
+  const [annotations, setAnnotations] = useState<CaseAnnotation[]>(
+    () => boot?.payload.collab.annotations ?? [],
+  );
+  const [approvals, setApprovals] = useState<DraftApproval[]>(() => boot?.payload.collab.approvals ?? []);
+  const [loading, setLoading] = useState(() => !boot);
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -40,8 +40,22 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   useEffect(() => {
+    if (!boot) return;
+    setComments(boot.payload.collab.comments);
+    setAnnotations(boot.payload.collab.annotations);
+    setApprovals(boot.payload.collab.approvals);
+    setLoading(false);
+  }, [boot, boot?.version]);
+
+  useEffect(() => {
+    if (boot) return;
     void load();
-  }, [load]);
+  }, [boot, load]);
+
+  const reload = useCallback(async () => {
+    if (boot) await boot.refetch();
+    else await load();
+  }, [boot, load]);
 
   const submitComment = useCallback(async () => {
     if (body.trim().length < 1) return;
@@ -57,8 +71,8 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
       return;
     }
     setBody("");
-    await load();
-  }, [body, caseId, load]);
+    await reload();
+  }, [body, caseId, reload]);
 
   return (
     <section className="space-y-4">
@@ -73,7 +87,7 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
         ) : null}
       </header>
 
-      <div className="rounded-lg border border-white/10 bg-zinc-950/40 p-3">
+      <div className="rounded-lg border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-card)] p-3">
         <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -95,20 +109,22 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
         </h3>
         <ul className="space-y-2">
           {comments.length === 0 ? (
-            <li className="rounded-md border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
+            <li className="rounded-md border-[0.5px] border-dashed border-[color:var(--border-default)] p-4 text-center text-xs text-muted-foreground">
               Sem comentários ainda — abra a colaboração para sua equipe.
             </li>
           ) : (
             comments.map((c) => (
               <li
                 key={c.id}
-                className="rounded-md border border-white/10 bg-zinc-950/40 p-3"
+                className="rounded-md border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-card)] p-3"
                 data-testid="collab-comment-item"
               >
                 <header className="flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="font-mono">{c.authorId.slice(0, 8)}</span>
                   <div className="flex items-center gap-1">
-                    <Badge variant="outline" className="text-[10px]">{c.visibility}</Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      {c.visibility}
+                    </Badge>
                     <span>{new Date(c.createdAt).toLocaleString()}</span>
                   </div>
                 </header>
@@ -125,7 +141,7 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border border-white/10 bg-zinc-950/40 p-3">
+        <div className="rounded-lg border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-card)] p-3">
           <h3 className="mb-2 flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
             <ShieldCheck className="size-3.5" /> Aprovações ({approvals.length})
           </h3>
@@ -134,22 +150,23 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
           ) : (
             <ul className="space-y-2">
               {approvals.map((a) => (
-                <li key={a.id} className="rounded-md border border-white/5 bg-zinc-950/30 p-2 text-xs">
+                <li
+                  key={a.id}
+                  className="rounded-md border-[0.5px] border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] p-2 text-xs"
+                >
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{a.status}</Badge>
                     <span className="font-mono opacity-60">{a.draftId.slice(0, 8)}</span>
                     <span className="opacity-60">{new Date(a.createdAt).toLocaleString()}</span>
                   </div>
-                  {a.rationale ? (
-                    <p className="mt-1 text-muted-foreground">{a.rationale}</p>
-                  ) : null}
+                  {a.rationale ? <p className="mt-1 text-muted-foreground">{a.rationale}</p> : null}
                 </li>
               ))}
             </ul>
           )}
         </div>
 
-        <div className="rounded-lg border border-white/10 bg-zinc-950/40 p-3">
+        <div className="rounded-lg border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-card)] p-3">
           <h3 className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
             Anotações ({annotations.length})
           </h3>
@@ -160,8 +177,13 @@ export function CaseCollabTab({ caseId }: { caseId: string }) {
           ) : (
             <ul className="space-y-1">
               {annotations.slice(0, 12).map((a) => (
-                <li key={a.id} className="rounded-md border border-white/5 bg-zinc-950/30 p-2 text-xs">
-                  <Badge variant="outline" className="text-[10px]">{a.kind}</Badge>
+                <li
+                  key={a.id}
+                  className="rounded-md border-[0.5px] border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] p-2 text-xs"
+                >
+                  <Badge variant="outline" className="text-[10px]">
+                    {a.kind}
+                  </Badge>
                   <span className="ml-2 opacity-80">{a.excerpt.slice(0, 160)}</span>
                 </li>
               ))}

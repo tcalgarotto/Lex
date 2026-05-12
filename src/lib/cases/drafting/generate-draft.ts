@@ -74,7 +74,7 @@ export async function generateDraft(
   const pinText = pinnedFoundations
     .map((p) => {
       const originLabel =
-        p.verificationStatus === "USER_PINNED" ? "pin do escritório" : `status: ${p.verificationStatus}`;
+        p.verificationStatus === "USER_PINNED" ? "pin do workspace" : `status: ${p.verificationStatus}`;
       return `### ${p.title}\nCitação: ${p.citation}\nTrecho autorizado:\n> ${p.excerpt}\n(origem: ${originLabel})\n`;
     })
     .join("\n");

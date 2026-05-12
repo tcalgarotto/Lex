@@ -10,24 +10,23 @@ import { loadCaseForWorkspace } from "../_load-case";
  * Ver: docs/UX_FLOW_AUDIT.md
  */
 
-export const dynamic = "force-dynamic";
 
 export default async function CaseDocumentsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const { workspaceId } = await getWorkspaceContext();
-  const c = await loadCaseForWorkspace(workspaceId, id);
-  if (!c) notFound();
+ const { id } = await params;
+ const { workspaceId } = await getWorkspaceContext();
+ const c = await loadCaseForWorkspace(workspaceId, id);
+ if (!c) notFound();
 
-  return (
-    <div className="space-y-3">
-      <header className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Documentos</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Envie provas e peças, acompanhe o processamento e use o texto extraído nas próximas etapas
-          do caso.
-        </p>
-      </header>
-      <CaseDocumentsTab caseId={c.id} documents={c.documents} />
-    </div>
-  );
+ return (
+ <div className="space-y-3">
+ <header className="space-y-1">
+ <h2 className="text-sm font-semibold text-foreground">Documentos</h2>
+ <p className="max-w-3xl text-sm text-muted-foreground">
+ Envie provas e peças, acompanhe o processamento e use o texto extraído nas próximas etapas
+ do caso.
+ </p>
+ </header>
+ <CaseDocumentsTab caseId={c.id} documents={c.documents} />
+ </div>
+ );
 }

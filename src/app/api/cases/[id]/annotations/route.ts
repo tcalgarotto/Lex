@@ -9,7 +9,6 @@ import { CaseAnnotationKind } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { addAnnotation, listAnnotations } from "@/lib/cases/collaboration";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   draftId: z.string().min(1).optional(),

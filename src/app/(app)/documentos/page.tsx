@@ -1,19 +1,25 @@
 import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { AlertTriangle, FileText } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import type { Prisma } from "@prisma/client";
+import { DocumentStatus } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { prisma } from "@/lib/prisma";
+import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 import {
   deriveDocumentDisplayStatus,
   type DocumentDisplayKind,
 } from "@/lib/documents/status-display";
+import { DocumentPdfThumbnail } from "@/components/documents/document-pdf-thumbnail";
 import { DocumentRowActions } from "@/components/documents/document-row-actions";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
+import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 
-export const dynamic = "force-dynamic";
 
 interface DocumentosPageProps {
   searchParams: Promise<{
@@ -24,21 +30,28 @@ interface DocumentosPageProps {
 }
 
 export default async function DocumentosPage({ searchParams }: DocumentosPageProps) {
+  const pageT0 = performance.now();
   const sp = await searchParams;
-  const { workspaceId } = await getWorkspaceContext();
+  const tWs = performance.now();
+  const { workspaceId, user } = await getWorkspaceContext();
+  devLogLexTiming("documentos.getWorkspaceContext", performance.now() - tWs);
 
-  const where: {
-    workspaceId: string;
-    status?: string;
-    caseId?: string | null;
-  } = { workspaceId };
-  if (sp.status) where.status = sp.status;
-  if (sp.caseId) where.caseId = sp.caseId;
-  if (sp.unlinked === "1") where.caseId = null;
+  const andParts: Prisma.DocumentWhereInput[] = [...officePrivateDocumentsAndParts(user.id)];
+  if (sp.status && (Object.values(DocumentStatus) as string[]).includes(sp.status)) {
+    andParts.push({ status: sp.status as DocumentStatus });
+  }
+  if (sp.caseId) andParts.push({ caseId: sp.caseId });
+  if (sp.unlinked === "1") andParts.push({ caseId: null });
 
+  const tDb = performance.now();
   const [documents, cases] = await Promise.all([
     prisma.document.findMany({
-      where: where as never,
+      where: {
+        workspaceId,
+        deletedAt: null,
+        archivedAt: null,
+        AND: andParts,
+      },
       orderBy: { updatedAt: "desc" },
       take: 100,
       select: {
@@ -64,102 +77,143 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
       select: { id: true, title: true },
     }),
   ]);
+  devLogLexTiming("documentos.prisma", performance.now() - tDb);
+  devLogLexTiming("documentos.page", performance.now() - pageT0);
 
-  const stalledCount = documents.filter(
-    (d) => deriveDocumentDisplayStatus(d).stalled,
-  ).length;
+  const stalledCount = documents.filter((d) => deriveDocumentDisplayStatus(d).stalled).length;
 
   return (
-    <AppShell title="Documentos">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold">Documentos</h1>
-            <p className="text-sm text-muted-foreground">
-              Petições, despachos, contratos e provas que você enviou. Vincule a um caso para que
-              apareçam dentro dele.
+    <>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0 space-y-2">
+            <h1 className={lexPageTitleClassName}>Documentos</h1>
+            <p className={lexPageLeadClassName}>
+              Petições, despachos, contratos e provas carregados neste workspace. Associe a um caso para
+              integrarem o contexto dele.
             </p>
           </div>
           <DocumentUploadButton
             caseId={sp.caseId}
             label={sp.caseId ? "Enviar para o caso" : "Enviar documento"}
+            ctaGlass
           />
         </header>
 
         <FiltersBar status={sp.status ?? null} unlinked={sp.unlinked === "1"} />
 
         {stalledCount > 0 ? (
-          <Card className="border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
-            <AlertTriangle className="mr-1 inline size-3" />
-            {stalledCount} documento(s) travado(s) há tempo demais. Use o botão &quot;Reprocessar&quot; para
-            tentar novamente.
-          </Card>
+          <div
+            className="lex-glass-card flex flex-wrap items-start gap-3 rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-sm text-amber-100"
+            role="status"
+          >
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
+            <p className="min-w-0 flex-1 leading-relaxed">
+              {stalledCount} documento(s) travado(s) há tempo demais. Use o botão &quot;Reprocessar&quot; para
+              tentar novamente.
+            </p>
+          </div>
         ) : null}
 
         {documents.length === 0 ? (
           <EmptyState
+            className="w-full min-w-0"
             icon={<FileText className="size-5" />}
             title="Nenhum documento ainda"
-            description="Envie uma petição, despacho, contrato ou prova para começar a análise jurídica."
+            description="Carregue petições, despachos, contratos ou provas para indexação e uso nas ferramentas do Lex."
             fullHeight
           >
             <div className="mt-5 flex justify-center">
               <DocumentUploadButton
                 caseId={sp.caseId}
                 label={sp.caseId ? "Enviar primeiro documento ao caso" : "Enviar primeiro documento"}
+                ctaGlass
               />
             </div>
           </EmptyState>
         ) : (
-          <ul className="space-y-2">
+          <ul className="flex flex-col gap-5">
             {documents.map((d) => {
               const status = deriveDocumentDisplayStatus(d);
+              const updated = formatDistanceToNow(d.updatedAt, { addSuffix: true, locale: ptBR });
+              const pdf = isPdfMime(d.mimeType, d.originalName);
               return (
                 <li key={d.id}>
-                  <Card className="p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p className="truncate font-medium">{d.originalName}</p>
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                          <StatusChip kind={status.kind} label={status.label} />
-                          {d.case ? (
-                            <Link
-                              href={`/cases/${d.case.id}`}
-                              className="text-violet-300 hover:underline"
-                            >
-                              {d.case.title}
-                            </Link>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px]">
-                              Sem caso
-                            </Badge>
-                          )}
-                          {d.totalChunks !== null ? (
-                            <span>
-                              {d.processedChunks ?? 0}/{d.totalChunks} trechos
-                            </span>
-                          ) : null}
-                          <span>
-                            Atualizado {new Date(d.updatedAt).toLocaleDateString("pt-BR")}
-                          </span>
+                  <article className="lex-glass-card group relative flex flex-col overflow-hidden rounded-2xl p-4 md:p-5 lex-transition">
+                    <div className="flex gap-4 md:gap-5">
+                      {pdf ? (
+                        <div className="shrink-0 w-[4.5rem] sm:w-24">
+                          <div className="lex-inset aspect-[3/4] w-full overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay-strong)] shadow-inner">
+                            <DocumentPdfThumbnail
+                              documentId={d.id}
+                              label={d.originalName}
+                              className="size-full"
+                              thumbnailVersion={d.updatedAt.getTime()}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <StatusChip kind={status.kind} label={status.label} />
+                              {d.case ? (
+                                <Link
+                                  href={`/cases/${d.case.id}`}
+                                  className="text-[13px] font-medium text-violet-300 hover:underline"
+                                >
+                                  {d.case.title}
+                                </Link>
+                              ) : (
+                                <Badge
+                                  variant="secondary"
+                                  className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
+                                >
+                                  Sem caso
+                                </Badge>
+                              )}
+                            </div>
+                            <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-lg">
+                              {d.originalName}
+                            </h2>
+                          </div>
+                          <div className="shrink-0">
+                            <DocumentRowActions
+                              documentId={d.id}
+                              processId={d.processId}
+                              caseId={d.caseId}
+                              cases={cases}
+                            />
+                          </div>
                         </div>
                       </div>
-                      <DocumentRowActions
-                        documentId={d.id}
-                        processId={d.processId}
-                        caseId={d.caseId}
-                        cases={cases}
-                      />
                     </div>
-                  </Card>
+                    <div className="mt-3 flex flex-col gap-1 border-t border-[color:var(--border-subtle)] pt-3 text-[13px] text-[color:var(--text-muted)]">
+                      <p className="leading-snug">
+                        {d.totalChunks !== null ? (
+                          <span className="text-[color:var(--text-secondary)]">
+                            {d.processedChunks ?? 0}/{d.totalChunks} trechos
+                          </span>
+                        ) : null}
+                        {d.totalChunks !== null ? (
+                          <span className="mx-1.5 text-[color:var(--border-default)]">·</span>
+                        ) : null}
+                        <span>Atualizado {updated}</span>
+                      </p>
+                    </div>
+                  </article>
                 </li>
               );
             })}
           </ul>
         )}
-      </div>
-    </AppShell>
+    </>
   );
+}
+
+function isPdfMime(mimeType: string, fileName: string): boolean {
+  const mt = mimeType.toLowerCase();
+  return mt.includes("pdf") || fileName.toLowerCase().endsWith(".pdf");
 }
 
 const KIND_TONE: Record<DocumentDisplayKind, string> = {
@@ -171,7 +225,10 @@ const KIND_TONE: Record<DocumentDisplayKind, string> = {
 
 function StatusChip({ kind, label }: { kind: DocumentDisplayKind; label: string }) {
   return (
-    <Badge variant="outline" className={`text-[10px] ${KIND_TONE[kind]}`}>
+    <Badge
+      variant="outline"
+      className={`border-[0.5px] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${KIND_TONE[kind]}`}
+    >
       {label}
     </Badge>
   );
@@ -198,20 +255,20 @@ function FiltersBar({ status, unlinked }: { status: string | null; unlinked: boo
     { label: "Falharam", href: "/documentos?status=FAILED", active: status === "FAILED" },
   ];
   return (
-    <nav className="flex flex-wrap gap-1 text-xs">
-      {items.map((i) => (
-        <Link
-          key={i.href}
-          href={i.href}
-          className={`rounded-md border px-2 py-1 ${
-            i.active
-              ? "border-violet-500/40 bg-violet-500/10 text-violet-200"
-              : "border-white/10 hover:bg-white/5"
-          }`}
-        >
-          {i.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="lex-glass-card rounded-2xl p-4 md:p-5">
+      <nav className="flex flex-wrap gap-2" aria-label="Filtros de documentos">
+        {items.map((i) => (
+          <Button
+            key={i.href}
+            asChild
+            type="button"
+            variant={i.active ? "secondary" : "outline"}
+            className="h-11 min-h-[44px] text-[15px] font-medium"
+          >
+            <Link href={i.href}>{i.label}</Link>
+          </Button>
+        ))}
+      </nav>
+    </div>
   );
 }

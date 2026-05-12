@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { CaseTimelineKind } from "@prisma/client";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { getWorkspaceContext, getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { removeDocumentBuffer } from "@/lib/storage";
+import { documentReadScopeOr } from "@/lib/biblioteca/platform-library";
+import { userCanDeleteDocument, userCanReadDocument } from "@/lib/documents/document-access";
+import { removeDocumentBuffer, removeDocumentThumbnails } from "@/lib/storage";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
 
@@ -13,10 +15,11 @@ export async function GET(
   context: { params: Promise<{ documentId: string }> },
 ) {
   const { documentId } = await context.params;
-  const { workspaceId } = await getWorkspaceContext();
+  const { workspaceId, user } = await getWorkspaceContext();
+  const readScope = await documentReadScopeOr(workspaceId);
 
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, workspaceId },
+    where: { id: documentId, deletedAt: null, OR: readScope },
     include: {
       chunks: { orderBy: { chunkIndex: "asc" }, take: 200 },
       process: { select: { id: true, number: true, title: true } },
@@ -24,6 +27,9 @@ export async function GET(
   });
   if (!doc) {
     return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
+  }
+  if (!userCanReadDocument(user.id, doc)) {
+    return NextResponse.json({ error: "Sem permissão para ver este documento" }, { status: 403 });
   }
 
   return NextResponse.json({
@@ -76,7 +82,7 @@ export async function DELETE(
   context: { params: Promise<{ documentId: string }> },
 ) {
   const { documentId } = await context.params;
-  const { workspaceId, user } = await getWorkspaceContext();
+  const { workspaceId, user, role } = await getWorkspaceContextWithRole();
 
   const doc = await prisma.document.findFirst({
     where: { id: documentId, workspaceId },
@@ -87,10 +93,15 @@ export async function DELETE(
       processId: true,
       originalName: true,
       storagePath: true,
+      libraryShelf: true,
+      uploadedByUserId: true,
     },
   });
   if (!doc) {
     return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
+  }
+  if (!userCanDeleteDocument(user.id, role, doc)) {
+    return NextResponse.json({ error: "Sem permissão para excluir este documento" }, { status: 403 });
   }
 
   try {
@@ -105,6 +116,7 @@ export async function DELETE(
 
   try {
     await removeDocumentBuffer(doc.storagePath);
+    await removeDocumentThumbnails(doc.workspaceId, doc.id);
   } catch (err) {
     log.warn("storage remove failed (non-fatal)", {
       workspaceId,

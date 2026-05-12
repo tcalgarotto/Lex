@@ -16,7 +16,6 @@ import { buildDocxBuffer, buildPdfBuffer } from "@/lib/cases/drafting/drafting-m
 import { enforceDraftingRateLimit } from "@/lib/cases/drafting/drafting-route-common";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 function safeFileName(name: string) {
   return name.replace(/[^\p{L}\p{N}\s._-]/gu, "").replace(/\s+/g, " ").trim() || "lex";

@@ -22,7 +22,6 @@ import { getWorkspaceContext, requirePermission } from "@/lib/auth/session";
 import { CORPUS_COLLECTIONS } from "@/lib/corpus/qdrant-collections";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 type CheckItem = {
   id: string;

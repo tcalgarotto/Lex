@@ -16,7 +16,7 @@ export type {
   StrategySuggestion,
 } from "./types";
 
-export { getLegalResearchProvider, RAG_LEGAL_RESEARCH_STUB_MESSAGE } from "./provider";
+export { getLegalResearchProvider } from "./provider";
 export { DeepSeekLegalResearchProvider } from "./deepseek-provider";
 export { promptVersion } from "./legal-research-prompts";
 export { normalizeDeepSeekJsonContent } from "./normalize-deepseek-result";

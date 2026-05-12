@@ -9,7 +9,6 @@ import { CaseCommentVisibility } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { addComment, listComments } from "@/lib/cases/collaboration";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   body: z.string().min(1).max(8_000),

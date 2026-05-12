@@ -4,6 +4,12 @@ import { getLogger } from "@/lib/logger";
 
 const log = getLogger("lex.storage");
 
+/** Miniatura otimizada (WebP) no prefixo `{workspaceId}/{documentId}/`. */
+export const DOCUMENT_THUMB_FILENAME = "__lex_thumbnail.webp";
+
+/** Miniatura legada (PNG) — ainda removida/servida em fallback até migração completa. */
+export const DOCUMENT_THUMB_LEGACY_PNG_FILENAME = "__lex_thumbnail.png";
+
 export async function uploadDocumentBuffer(params: {
   path: string;
   buffer: Buffer;
@@ -29,6 +35,15 @@ export async function downloadDocumentBuffer(path: string): Promise<Buffer> {
   return Buffer.from(ab);
 }
 
+/** Download sem lançar: útil para miniaturas cacheadas no Storage. */
+export async function tryDownloadDocumentBuffer(path: string): Promise<Buffer | null> {
+  try {
+    return await downloadDocumentBuffer(path);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Apaga arquivo do bucket de documentos. Não falha hard se o arquivo já
  * não existir no Storage (entrega "best-effort"); apenas loga e segue.
@@ -49,4 +64,20 @@ export async function removeDocumentBuffer(path: string): Promise<void> {
 export function documentStoragePath(workspaceId: string, documentId: string, fileName: string) {
   const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `${workspaceId}/${documentId}/${safe}`;
+}
+
+/** WebP de capa gerado uma vez por documento (mesmo prefixo que o PDF). */
+export function documentThumbnailStoragePath(workspaceId: string, documentId: string): string {
+  return `${workspaceId}/${documentId}/${DOCUMENT_THUMB_FILENAME}`;
+}
+
+/** Caminho da miniatura PNG antiga (migração / fallback GET). */
+export function documentThumbnailLegacyPngStoragePath(workspaceId: string, documentId: string): string {
+  return `${workspaceId}/${documentId}/${DOCUMENT_THUMB_LEGACY_PNG_FILENAME}`;
+}
+
+/** Remove WebP atual e PNG legado (best-effort). */
+export async function removeDocumentThumbnails(workspaceId: string, documentId: string): Promise<void> {
+  await removeDocumentBuffer(documentThumbnailStoragePath(workspaceId, documentId));
+  await removeDocumentBuffer(documentThumbnailLegacyPngStoragePath(workspaceId, documentId));
 }

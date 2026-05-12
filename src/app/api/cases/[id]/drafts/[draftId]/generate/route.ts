@@ -15,7 +15,6 @@ import { listPinnedFoundations } from "@/lib/cases/drafting/case-brain-shim";
 import { generateDraft } from "@/lib/cases/drafting/generate-draft";
 import { enforceDraftingRateLimit } from "@/lib/cases/drafting/drafting-route-common";
 
-export const dynamic = "force-dynamic";
 
 const BodySchema = z.object({
   confirmUnverifiedFoundations: z.boolean().optional(),

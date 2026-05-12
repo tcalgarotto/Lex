@@ -12,7 +12,6 @@ import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { addPinnedFoundationToCase, listPinnedFoundations } from "@/lib/cases/case-brain/pinned-foundations";
 import type { JurisprudenceCandidate, LegalFoundationCandidate } from "@/lib/legal-research/types";
 
-export const dynamic = "force-dynamic";
 
 const PostBody = z.object({
   candidate: z.record(z.unknown()),

@@ -21,7 +21,6 @@ import type { LegalRetrievalFilters } from "@/lib/retrieval/legal/types";
 import { buildResearchReport } from "@/lib/research/engine";
 import { WINNING_SAMPLE_KIND } from "@/lib/lawyer-brain/ingest";
 
-export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {

@@ -9,7 +9,6 @@ import { IntegrationStatus, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
 
 const PatchBody = z.object({
   status: z.nativeEnum(IntegrationStatus).optional(),

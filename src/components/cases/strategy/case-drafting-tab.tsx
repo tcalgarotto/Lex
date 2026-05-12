@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -28,6 +28,8 @@ import {
   type JurisRow,
 } from "@/components/cases/strategy/strategy-jurisprudence-panel";
 import { previewDraftingGuardMessages } from "@/lib/cases/drafting/drafting-guard";
+import { useOptionalCaseBootstrap } from "@/components/cases/case-bootstrap-context";
+import type { CaseDraftingBootstrapSlice } from "@/lib/cases/case-bootstrap";
 
 type CaseApi = {
   parties: { role: string }[];
@@ -41,7 +43,39 @@ type StrategyBundle = {
   jurisprudenceCandidates: JurisRow[];
 };
 
+type CaseDraftRow = { id: string; content: string; version: number };
+
+function applyDraftingSlice(
+  d: CaseDraftingBootstrapSlice,
+  draftIdRef: MutableRefObject<string | null>,
+  setters: {
+    setBundle: (b: StrategyBundle) => void;
+    setCaseData: (c: CaseApi) => void;
+    setPinsCount: (n: number) => void;
+    setDraftId: (id: string | null) => void;
+    setContent: (s: string) => void;
+  },
+) {
+  setters.setBundle({
+    readiness: (d.readiness ?? null) as StrategyBundle["readiness"],
+    draftingStrategy: d.draftingStrategy ?? null,
+    approved: Boolean(d.approved),
+    jurisprudenceCandidates: (d.jurisprudenceCandidates ?? []) as JurisRow[],
+  });
+  setters.setCaseData(d.casePartiesFacts);
+  setters.setPinsCount(d.legalSources.length);
+  const drafts = d.drafts as CaseDraftRow[];
+  let nextId = draftIdRef.current;
+  if (!nextId || !drafts.some((row) => row.id === nextId)) {
+    nextId = drafts[0]?.id ?? null;
+  }
+  setters.setDraftId(nextId);
+  const current = drafts.find((row) => row.id === nextId);
+  if (current) setters.setContent(current.content);
+}
+
 export function CaseDraftingTab({ caseId }: { caseId: string }) {
+  const boot = useOptionalCaseBootstrap();
   const [activeStep, setActiveStep] = useState(4);
   const [bundle, setBundle] = useState<StrategyBundle | null>(null);
   const [caseData, setCaseData] = useState<CaseApi | null>(null);
@@ -52,7 +86,7 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
   const draftIdRef = useRef<string | null>(null);
   draftIdRef.current = draftId;
 
-  const refresh = useCallback(async () => {
+  const refreshLegacy = useCallback(async () => {
     const [sRes, cRes, dRes, lRes] = await Promise.all([
       fetch(`/api/cases/${caseId}/strategy`),
       fetch(`/api/cases/${caseId}`),
@@ -74,24 +108,54 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
     if (cRes.ok) setCaseData(cJson.case as CaseApi);
     if (lRes.ok) setPinsCount((lJson.sources as unknown[])?.length ?? 0);
     if (dRes.ok) {
-      const drafts = dJson.drafts as { id: string; content: string; version: number }[];
+      const drafts = dJson.drafts as CaseDraftRow[];
       let nextId = draftIdRef.current;
-      if (!nextId || !drafts.some((d) => d.id === nextId)) {
+      if (!nextId || !drafts.some((row) => row.id === nextId)) {
         nextId = drafts[0]?.id ?? null;
       }
       setDraftId(nextId);
-      const current = drafts.find((d) => d.id === nextId);
+      const current = drafts.find((row) => row.id === nextId);
       if (current) setContent(current.content);
     }
   }, [caseId]);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const refresh = useCallback(async () => {
+    if (boot) {
+      await boot.refetch();
+      return;
+    }
+    await refreshLegacy();
+  }, [boot, refreshLegacy]);
 
-  const readinessPct = bundle?.readiness && typeof bundle.readiness.score === "number"
-    ? bundle.readiness.score
-    : 0;
+  useEffect(() => {
+    if (!boot) return;
+    applyDraftingSlice(boot.payload.drafting, draftIdRef, {
+      setBundle,
+      setCaseData,
+      setPinsCount,
+      setDraftId,
+      setContent,
+    });
+  }, [boot, boot?.version]);
+
+  useEffect(() => {
+    if (boot) return;
+    void refreshLegacy();
+  }, [boot, refreshLegacy]);
+
+  const foundationSources = useMemo(() => {
+    if (!boot) return undefined;
+    return boot.payload.drafting.legalSources.map((s) => ({
+      id: s.id,
+      chunkId: s.chunkId,
+      normUrn: s.normUrn,
+      articleRef: s.articleRef,
+      excerpt: s.excerpt,
+    }));
+  }, [boot]);
+
+  const readinessPct =
+    bundle?.readiness && typeof bundle.readiness.score === "number" ? bundle.readiness.score : 0;
 
   const hasAuthor = useMemo(() => {
     if (!caseData) return false;
@@ -101,7 +165,9 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
   const hasFact = (caseData?.facts.length ?? 0) > 0;
 
   const hasUnverifiedJuris = useMemo(
-    () => bundle?.jurisprudenceCandidates?.some((j) => j.verificationStatus === "AI_RECOMMENDED_UNVERIFIED") ?? false,
+    () =>
+      bundle?.jurisprudenceCandidates?.some((j) => j.verificationStatus === "AI_RECOMMENDED_UNVERIFIED") ??
+      false,
     [bundle],
   );
 
@@ -152,7 +218,13 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
           </p>
           <div className="mt-3 flex flex-wrap gap-1">
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <Button key={i} type="button" size="sm" variant={activeStep === i ? "default" : "outline"} onClick={() => setActiveStep(i)}>
+              <Button
+                key={i}
+                type="button"
+                size="sm"
+                variant={activeStep === i ? "default" : "outline"}
+                onClick={() => setActiveStep(i)}
+              >
                 {i + 1}
               </Button>
             ))}
@@ -200,7 +272,12 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
                 <Button type="button" size="sm" variant="secondary" onClick={() => void refresh()}>
                   Atualizar painel
                 </Button>
-                <Button type="button" size="sm" disabled={!bundle?.draftingStrategy || bundle.approved} onClick={approveStrategy}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!bundle?.draftingStrategy || bundle.approved}
+                  onClick={approveStrategy}
+                >
                   Aprovar estratégia
                 </Button>
               </div>
@@ -218,7 +295,12 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
               <StrategyGapsPanel caseId={caseId} readiness={bundle?.readiness ?? null} draftingMessages={bannerMessages} />
             </TabsContent>
             <TabsContent value="fund" className="mt-3">
-              <StrategyFoundationsPanel caseId={caseId} onInsert={insertSnippet} onChanged={refresh} />
+              <StrategyFoundationsPanel
+                caseId={caseId}
+                onInsert={insertSnippet}
+                onChanged={refresh}
+                {...(boot ? { initialSources: foundationSources ?? [] } : {})}
+              />
             </TabsContent>
             <TabsContent value="juris" className="mt-3">
               <StrategyJurisprudencePanel items={bundle?.jurisprudenceCandidates ?? []} onInsert={insertSnippet} />
