@@ -25,6 +25,8 @@ import type {
   PulsePiecesDetail,
   ResumeCaseRow,
 } from "@/lib/dashboard/morning-briefing-data";
+import { lexGlassCtaClassName } from "@/lib/lex-ds";
+import { cn } from "@/lib/utils";
 
 function salutation(): string {
   const h = new Date().getHours();
@@ -69,7 +71,7 @@ function PulseBriefCard(props: {
   const showNext = casesDetail?.nextActionTitle && casesDetail?.nextHref;
 
   return (
-    <div className="flex min-h-[220px] flex-col rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)] px-4 py-3.5">
+    <div className="lex-glass-card flex min-h-[220px] flex-col rounded-2xl px-4 py-3.5 md:px-5 md:py-4">
       <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
         <Ico className="size-[13px] opacity-80" aria-hidden />
         {label}
@@ -103,7 +105,7 @@ function PulseBriefCard(props: {
 
 function PulsePiecesBriefCard({ detail }: { detail: PulsePiecesDetail }) {
   return (
-    <div className="flex min-h-[220px] flex-col rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)] px-4 py-3.5">
+    <div className="lex-glass-card flex min-h-[220px] flex-col rounded-2xl px-4 py-3.5 md:px-5 md:py-4">
       <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
         <Scale className="size-[13px] opacity-80" aria-hidden />
         Peças em elaboração
@@ -145,7 +147,6 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
     copilotMessage,
     copilotTitle,
     displayName,
-    isAdmin,
     hasNoCases,
     oldestUnnamedCaseId,
     daySummaryLine,
@@ -160,7 +161,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
   });
 
   return (
-    <div className="min-w-0 space-y-5">
+    <>
       <h1 className="sr-only">Briefing do dia — Lex</h1>
 
       <header className="space-y-3">
@@ -172,29 +173,29 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[color:var(--text-secondary)]">{daySummaryLine}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" asChild>
-            <Link href={priorityContinueHref}>Continuar prioridade</Link>
-          </Button>
+          <Link href={priorityContinueHref} className={lexGlassCtaClassName}>
+            Continuar prioridade
+          </Link>
           {oldestUnnamedCaseId ? (
-            <Button size="sm" variant="outline" asChild>
+            <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
               <Link href={`/cases/${oldestUnnamedCaseId}/entrevista`}>Nomear e continuar caso</Link>
             </Button>
           ) : (
-            <Button size="sm" variant="outline" asChild>
+            <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
               <Link href="/cases/new">Novo caso</Link>
             </Button>
           )}
-          <Button size="sm" variant="outline" asChild>
+          <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
             <Link href="/documentos">Enviar documento</Link>
           </Button>
-          <Button size="sm" variant="outline" asChild>
+          <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
             <Link href="/pesquisa-juridica">Pesquisa jurídica</Link>
           </Button>
         </div>
       </header>
 
       {hasNoCases ? (
-        <div className="rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)] px-5 py-10 text-center">
+        <div className="lex-glass-card rounded-2xl px-5 py-10 text-center">
           <p className="text-base font-medium text-[color:var(--text-primary)]">Ainda não há casos neste escritório</p>
           <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
             Comece por criar um caso e seguir a entrevista guiada. Depois envie os documentos para o Lex organizar fatos e peças.
@@ -209,7 +210,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
         <div className="flex flex-col gap-5">
           {urgent ? (
             <div
-              className="flex flex-wrap items-center gap-3 rounded-[var(--r-lg)] border border-red-500/20 bg-red-500/[0.06] px-4 py-3"
+              className="lex-glass-card flex flex-wrap items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3"
               role="status"
             >
               <AlertTriangle className="size-4 shrink-0 text-red-400" aria-hidden />
@@ -232,7 +233,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
             <div className="flex min-w-0 flex-col gap-4">
-              <section id="o-que-fazer-agora" className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
+              <section id="o-que-fazer-agora" className="lex-glass-card overflow-hidden rounded-2xl">
                 <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
                   <Sparkles className="size-4 text-violet-400" aria-hidden />
                   <h2 className="flex-1 text-[13.5px] font-medium text-[color:var(--text-primary)]">O que fazer agora</h2>
@@ -292,7 +293,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
 
               <CopilotBlock message={copilotMessage} title={copilotTitle} className="lg:hidden" />
 
-              <section className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
+              <section className="lex-glass-card overflow-hidden rounded-2xl">
                 <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
                   <Briefcase className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
                   <h2 className="flex-1 text-[13.5px] font-medium">Casos para retomar</h2>
@@ -322,7 +323,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
                 </div>
               </section>
 
-              <section className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
+              <section className="lex-glass-card overflow-hidden rounded-2xl">
                 <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
                   <Activity className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
                   <h2 className="flex-1 text-[13.5px] font-medium">Movimentação (24h)</h2>
@@ -352,7 +353,6 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
               <QuickActionsBlock />
               <DocPhasesBlock docPhases={docPhases} failedCount={pulse.failedProcessingCount} piecesThisMonth={data.piecesThisMonth} risks={pulse.openHighRisks} />
               <ConsultLinksBlock />
-              {isAdmin ? <AdminToolsCollapsible /> : null}
             </aside>
           </div>
 
@@ -360,18 +360,20 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
             <QuickActionsBlock />
             <DocPhasesBlock docPhases={docPhases} failedCount={pulse.failedProcessingCount} piecesThisMonth={data.piecesThisMonth} risks={pulse.openHighRisks} />
             <ConsultLinksBlock />
-            {isAdmin ? <AdminToolsCollapsible /> : null}
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
 function CopilotBlock({ message, title, className }: { message: string; title: string; className?: string }) {
   return (
     <div
-      className={`overflow-hidden rounded-[var(--r-lg)] border border-violet-500/20 bg-[rgba(124,58,237,0.05)] ${className ?? ""}`}
+      className={cn(
+        "lex-glass-card overflow-hidden rounded-2xl border border-violet-500/20 bg-[rgba(124,58,237,0.05)]",
+        className,
+      )}
     >
       <div className="flex items-center gap-2 border-b border-violet-500/10 px-4 py-3">
         <div className="flex size-[26px] items-center justify-center rounded-[var(--r-md)] bg-[rgba(124,58,237,0.15)]">
@@ -399,7 +401,7 @@ function CopilotBlock({ message, title, className }: { message: string; title: s
 
 function QuickActionsBlock() {
   return (
-    <section className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
+    <section className="lex-glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-[color:var(--border-subtle)] px-[18px] py-3">
         <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Ações</p>
       </div>
@@ -415,7 +417,7 @@ function QuickActionsBlock() {
 
 function ConsultLinksBlock() {
   return (
-    <section className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
+    <section className="lex-glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-[color:var(--border-subtle)] px-[18px] py-3">
         <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Consultar</p>
       </div>
@@ -436,7 +438,7 @@ function DocPhasesBlock(props: {
   risks: number;
 }) {
   return (
-    <section className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
+    <section className="lex-glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-[color:var(--border-subtle)] px-[18px] py-3">
         <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Documentos do escritório</p>
       </div>
@@ -474,27 +476,6 @@ function DocPhasesBlock(props: {
         </ul>
       </div>
     </section>
-  );
-}
-
-function AdminToolsCollapsible() {
-  return (
-    <details className="overflow-hidden rounded-[var(--r-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]">
-      <summary className="cursor-pointer px-[18px] py-3 text-xs font-medium text-[color:var(--text-secondary)]">
-        Ferramentas internas
-      </summary>
-      <div className="flex flex-col gap-1 border-t border-[color:var(--border-subtle)] px-[18px] py-3 text-sm">
-        <Link href="/cockpit" className="text-violet-400 hover:text-violet-300">
-          Cockpit
-        </Link>
-        <Link href="/settings/jobs" className="text-violet-400 hover:text-violet-300">
-          Fila de tarefas
-        </Link>
-        <Link href="/settings/readiness" className="text-violet-400 hover:text-violet-300">
-          Estado do sistema
-        </Link>
-      </div>
-    </details>
   );
 }
 

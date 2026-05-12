@@ -49,7 +49,7 @@ export default function NewFoundationPage() {
 
  return (
  <AppShell title="Novo fundamento">
- <div className="mx-auto max-w-3xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="space-y-1">
  <h1 className="text-2xl font-semibold">Novo fundamento</h1>
  <p className="text-sm text-muted-foreground">

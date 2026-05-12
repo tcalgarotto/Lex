@@ -4,7 +4,7 @@ import { getWorkspaceContext, getWorkspaceContextWithRole } from "@/lib/auth/ses
 import { prisma } from "@/lib/prisma";
 import { documentReadScopeOr } from "@/lib/biblioteca/platform-library";
 import { userCanDeleteDocument, userCanReadDocument } from "@/lib/documents/document-access";
-import { removeDocumentBuffer } from "@/lib/storage";
+import { removeDocumentBuffer, removeDocumentThumbnails } from "@/lib/storage";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
 
@@ -116,6 +116,7 @@ export async function DELETE(
 
   try {
     await removeDocumentBuffer(doc.storagePath);
+    await removeDocumentThumbnails(doc.workspaceId, doc.id);
   } catch (err) {
     log.warn("storage remove failed (non-fatal)", {
       workspaceId,

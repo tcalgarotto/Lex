@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getWorkspaceContext } from "@/lib/auth/session";
@@ -16,7 +15,6 @@ export default async function DemoPage() {
  const dispatchDoc = proc?.documents.find((d) => d.originalName.toLowerCase().includes("despacho")) ?? proc?.documents[0];
 
  return (
- <AppShell title="Modo demonstração">
  <div className="space-y-6">
  <Card>
  <CardHeader>
@@ -133,7 +131,6 @@ export default async function DemoPage() {
  </CardContent>
  </Card>
  </div>
- </AppShell>
  );
 }
 

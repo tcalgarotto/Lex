@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
-import { InvitationStatus } from "@prisma/client";
+import { InvitationStatus, WorkspaceLicense } from "@prisma/client";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
+import { getWorkspaceSeatSnapshot } from "@/lib/auth/workspace-seats";
+import { WORKSPACE_LICENSE_LABEL_PT } from "@/lib/billing/workspace-license";
 import { prisma } from "@/lib/prisma";
 import { ROLE_LABEL, can } from "@/lib/auth/permissions";
 import { InviteMemberForm } from "./invite-form";
@@ -17,7 +18,7 @@ export default async function TeamPage() {
  if (!role) notFound();
  const allowedToManage = can(role, "membersInvite");
 
- const [members, invitations] = await Promise.all([
+ const [members, invitations, seatSnapshot] = await Promise.all([
  prisma.membership.findMany({
  where: { workspaceId },
  include: { user: true },
@@ -27,10 +28,10 @@ export default async function TeamPage() {
  where: { workspaceId, status: InvitationStatus.PENDING },
  orderBy: { createdAt: "desc" },
  }),
+ getWorkspaceSeatSnapshot(workspaceId),
  ]);
 
  return (
- <AppShell title="Equipe">
  <div className="space-y-6">
  {allowedToManage ? (
  <Card>
@@ -41,8 +42,25 @@ export default async function TeamPage() {
  ou fazer login para aceitar.
  </CardDescription>
  </CardHeader>
- <CardContent>
- <InviteMemberForm currentUserRole={role} />
+ <CardContent className="space-y-3">
+ <p className="text-xs text-muted-foreground">
+ Plano: <span className="font-medium text-foreground">{WORKSPACE_LICENSE_LABEL_PT[seatSnapshot.license]}</span>
+ {" · "}
+ Lugares:{" "}
+ <span className="font-medium text-foreground">
+ {seatSnapshot.occupied}
+ {seatSnapshot.capacity !== null ? ` / ${seatSnapshot.capacity}` : " (ilimitado)"}
+ </span>
+ {seatSnapshot.license === WorkspaceLicense.ENTERPRISE && seatSnapshot.customSeatLimit === null ? (
+ <span className="block pt-1 text-[11px] text-muted-foreground">
+ Limite empresarial pode ser definido pela equipe de vendas.
+ </span>
+ ) : null}
+ </p>
+ <InviteMemberForm
+ currentUserRole={role}
+ inviteBlocked={seatSnapshot.capacity !== null && seatSnapshot.occupied >= seatSnapshot.capacity}
+ />
  </CardContent>
  </Card>
  ) : null}
@@ -112,6 +130,5 @@ export default async function TeamPage() {
  </Card>
  ) : null}
  </div>
- </AppShell>
  );
 }

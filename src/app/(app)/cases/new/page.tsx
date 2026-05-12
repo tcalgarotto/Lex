@@ -12,7 +12,6 @@ import {
  Wand2,
  FileQuestion,
 } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -134,8 +133,7 @@ export default function NewCasePage() {
  }
 
  return (
- <AppShell title="Novo caso">
- <div className="mx-auto max-w-3xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="space-y-2">
  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
  <Sparkles className="size-3.5" /> Como você quer começar?
@@ -213,7 +211,6 @@ export default function NewCasePage() {
  </p>
  </Card>
  </div>
- </AppShell>
  );
 }
 

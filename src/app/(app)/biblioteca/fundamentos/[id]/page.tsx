@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AppShell } from "@/components/app/app-shell";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,18 +98,20 @@ export default function FoundationDetailPage() {
 
  if (loading) {
  return (
- <AppShell title="Fundamento">
- <div className="mx-auto max-w-3xl">
+ <>
+ <SetPageTitle title="Fundamento" />
+ <div className="w-full min-w-0">
  <Card className="p-4">Carregando…</Card>
  </div>
- </AppShell>
+ </>
  );
  }
 
  if (!f) {
  return (
- <AppShell title="Fundamento">
- <div className="mx-auto max-w-3xl space-y-3">
+ <>
+ <SetPageTitle title="Fundamento" />
+ <div className="w-full min-w-0 space-y-3">
  <Card className="p-4">
  <p className="text-sm text-muted-foreground">{error ?? "Fundamento não encontrado."}</p>
  </Card>
@@ -117,13 +119,14 @@ export default function FoundationDetailPage() {
  <Link href="/biblioteca">Voltar</Link>
  </Button>
  </div>
- </AppShell>
+ </>
  );
  }
 
  return (
- <AppShell title={f.title}>
- <div className="mx-auto max-w-3xl space-y-6">
+ <>
+ <SetPageTitle title={f.title} />
+ <div className="w-full min-w-0 space-y-6">
  <header className="flex flex-wrap items-start justify-between gap-3">
  <div className="space-y-1">
  <h1 className="text-2xl font-semibold">{f.title}</h1>
@@ -201,7 +204,7 @@ export default function FoundationDetailPage() {
  {error ? <p className="text-sm text-red-400">{error}</p> : null}
  </Card>
  </div>
- </AppShell>
+ </>
  );
 }
 

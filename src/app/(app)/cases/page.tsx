@@ -2,13 +2,12 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowRight } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { getWorkspaceContext } from "@/lib/auth/session";
-import { lexGlassCtaClassName } from "@/lib/lex-ds";
+import { lexGlassCtaClassName, lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 import { CaseCardActions } from "@/components/cases/case-card-actions";
@@ -30,15 +29,13 @@ export default async function CasesListPage({
  const casesColRight = cases.filter((_, i) => i % 2 === 1);
 
  return (
- <AppShell title="Casos">
- <div className="relative mx-auto max-w-6xl pb-4">
- <div className="relative z-10 space-y-8">
+ <>
  <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
  <div className="min-w-0 space-y-2">
- <h1 className="text-3xl font-semibold tracking-tight text-[color:var(--text-primary)] md:text-[2rem]">
+ <h1 className={lexPageTitleClassName}>
  Casos
  </h1>
- <p className="max-w-2xl text-base leading-relaxed text-[color:var(--text-secondary)]">
+ <p className={lexPageLeadClassName}>
  Organize atendimentos, documentos, fundamentos e peças num só lugar — com histórico e rastreabilidade.
  </p>
  </div>
@@ -79,7 +76,7 @@ export default async function CasesListPage({
 
  {cases.length === 0 ? (
  <EmptyState
- className="mx-auto w-full max-w-2xl"
+ className="w-full min-w-0"
  title={q ? "Nenhum resultado" : "Nenhum caso ainda"}
  description={
  q ? (
@@ -120,9 +117,7 @@ export default async function CasesListPage({
  </div>
  </>
  )}
- </div>
- </div>
- </AppShell>
+ </>
  );
 }
 

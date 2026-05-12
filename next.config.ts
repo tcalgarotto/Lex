@@ -22,18 +22,31 @@ const nextConfig: NextConfig = {
     "tesseract.js",
     "@napi-rs/canvas",
     "shiki",
+    "sharp",
   ],
-  
+
   experimental: {
+    /**
+     * Cache do router no cliente (navegação “soft”). Em Next 15 o default de `dynamic` é 0s,
+     * pelo que voltar a uma página refaz sempre o RSC — sente-se lento mesmo com a app já carregada.
+     * 60s em rotas dinâmicas: voltar a /cases, /documentos, etc. reutiliza o payload RSC recente.
+     * `router.refresh()` após mutações continua a forçar dados novos (não substituído por isto).
+     * @see https://nextjs.org/docs/app/api-reference/config/next-config-js/staleTimes
+     */
+    staleTimes: {
+      dynamic: 60,
+      static: 300,
+    },
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    // Otimização de bundle para pacotes comuns
     optimizePackageImports: [
       "lucide-react",
       "date-fns",
       "@radix-ui/react-icons",
       "recharts",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
     ],
   },
   webpack: (config) => {

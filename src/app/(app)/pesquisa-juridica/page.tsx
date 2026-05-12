@@ -6,7 +6,6 @@
  */
 
 import { Suspense } from "react";
-import { AppShell } from "@/components/app/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GlobalPesquisaWorkbench } from "@/components/cases/global-pesquisa-workbench";
 
@@ -22,8 +21,7 @@ function PesquisaFallback() {
 
 export default function PesquisaJuridicaPage() {
  return (
- <AppShell title="Pesquisa jurídica">
- <div className="mx-auto max-w-6xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="space-y-2 rounded-xl border border-border bg-card/60 p-6 shadow-sm">
  <h1 className="text-2xl font-semibold tracking-tight text-foreground">Pesquisa jurídica</h1>
  <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
@@ -36,6 +34,5 @@ export default function PesquisaJuridicaPage() {
  <GlobalPesquisaWorkbench />
  </Suspense>
  </div>
- </AppShell>
  );
 }

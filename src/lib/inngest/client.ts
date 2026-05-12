@@ -145,3 +145,9 @@ export type DocumentConsistencyCheckEvent = {
     caseId: string;
   };
 };
+
+/** Geração assíncrona de miniatura de PDF (Storage). */
+export type DocumentThumbnailEvent = {
+  name: "lex/document.thumbnail";
+  data: { documentId: string };
+};

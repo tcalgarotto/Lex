@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
-import { InvitationStatus, MembershipRole } from "@prisma/client";
+import { InvitationStatus, MembershipRole, WorkspaceLicense } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   acceptInvitation,
@@ -8,6 +8,7 @@ import {
   generateInvitationToken,
   revokeInvitation,
 } from "@/lib/auth/invitations";
+import { WorkspaceSeatLimitReachedError } from "@/lib/auth/workspace-seats";
 
 /**
  * Integration: exercita o ciclo de convites contra Postgres real.
@@ -18,7 +19,7 @@ describe("invitations integration", () => {
   const ownerEmail = `it-owner-${suffix}@example.com`;
   const inviteeEmail = `it-invitee-${suffix}@example.com`;
 
-  let workspaceId: string;
+  let workspaceId = "";
   let ownerId: string;
   let inviteeId: string;
   let strangerId: string;
@@ -50,6 +51,7 @@ describe("invitations integration", () => {
   });
 
   afterAll(async () => {
+    if (!workspaceId) return;
     await prisma.activity.deleteMany({ where: { workspaceId } });
     await prisma.invitation.deleteMany({ where: { workspaceId } });
     await prisma.membership.deleteMany({ where: { workspaceId } });
@@ -170,5 +172,84 @@ describe("invitations integration", () => {
     ).rejects.toThrow(/expirou/i);
     const after = await prisma.invitation.findUnique({ where: { id: inv.id } });
     expect(after?.status).toBe(InvitationStatus.EXPIRED);
+  });
+});
+
+describe("invitations — limite de lugares (SOLO)", () => {
+  const suffix = randomBytes(4).toString("hex");
+  let soloWorkspaceId = "";
+  let soloOwnerId = "";
+
+  beforeAll(async () => {
+    const ws = await prisma.workspace.create({
+      data: {
+        name: `IT solo seats ${suffix}`,
+        slug: `it-solo-seats-${suffix}`,
+        license: WorkspaceLicense.SOLO,
+        onboardingCompleted: true,
+      },
+    });
+    soloWorkspaceId = ws.id;
+    const owner = await prisma.user.create({
+      data: { email: `it-solo-owner-${suffix}@example.com`, name: "Solo Owner" },
+    });
+    soloOwnerId = owner.id;
+    await prisma.membership.create({
+      data: { workspaceId: soloWorkspaceId, userId: owner.id, role: MembershipRole.OWNER },
+    });
+  });
+
+  afterAll(async () => {
+    if (!soloWorkspaceId) return;
+    await prisma.invitation.deleteMany({ where: { workspaceId: soloWorkspaceId } });
+    await prisma.membership.deleteMany({ where: { workspaceId: soloWorkspaceId } });
+    await prisma.workspace.delete({ where: { id: soloWorkspaceId } });
+    await prisma.user.deleteMany({ where: { email: `it-solo-owner-${suffix}@example.com` } });
+  });
+
+  it("createOrRefreshInvitation bloqueia novo convite quando plano SOLO está cheio", async () => {
+    await expect(
+      createOrRefreshInvitation({
+        workspaceId: soloWorkspaceId,
+        email: `extra-${suffix}@example.com`,
+        role: MembershipRole.LAWYER,
+        invitedById: soloOwnerId,
+      }),
+    ).rejects.toThrow(WorkspaceSeatLimitReachedError);
+  });
+
+  it("DUO com 1 membro permite um convite novo", async () => {
+    const ws = await prisma.workspace.create({
+      data: {
+        name: `IT duo ${suffix}`,
+        slug: `it-duo-${suffix}`,
+        license: WorkspaceLicense.DUO,
+      },
+    });
+    const owner = await prisma.user.create({
+      data: { email: `it-duo-owner-${suffix}@example.com`, name: "Duo Owner" },
+    });
+    await prisma.membership.create({
+      data: { workspaceId: ws.id, userId: owner.id, role: MembershipRole.OWNER },
+    });
+    const inv = await createOrRefreshInvitation({
+      workspaceId: ws.id,
+      email: `it-duo-a-${suffix}@example.com`,
+      role: MembershipRole.LAWYER,
+      invitedById: owner.id,
+    });
+    expect(inv.isNew).toBe(true);
+    await expect(
+      createOrRefreshInvitation({
+        workspaceId: ws.id,
+        email: `it-duo-b-${suffix}@example.com`,
+        role: MembershipRole.LAWYER,
+        invitedById: owner.id,
+      }),
+    ).rejects.toThrow(WorkspaceSeatLimitReachedError);
+    await prisma.invitation.deleteMany({ where: { workspaceId: ws.id } });
+    await prisma.membership.deleteMany({ where: { workspaceId: ws.id } });
+    await prisma.workspace.delete({ where: { id: ws.id } });
+    await prisma.user.delete({ where: { id: owner.id } });
   });
 });

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DocumentLibraryShelf } from "@prisma/client";
-import { AppShell } from "@/components/app/app-shell";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getWorkspaceContext } from "@/lib/auth/session";
@@ -109,8 +109,9 @@ export default async function BibliotecaDocumentoPage({
   const downloadUrl = `${fileUrl}?download=1`;
 
   return (
-    <AppShell title={doc.originalName}>
-      <div className="mx-auto max-w-6xl space-y-4">
+    <>
+      <SetPageTitle title={doc.originalName} />
+      <div className="w-full min-w-0 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -178,6 +179,6 @@ export default async function BibliotecaDocumentoPage({
           </details>
         ) : null}
       </div>
-    </AppShell>
+    </>
   );
 }

@@ -17,6 +17,7 @@ export default defineConfig({
       "tests/security/**/*.test.tsx",
       "tests/ui/**/*.test.ts",
       "tests/ui/**/*.test.tsx",
+      "tests/unit/**/*.test.ts",
     ],
     // Cada arquivo roda em fork isolado: garante que `vi.doMock` num arquivo
     // não vaze para outro (importante para os testes de rate-limit/redis).

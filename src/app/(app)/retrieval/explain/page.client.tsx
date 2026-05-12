@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { Search, Sparkles, Layers, GitBranch, Loader2 } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,8 +65,7 @@ export default function RetrievalExplainClientPage() {
  }, [q]);
 
  return (
- <AppShell title="Retrieval auditável">
- <div className="mx-auto max-w-6xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <Header q={q} setQ={setQ} run={run} loading={loading} />
 
  {!data && !loading && !error && <EmptyState onSample={(s) => setQ(s)} />}
@@ -82,7 +80,6 @@ export default function RetrievalExplainClientPage() {
 
  {data && <Results data={data} />}
  </div>
- </AppShell>
  );
 }
 

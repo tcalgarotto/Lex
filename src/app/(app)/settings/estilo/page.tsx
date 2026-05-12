@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/app/app-shell";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,8 +9,7 @@ export default async function EstiloPage() {
  const profile = await prisma.styleProfile.findFirst({ where: { workspaceId } });
 
  return (
- <AppShell title="Perfil de escrita">
- <Card className="max-w-2xl ">
+ <Card className="w-full ">
  <CardHeader className="flex flex-row items-center justify-between">
  <CardTitle className="text-base">Style profile (JSON)</CardTitle>
  <form action={triggerStyleRecomputeAction}>
@@ -31,6 +29,5 @@ export default async function EstiloPage() {
  ) : null}
  </CardContent>
  </Card>
- </AppShell>
  );
 }

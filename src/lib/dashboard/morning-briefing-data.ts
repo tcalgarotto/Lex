@@ -141,7 +141,6 @@ export type BriefingDocPhase = {
 
 export interface MorningBriefingPayload {
   displayName: string;
-  isAdmin: boolean;
   /** Zero casos ativos — mostrar onboarding amigável */
   hasNoCases: boolean;
   /** Uma frase sobre o dia (dados reais) */
@@ -918,7 +917,6 @@ export async function getMorningBriefingData(args: {
 
   return {
     displayName,
-    isAdmin,
     hasNoCases: activeCases === 0,
     daySummaryLine,
     priorityContinueHref,

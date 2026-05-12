@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
-import { AppShell } from "@/components/app/app-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -126,8 +125,8 @@ export default function BuscaPage() {
  };
 
  return (
- <AppShell title="Busca">
- <div className="mx-auto max-w-3xl space-y-4">
+ <>
+ <div className="w-full min-w-0 space-y-4">
  <header className="space-y-1">
  <h1 className="text-xl font-semibold">Busca</h1>
  <p className="text-sm text-muted-foreground">
@@ -195,7 +194,7 @@ export default function BuscaPage() {
  </div>
  </DialogContent>
  </Dialog>
- </AppShell>
+ </>
  );
 }
 

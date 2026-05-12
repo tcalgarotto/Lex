@@ -23,6 +23,7 @@ export function BibliotecaOfficeDocumentCard({
   mimeType,
   caseTitle,
   publishedAt,
+  thumbnailVersion,
   topBadge,
   showCaseRow = true,
 }: {
@@ -32,6 +33,8 @@ export function BibliotecaOfficeDocumentCard({
   mimeType: string;
   caseTitle: string | null;
   publishedAt: Date;
+  /** Invalida cache do browser quando o registo do documento muda. */
+  thumbnailVersion?: number;
   /** Se definido, substitui o rótulo da faixa (ex.: catálogo partilhado ou “Privado”). */
   topBadge?: string;
   /** Quando falso, não mostra linha de caso (ex.: catálogo sem vínculo). */
@@ -62,7 +65,12 @@ export function BibliotecaOfficeDocumentCard({
     >
       <div className="lex-inset aspect-[3/4] w-full overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay-strong)] shadow-inner">
         {pdf ? (
-          <BibliotecaPdfCover documentId={documentId} label={title} className="size-full" />
+          <BibliotecaPdfCover
+            documentId={documentId}
+            label={title}
+            className="size-full"
+            thumbnailVersion={thumbnailVersion}
+          />
         ) : (
           <div
             className="flex size-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-violet-600/30 via-slate-600/20 to-indigo-800/35 p-3 text-white/90"

@@ -18,8 +18,11 @@ const ASSIGNABLE_ROLES: MembershipRole[] = [
 
 export function InviteMemberForm({
  currentUserRole,
+ inviteBlocked = false,
 }: {
  currentUserRole: MembershipRole;
+ /** Limite de lugares do plano atingido (membros + pendentes). */
+ inviteBlocked?: boolean;
 }) {
  const router = useRouter();
  const [email, setEmail] = useState("");
@@ -36,6 +39,7 @@ export function InviteMemberForm({
 
  async function onSubmit(e: React.FormEvent) {
  e.preventDefault();
+ if (inviteBlocked) return;
  setLoading(true);
  try {
  const res = await fetch("/api/invitations", {
@@ -65,6 +69,11 @@ export function InviteMemberForm({
 
  return (
  <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end" onSubmit={onSubmit}>
+ {inviteBlocked ? (
+ <p className="sm:col-span-3 text-sm text-amber-700 dark:text-amber-400">
+ Limite de lugares do plano atingido. Remova um membro ou um convite pendente para convidar outra pessoa.
+ </p>
+ ) : null}
  <div className="space-y-1">
  <Label htmlFor="invite-email">E-mail</Label>
  <Input
@@ -91,7 +100,7 @@ export function InviteMemberForm({
  ))}
  </select>
  </div>
- <Button type="submit" disabled={loading}>
+ <Button type="submit" disabled={loading || inviteBlocked}>
  {loading ? "Convidando…" : "Convidar"}
  </Button>
  </form>

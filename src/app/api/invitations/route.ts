@@ -4,6 +4,7 @@ import { MembershipRole } from "@prisma/client";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createOrRefreshInvitation } from "@/lib/auth/invitations";
+import { WorkspaceSeatLimitReachedError } from "@/lib/auth/workspace-seats";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -59,12 +60,20 @@ export async function POST(req: Request) {
     }
   }
 
-  const inv = await createOrRefreshInvitation({
-    workspaceId,
-    email,
-    role,
-    invitedById: user.id,
-  });
+  let inv: Awaited<ReturnType<typeof createOrRefreshInvitation>>;
+  try {
+    inv = await createOrRefreshInvitation({
+      workspaceId,
+      email,
+      role,
+      invitedById: user.id,
+    });
+  } catch (e) {
+    if (e instanceof WorkspaceSeatLimitReachedError) {
+      return NextResponse.json({ error: e.message }, { status: 403, headers: rateLimitHeaders(rl) });
+    }
+    throw e;
+  }
 
   await prisma.activity.create({
     data: {

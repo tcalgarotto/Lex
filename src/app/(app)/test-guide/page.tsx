@@ -17,7 +17,6 @@ import {
  Shield,
  Sparkles,
 } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,8 +85,7 @@ const QUESTIONS = [
 
 export default async function TestGuidePage() {
  return (
- <AppShell title="Roteiro de teste">
- <div className="mx-auto max-w-4xl space-y-8">
+ <div className="w-full min-w-0 space-y-8">
  <header className="space-y-3">
  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
  <ClipboardList className="size-3.5" /> Primeiro teste com advogado
@@ -184,6 +182,5 @@ export default async function TestGuidePage() {
  </p>
  </section>
  </div>
- </AppShell>
  );
 }

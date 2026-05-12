@@ -117,12 +117,39 @@ model User {
   documentsUploaded         Document[]           @relation("DocumentUploadedBy")
 }
 
+enum WorkspaceLicense {
+  /** 3 lugares (membros + convites pendentes). */
+  INVESTOR
+  /** 1 lugar — só o titular da assinatura. */
+  SOLO
+  /** 2 lugares. */
+  DUO
+  /** 4 lugares. */
+  TEAM
+  /**
+   * Empresarial: `customSeatLimit` null = ilimitado até a equipa de vendas definir;
+   * com valor = limite máximo de membros+pendentes.
+   */
+  ENTERPRISE
+}
+
 model Workspace {
   id                  String             @id @default(cuid())
   name                String
   slug                String             @unique
   onboardingCompleted Boolean            @default(false)
   onboardingJson      Json?
+  /**
+   * Plano contratado do workspace. É **mutável**: após confirmação de pagamento
+   * (ex.: webhook) pode subir (Solo → Duo) ou descer, com efeito imediato nos
+   * limites de lugares; rebaixar exige que membros+pendentes caibam no novo teto.
+   */
+  license             WorkspaceLicense   @default(ENTERPRISE)
+  /**
+   * Só para `ENTERPRISE`: limite negociado; `null` = ilimitado até vendas fixar.
+   * Em outros planos deve ser `null`.
+   */
+  customSeatLimit     Int?
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
   memberships         Membership[]

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { MembershipRole } from "@prisma/client";
-import { AppShell } from "@/components/app/app-shell";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,8 +14,7 @@ export default async function PerfilPage() {
  });
 
  return (
- <AppShell title="Perfil">
- <Card className="max-w-xl ">
+ <Card className="w-full ">
  <CardHeader>
  <CardTitle className="text-base">Conta</CardTitle>
  </CardHeader>
@@ -44,6 +42,5 @@ export default async function PerfilPage() {
  </ul>
  </CardContent>
  </Card>
- </AppShell>
  );
 }

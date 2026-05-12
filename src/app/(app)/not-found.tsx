@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Compass, FolderSearch, FileSearch, BookOpen } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button";
  */
 export default function AppNotFound() {
  return (
- <AppShell title="Página não encontrada">
- <div className="mx-auto max-w-3xl space-y-6">
+ <>
+ <SetPageTitle title="Página não encontrada" />
+ <div className="w-full min-w-0 space-y-6">
  <Card className="flex flex-col items-center gap-3 p-8 text-center">
  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bg-elevated)] text-[color:var(--violet-400)]">
  <Compass className="size-6" />
@@ -56,7 +57,7 @@ export default function AppNotFound() {
  />
  </div>
  </div>
- </AppShell>
+ </>
  );
 }
 

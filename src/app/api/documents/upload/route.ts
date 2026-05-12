@@ -5,6 +5,7 @@ import { inngest } from "@/lib/inngest/client";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
+import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 
@@ -122,6 +123,10 @@ export async function POST(req: Request) {
       documentId: doc.id,
       err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
     });
+  }
+
+  if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+    scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
   }
 
   await prisma.activity.create({

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AppShell } from "@/components/app/app-shell";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,7 @@ export default async function ProcessosPage({
  });
 
  return (
- <AppShell title="Processos judiciais">
+ <>
  {returnCaseId ? (
  <div className="mb-6 rounded-lg border border-violet-500/25 bg-violet-500/5 px-4 py-3 text-sm text-violet-100">
  <p className="mb-2">
@@ -94,6 +93,6 @@ export default async function ProcessosPage({
  )}
  </div>
  </div>
- </AppShell>
+ </>
  );
 }

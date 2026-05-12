@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { InvitationStatus, MembershipRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { assertCanAddNewPendingInvitation } from "@/lib/auth/workspace-seats";
 
 const INVITE_TTL_DAYS = 7;
 
@@ -42,6 +43,8 @@ export async function createOrRefreshInvitation(params: {
     });
     return { token: updated.token, id: updated.id, expiresAt: updated.expiresAt, isNew: false };
   }
+
+  await assertCanAddNewPendingInvitation(params.workspaceId);
 
   const created = await prisma.invitation.create({
     data: {

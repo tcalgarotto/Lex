@@ -23,12 +23,12 @@
   }
 
   [data-theme="dark"] {
-    --surface-base: #080808;
-    --surface-sidebar: #0d0d0d;
-    --surface-card: #111111;
-    --surface-elevated: #161616;
-    --surface-overlay: rgba(255, 255, 255, 0.04);
-    --surface-overlay-strong: rgba(255, 255, 255, 0.07);
+    --surface-base: #040404;
+    --surface-sidebar: #080808;
+    --surface-card: #0c0c0c;
+    --surface-elevated: #121212;
+    --surface-overlay: rgba(255, 255, 255, 0.03);
+    --surface-overlay-strong: rgba(255, 255, 255, 0.055);
 
     --glass-bg: rgba(255, 255, 255, 0.055);
     --glass-border: rgba(255, 255, 255, 0.18);
@@ -88,10 +88,10 @@
     --progress-low: #f97316;
     --progress-mid: #d97706;
     --progress-high: #16a34a;
-    --hero-violet-glow: rgba(124, 58, 237, 0.22);
+    --hero-violet-glow: rgba(124, 58, 237, 0.14);
 
     /* shadcn (HSL channels) */
-    --background: 0 0% 3.1%;
+    --background: 0 0% 1.8%;
     --foreground: 0 0% 93%;
     --card: 0 0% 6.7%;
     --card-foreground: 0 0% 93%;
@@ -344,21 +344,21 @@
     inset: 0;
     z-index: 0;
     overflow: hidden;
-    /* Evita mancha roxa/rosa forte por baixo da grelha: orbes grandes desvanacem no fundo. */
+    /* Orbes mais contidos no topo; zona de conteúdo fica mais preta, menos “névoa” clara. */
     mask-image: linear-gradient(
       180deg,
       #000 0%,
-      #000 58%,
-      rgba(0, 0, 0, 0.65) 78%,
-      rgba(0, 0, 0, 0.2) 90%,
+      #000 42%,
+      rgba(0, 0, 0, 0.55) 62%,
+      rgba(0, 0, 0, 0.12) 82%,
       transparent 100%
     );
     -webkit-mask-image: linear-gradient(
       180deg,
       #000 0%,
-      #000 58%,
-      rgba(0, 0, 0, 0.65) 78%,
-      rgba(0, 0, 0, 0.2) 90%,
+      #000 42%,
+      rgba(0, 0, 0, 0.55) 62%,
+      rgba(0, 0, 0, 0.12) 82%,
       transparent 100%
     );
   }
@@ -366,8 +366,8 @@
   .lex-glass-mesh__blob {
     position: absolute;
     border-radius: 9999px;
-    filter: blur(68px);
-    opacity: 0.48;
+    filter: blur(72px);
+    opacity: 0.3;
   }
 
   [data-theme="dark"] .lex-glass-mesh__blob--a {
@@ -377,7 +377,7 @@
     height: 58vw;
     max-width: 720px;
     max-height: 720px;
-    background: rgba(124, 58, 237, 0.34);
+    background: rgba(88, 28, 135, 0.26);
   }
 
   [data-theme="dark"] .lex-glass-mesh__blob--b {
@@ -387,7 +387,7 @@
     height: 52vw;
     max-width: 640px;
     max-height: 640px;
-    background: rgba(139, 92, 246, 0.22);
+    background: rgba(109, 40, 217, 0.14);
   }
 
   [data-theme="dark"] .lex-glass-mesh__blob--c {
@@ -397,7 +397,7 @@
     height: 50vw;
     max-width: 600px;
     max-height: 600px;
-    background: rgba(56, 189, 248, 0.2);
+    background: rgba(14, 116, 144, 0.12);
   }
 
   [data-theme="dark"] .lex-glass-mesh__blob--d {
@@ -407,7 +407,7 @@
     height: 56vw;
     max-width: 700px;
     max-height: 700px;
-    background: rgba(34, 211, 238, 0.22);
+    background: rgba(8, 145, 178, 0.12);
   }
 
   [data-theme="light"] .lex-glass-mesh__blob--a {
@@ -448,6 +448,10 @@
     max-width: 660px;
     max-height: 660px;
     background: rgba(6, 182, 212, 0.1);
+  }
+
+  [data-theme="light"] .lex-glass-mesh__blob {
+    opacity: 0.42;
   }
 
   /** Painéis interiores (pré-formatado, sub-secções) — tokens, sem zinc. */
@@ -504,5 +508,40 @@
       radial-gradient(ellipse 70% 55% at 50% -15%, var(--hero-violet-glow), transparent 58%),
       radial-gradient(ellipse 50% 40% at 100% 0%, rgba(99, 102, 241, 0.1), transparent 50%),
       var(--surface-base);
+  }
+
+  /**
+   * Coluna de conteúdo do AppShell: 70% da largura útil com a sidebar expandida (268px,
+   * igual a `app-sidebar`). O max-width não muda ao recolher a barra (80px) — o bloco
+   * só recentraliza no <main> mais largo.
+   */
+  .lex-app-content-well {
+    width: 100%;
+    max-width: min(100%, max(0px, calc((100vw - 268px) * 0.7)));
+    margin-inline: auto;
+  }
+
+  /**
+   * Páginas `(app)`: shell + ritmo vertical — aplicado uma vez em `AppChrome` (coluna principal).
+   * As rotas deixam de repetir estes wrappers; título/lead/CTA vidro usam as classes abaixo.
+   */
+  .lex-page-shell {
+    @apply relative w-full min-w-0 pb-4;
+  }
+
+  .lex-page-inner {
+    @apply relative z-10 space-y-8;
+  }
+
+  .lex-page-title {
+    @apply text-3xl font-semibold tracking-tight text-[color:var(--text-primary)] md:text-[2rem];
+  }
+
+  .lex-page-lead {
+    @apply max-w-2xl text-base leading-relaxed text-[color:var(--text-secondary)];
+  }
+
+  .lex-glass-cta {
+    @apply lex-glass-card inline-flex h-11 shrink-0 items-center justify-center rounded-2xl px-6 text-[15px] font-semibold text-[color:var(--text-primary)] outline-none lex-transition dark:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-base)];
   }
 }

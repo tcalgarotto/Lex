@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/app/app-shell";
 import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,7 @@ export default async function JobsPage() {
  });
 
  return (
- <AppShell title="Jobs IA">
+ <>
  <div className="mb-6 flex flex-wrap gap-3">
  <form action={triggerCorpusReindexAction}>
  <Button type="submit" variant="secondary">
@@ -48,6 +47,6 @@ export default async function JobsPage() {
  )}
  </CardContent>
  </Card>
- </AppShell>
+ </>
  );
 }

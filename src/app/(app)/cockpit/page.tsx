@@ -19,7 +19,6 @@ import type {
  IntegrationStatus,
  Notification as DbNotification,
 } from "@prisma/client";
-import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -124,8 +123,7 @@ export default function CockpitPage() {
  const noIntegrations = integrations.length === 0;
 
  return (
- <AppShell title="Cockpit operacional">
- <div className="mx-auto max-w-6xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="flex flex-wrap items-center justify-between gap-4">
  <div className="space-y-1">
  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
@@ -348,7 +346,6 @@ export default function CockpitPage() {
  </TabsContent>
  </Tabs>
  </div>
- </AppShell>
  );
 }
 

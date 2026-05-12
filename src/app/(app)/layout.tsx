@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
-import { getAuthUser, getWorkspacesForUser } from "@/lib/auth/session";
+import { getAuthUserAndSync, getWorkspacesForUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { resolveWorkspaceId } from "@/lib/auth/workspace";
 import { WorkspaceProvider } from "@/components/app/workspace-context";
+import { AppChrome } from "@/components/app/app-shell";
 
 export default async function AppGroupLayout({
  children,
 }: {
  children: React.ReactNode;
 }) {
- const user = await getAuthUser();
+ const user = await getAuthUserAndSync();
  if (!user) redirect("/login");
  const workspaceId = await resolveWorkspaceId(user.id);
  
@@ -25,5 +26,9 @@ export default async function AppGroupLayout({
    redirect("/onboarding");
  }
 
- return <WorkspaceProvider value={workspaces}>{children}</WorkspaceProvider>;
+ return (
+   <WorkspaceProvider value={workspaces}>
+     <AppChrome>{children}</AppChrome>
+   </WorkspaceProvider>
+ );
 }

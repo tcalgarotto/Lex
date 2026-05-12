@@ -52,8 +52,15 @@ export function applyThemePreference(pref: ThemePreference) {
  if (pref === "auto") installAutoThemeListenerOnce();
 }
 
-/** Três modos, só ícones — para a sidebar. */
-export function LexSidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
+/** Três modos, só ícones — para a sidebar ou menu da conta (`compact` = cabe em largura estreita). */
+export function LexSidebarThemeToggle({
+ collapsed,
+ compact = false,
+}: {
+ collapsed: boolean;
+ /** Sem `w-full`: encaixa no ancho do trigger (ex.: popup da conta). */
+ compact?: boolean;
+}) {
  const [preference, setPreference] = useState<ThemePreference>("dark");
 
  useEffect(() => {
@@ -67,12 +74,15 @@ export function LexSidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
  setPreference(next);
  }
 
+ const row = collapsed ? "flex flex-col items-center gap-0.5" : "flex max-w-full min-w-0 flex-row gap-0.5";
+ const rowClass = compact ? "flex max-w-full min-w-0 flex-row gap-0.5" : row;
+
  return (
  <div
  role="radiogroup"
  aria-label="Tema da interface"
  className={cn("rounded-lg border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-0.5",
- collapsed ? "flex flex-col items-center gap-0.5" : "flex w-full flex-row gap-0.5",
+ rowClass,
  )}
  >
  <button
@@ -81,14 +91,15 @@ export function LexSidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
  aria-checked={preference === "light"}
  aria-label="Tema claro"
  onClick={() => apply("light")}
- className={cn("flex flex-1 items-center justify-center rounded-md p-2 lex-transition",
+ className={cn("flex flex-1 basis-0 items-center justify-center rounded-md lex-transition",
+ compact ? "min-w-0 p-1.5" : "min-w-0 flex-1 p-2",
  preference === "light"
  ? "bg-[color:var(--surface-card)] text-[color:var(--text-primary)] shadow-sm"
  : "text-[color:var(--text-muted)] hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-secondary)]",
  collapsed && "w-full flex-none p-2",
  )}
  >
- <Sun className="size-4 shrink-0" aria-hidden />
+ <Sun className={cn("shrink-0", compact ? "size-4" : "size-5")} aria-hidden />
  </button>
  <button
  type="button"
@@ -96,14 +107,15 @@ export function LexSidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
  aria-checked={preference === "dark"}
  aria-label="Tema escuro"
  onClick={() => apply("dark")}
- className={cn("flex flex-1 items-center justify-center rounded-md p-2 lex-transition",
+ className={cn("flex flex-1 basis-0 items-center justify-center rounded-md lex-transition",
+ compact ? "min-w-0 p-1.5" : "min-w-0 flex-1 p-2",
  preference === "dark"
  ? "bg-[color:var(--surface-card)] text-[color:var(--text-primary)] shadow-sm"
  : "text-[color:var(--text-muted)] hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-secondary)]",
  collapsed && "w-full flex-none p-2",
  )}
  >
- <Moon className="size-4 shrink-0" aria-hidden />
+ <Moon className={cn("shrink-0", compact ? "size-4" : "size-5")} aria-hidden />
  </button>
  <button
  type="button"
@@ -111,14 +123,15 @@ export function LexSidebarThemeToggle({ collapsed }: { collapsed: boolean }) {
  aria-checked={preference === "auto"}
  aria-label="Tema conforme o dispositivo"
  onClick={() => apply("auto")}
- className={cn("flex flex-1 items-center justify-center rounded-md p-2 lex-transition",
+ className={cn("flex flex-1 basis-0 items-center justify-center rounded-md lex-transition",
+ compact ? "min-w-0 p-1.5" : "min-w-0 flex-1 p-2",
  preference === "auto"
  ? "bg-[color:var(--surface-card)] text-[color:var(--text-primary)] shadow-sm"
  : "text-[color:var(--text-muted)] hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-secondary)]",
  collapsed && "w-full flex-none p-2",
  )}
  >
- <Monitor className="size-4 shrink-0" aria-hidden />
+ <Monitor className={cn("shrink-0", compact ? "size-4" : "size-5")} aria-hidden />
  </button>
  </div>
  );

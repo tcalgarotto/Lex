@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ScrollText } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -31,8 +30,7 @@ export default async function PiecesIndexPage() {
  });
 
  return (
- <AppShell title="Peças">
- <div className="mx-auto max-w-5xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="space-y-1">
  <h1 className="text-xl font-semibold">Peças</h1>
  <p className="text-sm text-muted-foreground">
@@ -80,6 +78,5 @@ export default async function PiecesIndexPage() {
  </ul>
  )}
  </div>
- </AppShell>
  );
 }

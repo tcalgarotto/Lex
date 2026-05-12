@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppShell } from "@/components/app/app-shell";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -94,7 +94,8 @@ export default async function ProcessDetailPage({
  .join(" · ");
 
  return (
- <AppShell title={proc.title ?? proc.number}>
+ <>
+ <SetPageTitle title={proc.title ?? proc.number} />
  <Card className="mb-6 ">
  <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
  <div className="min-w-0">
@@ -343,6 +344,6 @@ export default async function ProcessDetailPage({
  </div>
  </TabsContent>
  </Tabs>
- </AppShell>
+ </>
  );
 }

@@ -1,11 +1,18 @@
 /**
- * Lex Design System — strings de classe partilhadas.
+ * Lex Design System — nomes de classe (estilos em `src/app/globals.css`, @layer components).
  * Documentação: docs/DESIGN_SYSTEM.md
+ *
+ * O wrapper `.lex-page-shell` / `.lex-page-inner` é aplicado em `AppChrome` — não repetir nas páginas.
  */
 
-/** CTA / link em vidro (ex.: “Novo caso”, EmptyState appearance glass). */
-export const lexGlassCtaClassName =
-  "lex-glass-card inline-flex h-11 shrink-0 items-center justify-center rounded-2xl px-6 text-[15px] font-semibold text-[color:var(--text-primary)] outline-none lex-transition dark:text-white focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-base)]";
+/** Título H1 das páginas de app (Casos, Documentos, Biblioteca, …). */
+export const lexPageTitleClassName = "lex-page-title";
+
+/** Parágrafo introdutório sob o título. */
+export const lexPageLeadClassName = "lex-page-lead";
+
+/** CTA / link em vidro (ex.: «Novo caso», EmptyState appearance glass). */
+export const lexGlassCtaClassName = "lex-glass-cta";
 
 /** Painel interior (código, sub-blocos) — sem vidro completo. */
 export const lexInsetPanelClassName =

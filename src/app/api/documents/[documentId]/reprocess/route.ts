@@ -9,6 +9,10 @@ import {
 } from "@/lib/biblioteca/platform-library";
 import { userCanReadDocument } from "@/lib/documents/document-access";
 import { inngest } from "@/lib/inngest/client";
+import {
+  removeDocumentThumbnails,
+} from "@/lib/storage";
+import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
 
@@ -75,6 +79,15 @@ export async function POST(
   await prisma.documentChunk.deleteMany({ where: { documentId: doc.id } });
 
   try {
+    await removeDocumentThumbnails(doc.workspaceId, doc.id);
+  } catch (e) {
+    log.warn("thumbnail remove before reprocess (non-fatal)", {
+      documentId: doc.id,
+      err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+    });
+  }
+
+  try {
     await getQdrantVectorStore().deleteByDocumentId(doc.id, doc.workspaceId);
   } catch (err) {
     log.warn("qdrant delete failed (non-fatal)", {
@@ -92,6 +105,11 @@ export async function POST(
       documentId: doc.id,
       err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
     });
+  }
+
+  const mt = doc.mimeType.toLowerCase();
+  if (mt.includes("pdf") || doc.originalName.toLowerCase().endsWith(".pdf")) {
+    scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
   }
 
   await prisma.activity.create({

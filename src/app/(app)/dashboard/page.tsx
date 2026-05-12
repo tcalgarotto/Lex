@@ -2,7 +2,6 @@ import { MembershipRole } from "@prisma/client";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { hasAtLeast } from "@/lib/auth/permissions";
 import { getMorningBriefingData } from "@/lib/dashboard/morning-briefing-data";
-import { AppShell } from "@/components/app/app-shell";
 import { MorningBriefing } from "@/components/dashboard/morning-briefing";
 
 /**
@@ -18,9 +17,5 @@ export default async function DashboardPage() {
     isAdmin: role != null && hasAtLeast(role, MembershipRole.ADMIN),
   });
 
-  return (
-    <AppShell title="Briefing matinal">
-      <MorningBriefing data={data} />
-    </AppShell>
-  );
+  return <MorningBriefing data={data} />;
 }

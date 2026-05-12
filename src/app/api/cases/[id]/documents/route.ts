@@ -12,6 +12,7 @@ import { inngest } from "@/lib/inngest/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
+import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
@@ -148,6 +149,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       documentId: doc.id,
       err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
     });
+  }
+
+  if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+    scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
   }
 
   await recordCaseMutationActivity({

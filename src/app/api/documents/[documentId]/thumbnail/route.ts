@@ -1,56 +1,66 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import type { DocumentLibraryShelf } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentReadScopeOr } from "@/lib/biblioteca/platform-library";
 import { userCanReadDocument } from "@/lib/documents/document-access";
-import { downloadDocumentBuffer } from "@/lib/storage";
-import { isThumbnailMostlyBlankPng } from "@/lib/documents/pdf-thumbnail-blank";
-import { maybeCropWideCatalogCoverPng } from "@/lib/documents/pdf-thumbnail-catalog-cover-crop";
-import { tryRenderPdfThumbnailPngWithPoppler } from "@/lib/documents/pdf-thumbnail-poppler";
+import {
+  documentThumbnailLegacyPngStoragePath,
+  documentThumbnailStoragePath,
+  tryDownloadDocumentBuffer,
+} from "@/lib/storage";
+import { ensurePdfThumbnailInStorage } from "@/lib/documents/document-thumbnail-persist";
+import { serverTimingHeader } from "@/lib/dev/server-timing";
 import { getLogger } from "@/lib/logger";
 
 const log = getLogger("lex.api.documents.thumbnail");
 
-async function finalizeThumbnailPng(
-  png: Buffer | ArrayBuffer,
-  shelf: DocumentLibraryShelf,
-): Promise<Buffer> {
-  const buf = Buffer.isBuffer(png) ? png : Buffer.from(png);
-  return maybeCropWideCatalogCoverPng(buf, shelf);
-}
+const THUMB_CACHE_CONTROL = "private, max-age=604800, stale-while-revalidate=86400";
 
 export const dynamic = "force-dynamic";
-/** `unpdf` + `@napi-rs/canvas` não são suportados no Edge. */
+/** `unpdf` + `@napi-rs/canvas` + `sharp` não são suportados no Edge. */
 export const runtime = "nodejs";
 
-/**
- * PNG de pré-visualização do PDF (workspace-scoped), usado na Biblioteca.
- * Em ambientes com Poppler (`pdftocairo`, ex. imagem Docker), tenta primeiro páginas
- * 1…N — melhor descodificação de JP2/JBIG2. Caso contrário (ou se ainda “branco”),
- * usa `unpdf` + `@napi-rs/canvas`.
- */
-export async function GET(
-  _req: Request,
-  context: { params: Promise<{ documentId: string }> },
-) {
-  const { documentId } = await context.params;
-  const { workspaceId, user } = await getWorkspaceContext();
-  const readScope = await documentReadScopeOr(workspaceId);
+function weakEtagForBuffer(buf: Buffer): string {
+  return `W/"${createHash("sha256").update(buf).digest("hex").slice(0, 32)}"`;
+}
 
-  const doc = await prisma.document.findFirst({
+async function loadAuthorizedDoc(documentId: string, workspaceId: string) {
+  const readScope = await documentReadScopeOr(workspaceId);
+  return prisma.document.findFirst({
     where: { id: documentId, deletedAt: null, OR: readScope },
     select: {
       id: true,
+      workspaceId: true,
       mimeType: true,
-      storagePath: true,
       originalName: true,
       libraryShelf: true,
       uploadedByUserId: true,
       caseId: true,
       processId: true,
+      updatedAt: true,
     },
   });
+}
+
+/**
+ * Miniatura da primeira página do PDF (WebP quando disponível; fallback PNG legado).
+ * 1) Se existir no Storage, serve de imediato.
+ * 2) Caso contrário, gera (Inngest/after ou sync em `ensurePdfThumbnailInStorage`) e devolve.
+ */
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ documentId: string }> },
+) {
+  const { documentId } = await context.params;
+  const { workspaceId, user } = await getWorkspaceContext();
+  const marks: { name: string; dur: number }[] = [];
+  const t0 = performance.now();
+
+  const tDb = performance.now();
+  const doc = await loadAuthorizedDoc(documentId, workspaceId);
+  marks.push({ name: "db", dur: performance.now() - tDb });
+
   if (!doc) {
     return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
   }
@@ -64,68 +74,86 @@ export async function GET(
     return NextResponse.json({ error: "Miniatura disponível apenas para PDF" }, { status: 415 });
   }
 
+  const webpPath = documentThumbnailStoragePath(doc.workspaceId, doc.id);
+  const legacyPngPath = documentThumbnailLegacyPngStoragePath(doc.workspaceId, doc.id);
+
+  const tStorage = performance.now();
+  let image: Buffer | null = null;
+  let contentType: "image/webp" | "image/png" = "image/webp";
   try {
-    const buffer = await downloadDocumentBuffer(doc.storagePath);
-
-    const popplerPng = await tryRenderPdfThumbnailPngWithPoppler(buffer);
-    if (popplerPng) {
-      const out = await finalizeThumbnailPng(popplerPng, doc.libraryShelf);
-      return new NextResponse(new Uint8Array(out), {
-        status: 200,
-        headers: {
-          "Content-Type": "image/png",
-          "Cache-Control": "private, max-age=300",
-        },
-      });
-    }
-
-    const unpdf = await import("unpdf");
-    const data = new Uint8Array(buffer);
-    const pdf = await unpdf.getDocumentProxy(data);
-    const numPages = pdf.numPages;
-    const renderOpts = {
-      scale: 0.42,
-      canvasImport: () => import("@napi-rs/canvas"),
-    } as const;
-    const maxTry = Math.min(numPages, 10);
-    let fallback: ArrayBuffer | null = null;
-
-    try {
-      for (let page = 1; page <= maxTry; page++) {
-        const png = await unpdf.renderPageAsImage(data, page, renderOpts);
-        if (!(png instanceof ArrayBuffer)) continue;
-        if (!fallback) fallback = png;
-        const blank = await isThumbnailMostlyBlankPng(png);
-        if (!blank) {
-          const out = await finalizeThumbnailPng(png, doc.libraryShelf);
-          return new NextResponse(new Uint8Array(out), {
-            status: 200,
-            headers: {
-              "Content-Type": "image/png",
-              "Cache-Control": "private, max-age=300",
-            },
-          });
-        }
-      }
-      if (fallback) {
-        const out = await finalizeThumbnailPng(fallback, doc.libraryShelf);
-        return new NextResponse(new Uint8Array(out), {
-          status: 200,
-          headers: {
-            "Content-Type": "image/png",
-            "Cache-Control": "private, max-age=300",
-          },
-        });
-      }
-      throw new Error("Nenhuma página renderizada");
-    } finally {
-      await pdf.destroy().catch(() => {});
-    }
+    image = await tryDownloadDocumentBuffer(webpPath);
   } catch (err) {
-    log.warn("thumbnail render failed", {
+    log.warn("thumbnail storage read failed", {
       documentId: doc.id,
       err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
     });
-    return NextResponse.json({ error: "Não foi possível gerar a miniatura" }, { status: 502 });
   }
+  marks.push({ name: "storage", dur: performance.now() - tStorage });
+
+  if (!image) {
+    const tGen = performance.now();
+    await ensurePdfThumbnailInStorage(doc.id);
+    marks.push({ name: "generate", dur: performance.now() - tGen });
+    try {
+      image = await tryDownloadDocumentBuffer(webpPath);
+    } catch (err) {
+      log.warn("thumbnail storage read after generate failed", {
+        documentId: doc.id,
+        err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+      });
+    }
+  }
+
+  if (!image) {
+    try {
+      const legacy = await tryDownloadDocumentBuffer(legacyPngPath);
+      if (legacy) {
+        image = legacy;
+        contentType = "image/png";
+      }
+    } catch (err) {
+      log.warn("thumbnail legacy png read failed", {
+        documentId: doc.id,
+        err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+      });
+    }
+  }
+
+  if (!image) {
+    log.warn("thumbnail unavailable after generate attempt", { documentId: doc.id });
+    marks.push({ name: "total", dur: performance.now() - t0 });
+    return NextResponse.json(
+      { error: "Não foi possível gerar a miniatura" },
+      { status: 502, headers: serverTimingHeader(marks) },
+    );
+  }
+
+  const etag = weakEtagForBuffer(image);
+  const inm = req.headers.get("if-none-match");
+  if (inm && inm === etag) {
+    marks.push({ name: "total", dur: performance.now() - t0 });
+    return new NextResponse(null, {
+      status: 304,
+      headers: {
+        ETag: etag,
+        "Last-Modified": doc.updatedAt.toUTCString(),
+        "Cache-Control": THUMB_CACHE_CONTROL,
+        Vary: "Cookie",
+        ...serverTimingHeader(marks),
+      },
+    });
+  }
+
+  marks.push({ name: "total", dur: performance.now() - t0 });
+  return new NextResponse(new Uint8Array(image), {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": THUMB_CACHE_CONTROL,
+      ETag: etag,
+      "Last-Modified": doc.updatedAt.toUTCString(),
+      Vary: "Cookie",
+      ...serverTimingHeader(marks),
+    },
+  });
 }

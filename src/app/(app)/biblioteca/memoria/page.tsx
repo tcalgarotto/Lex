@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -54,8 +53,7 @@ export default async function BibliotecaMemoriaPage() {
  }));
 
  return (
- <AppShell title="Memória do workspace">
- <div className="mx-auto max-w-4xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="flex flex-wrap items-start justify-between gap-3">
  <div className="space-y-2">
  <h1 className="text-2xl font-semibold">Memória do workspace</h1>
@@ -71,6 +69,5 @@ export default async function BibliotecaMemoriaPage() {
  </header>
  <OfficeMemoryPanel initialMemories={initialMemories} cases={cases} />
  </div>
- </AppShell>
  );
 }

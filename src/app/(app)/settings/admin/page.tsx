@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/app/app-shell";
 import { requireObservabilityViewPage } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +28,6 @@ export default async function AdminInternoPage() {
  ]);
 
  return (
- <AppShell title="Admin — custos e observabilidade">
  <div className="space-y-6">
  <p className="text-sm text-muted-foreground">
  Visível apenas para OWNER do workspace. Dados dos últimos 30 dias (tenant = workspace).
@@ -133,6 +131,5 @@ export default async function AdminInternoPage() {
  </CardContent>
  </Card>
  </div>
- </AppShell>
  );
 }

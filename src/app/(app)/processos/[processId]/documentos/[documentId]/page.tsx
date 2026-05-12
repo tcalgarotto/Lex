@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppShell } from "@/components/app/app-shell";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,8 @@ export default async function DocumentoPage({
  const pct = Math.round(Math.max(0, Math.min(1, doc.progress ?? 0)) * 100);
 
  return (
- <AppShell title={doc.originalName}>
+ <>
+ <SetPageTitle title={doc.originalName} />
  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
  <div className="text-sm text-muted-foreground">
  <Link href={`/processos/${processId}`} className="text-violet-400 hover:underline">
@@ -146,7 +147,7 @@ export default async function DocumentoPage({
  </CardContent>
  </Card>
  </div>
- </AppShell>
+ </>
  );
 }
 

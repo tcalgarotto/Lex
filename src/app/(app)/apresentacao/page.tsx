@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function ApresentacaoPage() {
  return (
- <AppShell title="Apresentação">
- <div className="mx-auto max-w-4xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <Card>
  <CardHeader>
  <CardTitle className="text-base">Lex — Sistema operacional jurídico</CardTitle>
@@ -95,7 +93,6 @@ export default function ApresentacaoPage() {
  </CardContent>
  </Card>
  </div>
- </AppShell>
  );
 }
 

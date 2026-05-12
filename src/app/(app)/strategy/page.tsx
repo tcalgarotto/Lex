@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { GitBranch, Loader2, Sparkles } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -96,8 +95,7 @@ export default function StrategyPage() {
  }, [q, tribunals, uf, caseId]);
 
  return (
- <AppShell title="Estratégia jurídica">
- <div className="mx-auto max-w-6xl space-y-6">
+ <div className="w-full min-w-0 space-y-6">
  <header className="space-y-2">
  <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
  <GitBranch className="size-3.5" /> Plataforma de estratégia auditável
@@ -251,7 +249,6 @@ export default function StrategyPage() {
  </Tabs>
  )}
  </div>
- </AppShell>
  );
 }
 

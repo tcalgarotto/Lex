@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
@@ -91,7 +90,6 @@ export default async function ReadinessPage() {
  }
 
  return (
- <AppShell title="Prontidão do ambiente">
  <div className="space-y-6">
  <Card>
  <CardHeader>
@@ -125,7 +123,6 @@ export default async function ReadinessPage() {
  </CardContent>
  </Card>
  </div>
- </AppShell>
  );
 }
 

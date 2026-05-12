@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ROLE_LABEL } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/auth/session";
+import { getAuthUserAndSync } from "@/lib/auth/session";
 import { AcceptInviteForm } from "./accept-form";
 
 export default async function InvitePage({
@@ -19,7 +19,7 @@ export default async function InvitePage({
  // Crítico: precisa rodar antes de qualquer query Prisma para que a página
  // funcione mesmo em ambientes com DB indisponível (ex.: CI E2E sem
  // Postgres real).
- const user = await getAuthUser();
+ const user = await getAuthUserAndSync();
  if (!user) {
  const next = encodeURIComponent(`/invite/${token}`);
  redirect(`/login?next=${next}`);

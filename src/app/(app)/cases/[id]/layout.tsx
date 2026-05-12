@@ -9,16 +9,16 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Calendar, Building2, ChevronRight, Clock, Hash, Sparkles } from "lucide-react";
-import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
+import { CaseSubnav } from "@/components/cases/case-subnav";
+import { caseStatusLabel, isCasePreProcessual } from "@/lib/cases/labels";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
 import { CaseActions } from "@/components/cases/case-actions";
 import { CaseProgressBar } from "@/components/cases/case-progress";
-import { CaseSubnav } from "@/components/cases/case-subnav";
-import { caseStatusLabel, isCasePreProcessual } from "@/lib/cases/labels";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
 import { loadCaseForWorkspace } from "./_load-case";
 import { CaseLegacyQueryRedirect } from "@/components/cases/case-legacy-query-redirect";
+import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext, getWorkspacesForUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -60,8 +60,9 @@ export default async function CaseDetailLayout({
  const readiness = readReadiness(c.metadataJson);
 
  return (
- <AppShell title={c.title}>
- <div className="mx-auto max-w-6xl space-y-6">
+ <>
+ <SetPageTitle title={c.title} />
+ <div className="w-full min-w-0 space-y-6">
  <header className="lex-glass lex-transition space-y-4 rounded-xl p-4 md:p-5">
  <nav className="flex flex-wrap items-center gap-1 text-[12px] md:text-[13px]" aria-label="Navegação do caso">
  <Link
@@ -157,6 +158,6 @@ export default async function CaseDetailLayout({
 
  {children}
  </div>
- </AppShell>
+ </>
  );
 }
