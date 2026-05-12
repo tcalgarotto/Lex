@@ -33,6 +33,17 @@ enum DocumentStatus {
   FAILED
 }
 
+/**
+ * Biblioteca do workspace:
+ * - SHARED_* — catálogo partilhado com todos os membros (fileiras Leis/Códigos/Normas e Livros recomendados).
+ * - OFFICE_PRIVATE — documento privado; em ficheiros soltos só o remetente lê (além de admins).
+ */
+enum DocumentLibraryShelf {
+  OFFICE_PRIVATE
+  SHARED_LEGAL
+  SHARED_BOOKS
+}
+
 enum ChatRole {
   USER
   ASSISTANT
@@ -103,6 +114,7 @@ model User {
   officeMemoriesOwned       OfficeMemory[]       @relation("OfficeMemoryOwnerUser")
   officeMemoriesCreated      OfficeMemory[]       @relation("OfficeMemoryCreatedBy")
   officeMemoriesUpdated      OfficeMemory[]       @relation("OfficeMemoryUpdatedBy")
+  documentsUploaded         Document[]           @relation("DocumentUploadedBy")
 }
 
 model Workspace {
@@ -271,6 +283,14 @@ model Document {
    * vinculado a um Process, vinculado a um Case, ou ambos.
    */
   caseId          String?
+  /**
+   * Quem enviou o ficheiro (auditoria e documentos privados OFFICE_PRIVATE).
+   */
+  uploadedByUserId String?
+  /**
+   * Prateleira na biblioteca: catálogo partilhado vs. privado do escritório.
+   */
+  libraryShelf    DocumentLibraryShelf @default(OFFICE_PRIVATE)
   originalName    String
   mimeType        String
   sizeBytes       Int
@@ -301,6 +321,7 @@ model Document {
   workspace       Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   process         Process?        @relation(fields: [processId], references: [id])
   case            Case?           @relation(fields: [caseId], references: [id])
+  uploadedBy      User?           @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   chunks          DocumentChunk[]
 
   @@index([workspaceId])
@@ -310,6 +331,8 @@ model Document {
   @@index([workspaceId, updatedAt])
   @@index([workspaceId, archivedAt])
   @@index([workspaceId, deletedAt])
+  @@index([workspaceId, libraryShelf])
+  @@index([uploadedByUserId])
 }
 
 model DocumentChunk {

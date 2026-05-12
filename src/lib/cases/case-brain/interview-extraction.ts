@@ -16,7 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { runIntake } from "@/lib/cases/intake";
 import type { ParsedFact, ParsedParty, ParsedRequest, ParsedRisk } from "@/lib/cases/types";
 import { computeProceduralReadiness } from "@/lib/cases/readiness";
-import type { BrainFact, BrainParty, BrainRequest, BrainRisk } from "@/lib/cases/brain-types";
+import type { BrainFact, BrainParty, BrainRequest } from "@/lib/cases/brain-types";
 import { mergeCaseMetadataJson } from "./case-metadata-merge";
 import { computeCaseFingerprint } from "./fingerprint";
 import { recordCaseMutationActivity } from "./activity-log";
@@ -409,14 +409,6 @@ export async function mergeInterviewExtractIntoCase(args: {
         text: r.text,
         kind: "MAIN",
         sourceText: r.text.slice(0, 400),
-        confidence: 0.65,
-        origin: "input",
-      }));
-      const risksBrain: BrainRisk[] = ctx.risks.map((r) => ({
-        title: r.title,
-        detail: r.detail,
-        severity: "MEDIUM",
-        sourceText: r.title,
         confidence: 0.65,
         origin: "input",
       }));

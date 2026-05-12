@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { DocumentStatus } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { userCanReadDocument } from "@/lib/documents/document-access";
 import { inngest } from "@/lib/inngest/client";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
@@ -27,13 +28,16 @@ export async function POST(
   context: { params: Promise<{ documentId: string }> },
 ) {
   const { documentId } = await context.params;
-  const { workspaceId } = await getWorkspaceContext();
+  const { workspaceId, user } = await getWorkspaceContext();
 
   const doc = await prisma.document.findFirst({
     where: { id: documentId, workspaceId },
   });
   if (!doc) {
     return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
+  }
+  if (!userCanReadDocument(user.id, doc)) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
   }
 
   await prisma.document.update({

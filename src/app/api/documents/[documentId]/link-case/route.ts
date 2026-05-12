@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { DocumentLibraryShelf } from "@prisma/client";
 import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -53,7 +54,10 @@ export async function POST(
 
   const updated = await prisma.document.update({
     where: { id: doc.id },
-    data: { caseId },
+    data: {
+      caseId,
+      ...(caseId ? { libraryShelf: DocumentLibraryShelf.OFFICE_PRIVATE } : {}),
+    },
     select: { id: true, caseId: true },
   });
 

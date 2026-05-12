@@ -15,7 +15,6 @@ import {
   isDeepseekLegalResearchDisabled,
   legalResearchRequestHash,
   logLegalResearchJsonLine,
-  RAG_LEGAL_RESEARCH_STUB_MESSAGE,
   setCachedLegalResearch,
   withHumanReviewMetadata,
 } from "@/lib/legal-research";
@@ -41,12 +40,6 @@ export async function POST(req: Request) {
   }
 
   const providerId = process.env["LEGAL_RESEARCH_PROVIDER"]?.trim().toLowerCase() || "deepseek";
-  if (providerId === "rag") {
-    return NextResponse.json(
-      { error: RAG_LEGAL_RESEARCH_STUB_MESSAGE },
-      { status: 503, headers: rl.headers },
-    );
-  }
   if (providerId === "deepseek" && isDeepseekLegalResearchDisabled()) {
     return NextResponse.json(
       { error: "Pesquisa assistida temporariamente desligada." },
@@ -106,11 +99,7 @@ export async function POST(req: Request) {
   let out: LegalResearchResponse;
   try {
     out = await getLegalResearchProvider().recommendForCase(full);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (msg === RAG_LEGAL_RESEARCH_STUB_MESSAGE) {
-      return NextResponse.json({ error: msg }, { status: 503, headers: rl.headers });
-    }
+  } catch {
     logLegalResearchJsonLine({
       event: "legal_research.recommend",
       workspaceId,

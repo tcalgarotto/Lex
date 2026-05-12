@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveWorkspaceId } from "@/lib/auth/workspace";
@@ -6,37 +7,37 @@ import type { MembershipRole } from "@prisma/client";
 import { can, type PermissionKey } from "@/lib/auth/permissions";
 import type { WorkspaceOption } from "@/components/app/workspace-switcher";
 
-export async function getAuthUser() {
+export const getAuthUser = cache(async () => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
-export async function requireAuthUser() {
+export const requireAuthUser = cache(async () => {
   const user = await getAuthUser();
   if (!user) throw new Error("Não autenticado");
   return user;
-}
+});
 
-export async function getWorkspaceContext() {
+export const getWorkspaceContext = cache(async () => {
   const user = await requireAuthUser();
   const workspaceId = await resolveWorkspaceId(user.id);
   return { user, workspaceId };
-}
+});
 
-export async function getWorkspaceContextWithRole(): Promise<{
+export const getWorkspaceContextWithRole = cache(async (): Promise<{
   user: Awaited<ReturnType<typeof requireAuthUser>>;
   workspaceId: string;
   role: MembershipRole | null;
-}> {
+}> => {
   const { user, workspaceId } = await getWorkspaceContext();
   const membership = await prisma.membership.findUnique({
     where: { workspaceId_userId: { workspaceId, userId: user.id } },
   });
   return { user, workspaceId, role: membership?.role ?? null };
-}
+});
 
 /**
  * Lista todos os workspaces aos quais o usuário pertence + identifica o ativo.

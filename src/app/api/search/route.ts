@@ -1,52 +1,64 @@
 /**
  * Busca global do app (`/busca`).
  *
- * Estratégia:
- *  1. Workspace interno: processos, peças, documentos, casos.
- *  2. Corpus jurídico oficial via `retrieveLegalContext` (hybrid + RRF).
- *     Substitui a antiga consulta direta a `LegalChunk` por substring.
- *  3. Vetorial (Qdrant `lex_main`) só como reforço para documentos do
- *     usuário, com filtros anti-poluição.
+ * 1. Workspace (Postgres) 2. Sugestões jurídicas (DeepSeek) 3. Sem vetor/Qdrant.
  */
 
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { GLOBAL_WORKSPACE_ID } from "@/lib/constants";
-import { embedQuery } from "@/lib/ai/embeddings";
-import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
-import {
-  DEMO_TOKEN_REGEX,
-  shouldBypassDemoVisibility,
-} from "@/lib/corpus/source-visibility";
-import { retrieveLegalContext } from "@/lib/retrieval/legal";
 import { getLogger } from "@/lib/logger";
 import type { SearchHit } from "@/types/search";
+import { getLegalResearchProvider } from "@/lib/legal-research";
+import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/lex-rag-backend";
 
 const log = getLogger("lex.api.search");
-
-const IS_PROD = process.env.NODE_ENV === "production";
-const MIN_CHUNK_CHARS = 60;
-
-function isPollutedText(text: string | null | undefined): boolean {
-  if (!text) return true;
-  const cleaned = text.replace(/\s+/g, " ").trim();
-  if (cleaned.length < MIN_CHUNK_CHARS) return true;
-  if (DEMO_TOKEN_REGEX.test(cleaned)) return true;
-  if (/^lorem ipsum/i.test(cleaned)) return true;
-  if (/^[#=*\-]{3,}/.test(cleaned)) return true;
-  return false;
-}
-
-function isPollutedCode(code: string | null | undefined): boolean {
-  if (!code) return false;
-  return DEMO_TOKEN_REGEX.test(code);
-}
 
 function withRequestId(res: NextResponse, requestId: string): NextResponse {
   res.headers.set("x-request-id", requestId);
   return res;
+}
+
+function legalHitsFromDeepSeek(
+  q: string,
+  workspaceId: string,
+): Promise<SearchHit[]> {
+  const provider = getLegalResearchProvider();
+  return provider
+    .search({
+      workspaceId,
+      query: q,
+      maxResults: 8,
+      resultTypes: ["LAW", "JURISPRUDENCE"],
+      language: "pt-BR",
+    })
+    .then((res) => {
+      const dsHits: SearchHit[] = [];
+      for (const f of res.legalFoundations) {
+        dsHits.push({
+          id: f.id,
+          type: "lei",
+          title: f.citation || f.title,
+          subtitle: f.title,
+          excerpt: f.excerpt || f.whyRelevant,
+          score: f.confidence,
+          href: `/pesquisa-juridica?q=${encodeURIComponent(q)}`,
+        });
+      }
+      for (const j of res.jurisprudenceCandidates) {
+        dsHits.push({
+          id: j.id,
+          type: "jurisprudência",
+          title: j.processNumber || j.title,
+          subtitle: j.court,
+          excerpt: j.summary || j.excerpt,
+          score: j.confidence,
+          href: `/pesquisa-juridica?q=${encodeURIComponent(q)}`,
+        });
+      }
+      return dsHits;
+    });
 }
 
 export async function GET(req: Request) {
@@ -55,10 +67,6 @@ export async function GET(req: Request) {
   const q = (searchParams.get("q") ?? "").trim();
   const limit = Math.min(20, Math.max(1, Number(searchParams.get("limit") ?? "12")));
   const scope = (searchParams.get("scope") ?? "tudo").toLowerCase();
-  const bypassDemo = shouldBypassDemoVisibility({
-    searchParams,
-    isProduction: IS_PROD,
-  });
   if (q.length < 2) {
     return withRequestId(
       NextResponse.json({
@@ -66,6 +74,7 @@ export async function GET(req: Request) {
         hadOfficialCorpus: false,
         scope,
         query: q,
+        corpusSearchConfigMuted: isAnyCorpusSearchConfigMuted(),
       }),
       requestId,
     );
@@ -73,15 +82,16 @@ export async function GET(req: Request) {
 
   const { workspaceId } = await getWorkspaceContext();
 
-  const wantWorkspace = scope === "tudo" || ["casos", "documentos", "peças", "pecas"].includes(scope);
-  const wantLegal = scope === "tudo" || scope === "legislação" || scope === "legislacao";
-
+  const wantWorkspace =
+    scope === "tudo" || scope === "casos" || scope === "documentos" || scope === "peças";
+  const wantLegal = scope === "tudo" || scope === "legislação";
   const hits: SearchHit[] = [];
 
-  // Queries internas do workspace em paralelo.
-  const [processes, pieces, docs, cases] = await Promise.all([
-    wantWorkspace
-      ? prisma.process.findMany({
+  const [workspaceResults, legalHits] = await Promise.all([
+    (async () => {
+      if (!wantWorkspace) return { processes: [], pieces: [], docs: [], cases: [] };
+      const [processes, pieces, docs, cases] = await Promise.all([
+        prisma.process.findMany({
           where: {
             workspaceId,
             OR: [
@@ -92,17 +102,13 @@ export async function GET(req: Request) {
           select: { id: true, title: true, number: true, updatedAt: true },
           take: limit,
           orderBy: { updatedAt: "desc" },
-        })
-      : Promise.resolve([]),
-    wantWorkspace
-      ? prisma.legalPiece.findMany({
+        }),
+        prisma.legalPiece.findMany({
           where: { workspaceId, title: { contains: q, mode: "insensitive" } },
           select: { id: true, title: true, kind: true },
           take: limit,
-        })
-      : Promise.resolve([]),
-    wantWorkspace
-      ? prisma.document.findMany({
+        }),
+        prisma.document.findMany({
           where: { workspaceId, originalName: { contains: q, mode: "insensitive" } },
           select: {
             id: true,
@@ -112,10 +118,8 @@ export async function GET(req: Request) {
             caseId: true,
           },
           take: limit,
-        })
-      : Promise.resolve([]),
-    wantWorkspace
-      ? prisma.case.findMany({
+        }),
+        prisma.case.findMany({
           where: {
             workspaceId,
             OR: [
@@ -125,9 +129,22 @@ export async function GET(req: Request) {
           },
           select: { id: true, title: true, status: true, processNumber: true },
           take: limit,
-        })
-      : Promise.resolve([]),
+        }),
+      ]);
+      return { processes, pieces, docs, cases };
+    })(),
+    (async () => {
+      if (!wantLegal) return [];
+      try {
+        return await legalHitsFromDeepSeek(q, workspaceId);
+      } catch (e) {
+        log.warn("DeepSeek research failed (non-fatal)", { requestId, err: String(e) });
+        return [];
+      }
+    })(),
   ]);
+
+  const { processes, pieces, docs, cases } = workspaceResults;
 
   for (const c of cases) {
     hits.push({
@@ -170,99 +187,15 @@ export async function GET(req: Request) {
     });
   }
 
-  // Corpus jurídico oficial via retrieveLegalContext (hybrid + RRF).
-  let hadOfficialCorpus = false;
-  if (wantLegal) {
-    try {
-      const result = await retrieveLegalContext(q, {
-        topK: 8,
-        useCache: true,
-        workspaceId,
-      });
-      hadOfficialCorpus = result.chunks.length > 0;
-      for (const c of result.chunks) {
-        const head = `${c.norm.identifier ?? c.norm.title}${
-          c.fullPath ? ` — ${c.fullPath}` : c.articleRef ? ` — ${c.articleRef}` : ""
-        }`;
-        const isJurispr =
-          c.norm.kind?.toString().startsWith("JURISPRUDENCE") ||
-          c.norm.kind?.toString().startsWith("SUMULA");
-        hits.push({
-          id: c.chunkId,
-          type: isJurispr ? "jurisprudência" : "lei",
-          title: head,
-          subtitle: c.norm.title,
-          excerpt: c.text.slice(0, 600),
-          identifier: c.norm.identifier ?? undefined,
-          articleRef: c.articleRef ?? undefined,
-          fullPath: c.fullPath ?? undefined,
-          normUrn: c.norm.urn,
-          score: c.scores.final,
-          href: `/pesquisa-juridica?q=${encodeURIComponent(q)}`,
-        });
-      }
-    } catch (e) {
-      log.warn("retrieveLegalContext failed (non-fatal)", {
-        requestId,
-        workspaceId,
-        queryLen: q.length,
-        scope,
-        wantLegal,
-        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
-      });
-    }
-  }
-
-  // Vetorial (lex_main) — reforço para documentos de usuário (best-effort).
-  if (wantWorkspace) {
-    try {
-      const vec = await embedQuery(q);
-      const store = getQdrantVectorStore();
-      const vecHits = await store.search({
-        vector: vec,
-        workspaceIds: [workspaceId, GLOBAL_WORKSPACE_ID],
-        limit: 8,
-      });
-      for (const h of vecHits) {
-        if (!bypassDemo && isPollutedText(h.payload.chunkText)) continue;
-        if (!bypassDemo && isPollutedCode(h.payload.sourceCode)) continue;
-        const preview = h.payload.chunkText.slice(0, 80);
-        const href =
-          h.payload.processId && h.payload.documentId
-            ? `/processos/${h.payload.processId}/documentos/${h.payload.documentId}`
-            : h.payload.documentId
-              ? `/documentos`
-              : h.payload.pieceId
-                ? `/editor/${h.payload.pieceId}`
-                : undefined;
-        hits.push({
-          id: h.id,
-          type: "trecho",
-          title: preview + (h.payload.chunkText.length > 80 ? "…" : ""),
-          subtitle: h.payload.sourceCode ?? h.payload.articleRef,
-          excerpt: h.payload.chunkText.slice(0, 600),
-          score: typeof h.score === "number" ? h.score : undefined,
-          ...(href ? { href } : {}),
-        });
-      }
-    } catch (e) {
-      log.warn("vector search failed (non-fatal)", {
-        requestId,
-        workspaceId,
-        queryLen: q.length,
-        scope,
-        wantWorkspace,
-        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
-      });
-    }
-  }
+  hits.push(...legalHits);
 
   return withRequestId(
     NextResponse.json({
       hits: hits.slice(0, limit),
-      hadOfficialCorpus,
+      hadOfficialCorpus: legalHits.length > 0,
       scope,
       query: q,
+      corpusSearchConfigMuted: isAnyCorpusSearchConfigMuted(),
     }),
     requestId,
   );

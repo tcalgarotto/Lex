@@ -23,4 +23,9 @@ export type SearchResponse = {
   hits: SearchHit[];
   /** True quando havia algum hit em LegalChunk (corpus oficial). */
   hadOfficialCorpus: boolean;
+  /**
+   * True quando env desliga parte do retrieval (corpus jurídico e/ou vetor workspace).
+   * A UI pode exibir aviso alinhado à pesquisa assistida (DeepSeek).
+   */
+  corpusSearchConfigMuted?: boolean;
 };

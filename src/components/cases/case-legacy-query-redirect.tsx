@@ -13,27 +13,27 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const TAB_TO_PATH: Record<string, string> = {
-  overview: "",
-  documents: "/documentos",
-  facts: "/partes-fatos",
-  research: "/pesquisa-juridica",
-  strategy: "/estrategia",
-  checklist: "/entrevista",
-  activity: "",
+ overview: "",
+ documents: "/documentos",
+ facts: "/partes-fatos",
+ research: "/pesquisa-juridica",
+ strategy: "/estrategia",
+ checklist: "/entrevista",
+ activity: "",
 };
 
 export function CaseLegacyQueryRedirect({ caseId }: { caseId: string }) {
-  const router = useRouter();
-  const sp = useSearchParams();
+ const router = useRouter();
+ const sp = useSearchParams();
 
-  useEffect(() => {
-    const tab = sp.get("tab");
-    if (!tab) return;
-    const suffix = TAB_TO_PATH[tab];
-    if (suffix === undefined) return;
-    const next = `/cases/${caseId}${suffix}`;
-    router.replace(next, { scroll: false });
-  }, [caseId, router, sp]);
+ useEffect(() => {
+ const tab = sp.get("tab");
+ if (!tab) return;
+ const suffix = TAB_TO_PATH[tab];
+ if (suffix === undefined) return;
+ const next = `/cases/${caseId}${suffix}`;
+ router.replace(next, { scroll: false });
+ }, [caseId, router, sp]);
 
-  return null;
+ return null;
 }

@@ -11,21 +11,27 @@
 import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const { workspaceId } = await getWorkspaceContext();
+  const { workspaceId, user } = await getWorkspaceContext();
   const url = new URL(req.url);
   const unlinked = url.searchParams.get("unlinked") === "1";
   const takeRaw = Number(url.searchParams.get("take") ?? "50");
   const take = Number.isFinite(takeRaw) ? Math.min(100, Math.max(1, takeRaw)) : 50;
 
-  const where: { workspaceId: string; caseId?: null } = { workspaceId };
-  if (unlinked) where.caseId = null;
+  const andParts = [...officePrivateDocumentsAndParts(user.id)];
+  if (unlinked) andParts.push({ caseId: null });
 
   const documents = await prisma.document.findMany({
-    where,
+    where: {
+      workspaceId,
+      deletedAt: null,
+      archivedAt: null,
+      AND: andParts,
+    },
     orderBy: { updatedAt: "desc" },
     take,
     select: {

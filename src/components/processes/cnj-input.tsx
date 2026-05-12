@@ -10,13 +10,13 @@ import type { InputProps } from "@/components/ui/input";
  * porque Server Components não aceitam event handlers (`onBlur`).
  */
 export function CnjInput({ onBlur, ...props }: InputProps) {
-  return (
-    <Input
-      {...props}
-      onBlur={(e) => {
-        e.currentTarget.value = formatCnj(e.currentTarget.value);
-        onBlur?.(e);
-      }}
-    />
-  );
+ return (
+ <Input
+ {...props}
+ onBlur={(e) => {
+ e.currentTarget.value = formatCnj(e.currentTarget.value);
+ onBlur?.(e);
+ }}
+ />
+ );
 }

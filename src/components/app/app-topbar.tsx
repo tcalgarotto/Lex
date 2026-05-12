@@ -5,45 +5,45 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  WorkspaceSwitcher,
-  type WorkspaceOption,
+ WorkspaceSwitcher,
+ type WorkspaceOption,
 } from "@/components/app/workspace-switcher";
 
 export function AppTopbar({
-  title,
-  current,
-  workspaces,
+ title,
+ current,
+ workspaces,
 }: {
-  title: string;
-  current?: WorkspaceOption;
-  workspaces?: WorkspaceOption[];
+ title: string;
+ current?: WorkspaceOption;
+ workspaces?: WorkspaceOption[];
 }) {
-  const router = useRouter();
+ const router = useRouter();
 
-  async function signOut() {
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  }
+ async function signOut() {
+ const supabase = createSupabaseBrowserClient();
+ await supabase.auth.signOut();
+ router.replace("/login");
+ router.refresh();
+ }
 
-  return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-white/10 bg-zinc-950/80 px-6 backdrop-blur-md">
-      <div className="flex items-center gap-3 min-w-0">
-        {current && workspaces && workspaces.length > 0 ? (
-          <WorkspaceSwitcher current={current} workspaces={workspaces} />
-        ) : null}
-        <h1 className="truncate text-sm font-medium text-zinc-200">{title}</h1>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-2 text-zinc-400"
-        onClick={() => void signOut()}
-      >
-        <LogOut className="size-4" />
-        Sair
-      </Button>
-    </header>
-  );
+ return (
+ <header className="lex-glass sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-[color:var(--glass-border)] px-6">
+ <div className="flex min-w-0 items-center gap-3">
+ {current && workspaces && workspaces.length > 0 ? (
+ <WorkspaceSwitcher current={current} workspaces={workspaces} />
+ ) : null}
+ <h1 className="truncate text-sm font-medium text-foreground">{title}</h1>
+ </div>
+ <Button
+ variant="ghost"
+ size="sm"
+ className="gap-2 text-muted-foreground"
+ onClick={() => void signOut()}
+ >
+ <LogOut className="size-4" />
+ Sair
+ </Button>
+ </header>
+ );
 }

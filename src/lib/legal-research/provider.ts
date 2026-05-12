@@ -9,19 +9,6 @@ import { DeepSeekLegalResearchProvider } from "./deepseek-provider";
 import { applyLegalResearchSafety } from "./legal-research-safety";
 import type { LegalResearchProvider, LegalResearchRequest, LegalResearchResponse } from "./types";
 
-export const RAG_LEGAL_RESEARCH_STUB_MESSAGE =
-  "Pesquisa interna em otimização — usando assistente de IA temporariamente.";
-
-class RagStubLegalResearchProvider implements LegalResearchProvider {
-  async search(_req: LegalResearchRequest): Promise<LegalResearchResponse> {
-    throw new Error(RAG_LEGAL_RESEARCH_STUB_MESSAGE);
-  }
-
-  async recommendForCase(_req: LegalResearchRequest): Promise<LegalResearchResponse> {
-    throw new Error(RAG_LEGAL_RESEARCH_STUB_MESSAGE);
-  }
-}
-
 class MockLegalResearchProvider implements LegalResearchProvider {
   private mockResponse(): LegalResearchResponse {
     return {
@@ -96,14 +83,12 @@ class MockLegalResearchProvider implements LegalResearchProvider {
 
 /**
  * Fábrica do provedor de pesquisa jurídica.
- * `LEGAL_RESEARCH_PROVIDER`: `deepseek` (default) | `rag` | `mock`
+ * `LEGAL_RESEARCH_PROVIDER`: `deepseek` (default) | `mock`
+ * O valor legado `rag` é tratado como `deepseek` (motor interno desligado na UX).
  */
 export function getLegalResearchProvider(): LegalResearchProvider {
   const raw = process.env["LEGAL_RESEARCH_PROVIDER"]?.trim().toLowerCase();
   const id = raw && raw.length > 0 ? raw : "deepseek";
-  if (id === "rag") {
-    return new RagStubLegalResearchProvider();
-  }
   if (id === "mock") {
     return new MockLegalResearchProvider();
   }

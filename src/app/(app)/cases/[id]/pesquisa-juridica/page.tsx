@@ -13,25 +13,25 @@ import { loadCaseForWorkspace } from "../_load-case";
 export const dynamic = "force-dynamic";
 
 export default async function CaseLegalResearchPage({
-  params,
+ params,
 }: {
-  params: Promise<{ id: string }>;
+ params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const { workspaceId } = await getWorkspaceContext();
-  const c = await loadCaseForWorkspace(workspaceId, id);
-  if (!c) notFound();
+ const { id } = await params;
+ const { workspaceId } = await getWorkspaceContext();
+ const c = await loadCaseForWorkspace(workspaceId, id);
+ if (!c) notFound();
 
-  return (
-    <div className="space-y-3">
-      <header className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Pesquisa jurídica neste caso</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Fundamentos fixados, sugestões assistidas e busca no acervo — sempre com revisão humana
-          antes de citar em peça.
-        </p>
-      </header>
-      <CaseResearchTab caseId={c.id} legalSources={c.legalSources} caseRecord={c} />
-    </div>
-  );
+ return (
+ <div className="space-y-3">
+ <header className="space-y-1">
+ <h2 className="text-sm font-semibold text-foreground">Pesquisa jurídica neste caso</h2>
+ <p className="max-w-3xl text-sm text-muted-foreground">
+ Fundamentos fixados, sugestões assistidas e busca no acervo — sempre com revisão humana
+ antes de citar em peça.
+ </p>
+ </header>
+ <CaseResearchTab caseId={c.id} legalSources={c.legalSources} caseRecord={c} />
+ </div>
+ );
 }

@@ -24,9 +24,10 @@ export default async function EditorPage({
 
   return (
     <AppShell title={piece.title}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-6 flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          {piece.kind} {piece.processId ? (
+          {piece.kind}{" "}
+          {piece.processId ? (
             <Link href={`/processos/${piece.processId}`} className="text-violet-400 hover:underline">
               · processo
             </Link>
@@ -49,3 +50,4 @@ export default async function EditorPage({
     </AppShell>
   );
 }
+

@@ -13,105 +13,105 @@ import { MemberRow } from "./member-row";
 import { InvitationRow } from "./invitation-row";
 
 export default async function TeamPage() {
-  const { workspaceId, role, user } = await getWorkspaceContextWithRole();
-  if (!role) notFound();
-  const allowedToManage = can(role, "membersInvite");
+ const { workspaceId, role, user } = await getWorkspaceContextWithRole();
+ if (!role) notFound();
+ const allowedToManage = can(role, "membersInvite");
 
-  const [members, invitations] = await Promise.all([
-    prisma.membership.findMany({
-      where: { workspaceId },
-      include: { user: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.invitation.findMany({
-      where: { workspaceId, status: InvitationStatus.PENDING },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+ const [members, invitations] = await Promise.all([
+ prisma.membership.findMany({
+ where: { workspaceId },
+ include: { user: true },
+ orderBy: { createdAt: "asc" },
+ }),
+ prisma.invitation.findMany({
+ where: { workspaceId, status: InvitationStatus.PENDING },
+ orderBy: { createdAt: "desc" },
+ }),
+ ]);
 
-  return (
-    <AppShell title="Equipe">
-      <div className="space-y-6">
-        {allowedToManage ? (
-          <Card className="border-white/10 bg-zinc-900/40">
-            <CardHeader>
-              <CardTitle className="text-base">Convidar pessoa</CardTitle>
-              <CardDescription>
-                Enviamos um link de convite. A pessoa precisa criar conta com o mesmo e-mail
-                ou fazer login para aceitar.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InviteMemberForm currentUserRole={role} />
-            </CardContent>
-          </Card>
-        ) : null}
+ return (
+ <AppShell title="Equipe">
+ <div className="space-y-6">
+ {allowedToManage ? (
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-base">Convidar pessoa</CardTitle>
+ <CardDescription>
+ Enviamos um link de convite. A pessoa precisa criar conta com o mesmo e-mail
+ ou fazer login para aceitar.
+ </CardDescription>
+ </CardHeader>
+ <CardContent>
+ <InviteMemberForm currentUserRole={role} />
+ </CardContent>
+ </Card>
+ ) : null}
 
-        <Card className="border-white/10 bg-zinc-900/40">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Membros</CardTitle>
-              <CardDescription>
-                {members.length} {members.length === 1 ? "pessoa" : "pessoas"} no workspace.
-              </CardDescription>
-            </div>
-            <Badge variant="outline" className="text-[10px]">
-              Você: {ROLE_LABEL[role]}
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {members.map((m) => (
-              <MemberRow
-                key={m.id}
-                membership={{
-                  id: m.id,
-                  userId: m.userId,
-                  email: m.user.email,
-                  name: m.user.name,
-                  role: m.role,
-                  joinedAt: m.createdAt.toISOString(),
-                }}
-                isSelf={m.userId === user.id}
-                canManage={allowedToManage && m.userId !== user.id}
-                currentUserRole={role}
-              />
-            ))}
-          </CardContent>
-        </Card>
+ <Card>
+ <CardHeader className="flex flex-row items-center justify-between">
+ <div>
+ <CardTitle className="text-base">Membros</CardTitle>
+ <CardDescription>
+ {members.length} {members.length === 1 ? "pessoa" : "pessoas"} no workspace.
+ </CardDescription>
+ </div>
+ <Badge variant="outline" className="text-[10px]">
+ Você: {ROLE_LABEL[role]}
+ </Badge>
+ </CardHeader>
+ <CardContent className="space-y-2">
+ {members.map((m) => (
+ <MemberRow
+ key={m.id}
+ membership={{
+ id: m.id,
+ userId: m.userId,
+ email: m.user.email,
+ name: m.user.name,
+ role: m.role,
+ joinedAt: m.createdAt.toISOString(),
+ }}
+ isSelf={m.userId === user.id}
+ canManage={allowedToManage && m.userId !== user.id}
+ currentUserRole={role}
+ />
+ ))}
+ </CardContent>
+ </Card>
 
-        {allowedToManage ? (
-          <Card className="border-white/10 bg-zinc-900/40">
-            <CardHeader>
-              <CardTitle className="text-base">Convites pendentes</CardTitle>
-              <CardDescription>
-                Links válidos por 7 dias. Você pode revogar a qualquer momento.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {invitations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum convite pendente.</p>
-              ) : (
-                invitations.map((inv) => (
-                  <InvitationRow
-                    key={inv.id}
-                    invitation={{
-                      id: inv.id,
-                      email: inv.email,
-                      role: inv.role,
-                      token: inv.token,
-                      expiresAt: inv.expiresAt.toISOString(),
-                      createdAt: formatDistanceToNow(inv.createdAt, {
-                        addSuffix: true,
-                        locale: ptBR,
-                      }),
-                    }}
-                  />
-                ))
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
-    </AppShell>
-  );
+ {allowedToManage ? (
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-base">Convites pendentes</CardTitle>
+ <CardDescription>
+ Links válidos por 7 dias. Você pode revogar a qualquer momento.
+ </CardDescription>
+ </CardHeader>
+ <CardContent className="space-y-2">
+ {invitations.length === 0 ? (
+ <p className="text-sm text-muted-foreground">Nenhum convite pendente.</p>
+ ) : (
+ invitations.map((inv) => (
+ <InvitationRow
+ key={inv.id}
+ invitation={{
+ id: inv.id,
+ email: inv.email,
+ role: inv.role,
+ token: inv.token,
+ expiresAt: inv.expiresAt.toISOString(),
+ createdAt: formatDistanceToNow(inv.createdAt, {
+ addSuffix: true,
+ locale: ptBR,
+ }),
+ }}
+ />
+ ))
+ )}
+ </CardContent>
+ </Card>
+ ) : null}
+ </div>
+ </AppShell>
+ );
 }

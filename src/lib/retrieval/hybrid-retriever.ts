@@ -1,31 +1,13 @@
-import type { LegalLayer } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { GLOBAL_WORKSPACE_ID } from "@/lib/constants";
-import { embedQuery } from "@/lib/ai/embeddings";
 import { expandQuery } from "@/lib/ai/llm";
 import { rerankDocuments } from "@/lib/ai/reranker";
 import { reciprocalRankFusion } from "@/lib/retrieval/rrf";
-import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { sha256Hex } from "@/lib/util/content-hash";
 import { getHotContextChunks } from "@/lib/memory/hot-cache";
 import { recordObservabilityLog } from "@/lib/observability/record";
 import type { RetrievedChunk } from "@/lib/retrieval/types";
-import type { SourceType } from "@/lib/retrieval/types";
 
 export type { RetrievedChunk } from "@/lib/retrieval/types";
-
-const DEFAULT_LAYERS: LegalLayer[] = [
-  "legislation",
-  "jurisprudence",
-  "user_documents",
-  "legal_pieces",
-  "process_memory",
-  "style_examples",
-];
-
-function vecDedupKey(payload: { contentHash?: string; chunkText: string }): string {
-  return payload.contentHash ?? sha256Hex(payload.chunkText.slice(0, 1200));
-}
 
 function mergeHotAndDedupe(hot: RetrievedChunk[], ranked: RetrievedChunk[], limit: number): RetrievedChunk[] {
   const merged = [...hot, ...ranked];
@@ -41,6 +23,10 @@ function mergeHotAndDedupe(hot: RetrievedChunk[], ranked: RetrievedChunk[], limi
   return out;
 }
 
+/**
+ * Contexto híbrido leve: hot cache + expansão de query + busca lexical (Postgres)
+ * + rerank — sem embeddings nem Qdrant.
+ */
 export async function retrieveContext(params: {
   workspaceId: string;
   processId?: string;
@@ -49,146 +35,100 @@ export async function retrieveContext(params: {
   userId?: string;
 }): Promise<{ chunks: RetrievedChunk[]; expandedQuery: string }> {
   const limit = params.limit ?? 10;
-  const store = getQdrantVectorStore();
   const t0 = Date.now();
 
-  let expanded = params.query;
-  try {
-    const tExp = Date.now();
-    expanded = await expandQuery(params.query);
-    recordObservabilityLog({
-      workspaceId: params.workspaceId,
-      userId: params.userId,
-      kind: "llm.expand_query",
-      name: "expand_query",
-      latencyMs: Date.now() - tExp,
-      payloadJson: { queryLen: params.query.length },
-    });
-  } catch {
-    expanded = params.query;
-  }
-
-  const hot = await getHotContextChunks(params.workspaceId, params.processId);
-
-  const vector = await embedQuery(expanded);
-  const rawVecHits = await store.search({
-    vector,
-    workspaceIds: [params.workspaceId, GLOBAL_WORKSPACE_ID],
-    layers: DEFAULT_LAYERS,
-    limit: 48,
-  });
-
-  const seenVec = new Set<string>();
-  const vecHits = rawVecHits.filter((h) => {
-    const k = vecDedupKey(h.payload);
-    if (seenVec.has(k)) return false;
-    seenVec.add(k);
-    return true;
-  });
-
-  const vecRanked = vecHits.map((h, i) => ({
-    id: `vec:${h.id}`,
-    rank: i,
-    score: h.score,
-    text: h.payload.chunkText,
-    payload: h.payload,
-  }));
+  const [expanded, hot] = await Promise.all([
+    (async () => {
+      try {
+        const tExp = Date.now();
+        const res = await expandQuery(params.query);
+        recordObservabilityLog({
+          workspaceId: params.workspaceId,
+          userId: params.userId,
+          kind: "llm.expand_query",
+          name: "expand_query",
+          latencyMs: Date.now() - tExp,
+          payloadJson: { queryLen: params.query.length },
+        });
+        return res;
+      } catch {
+        return params.query;
+      }
+    })(),
+    getHotContextChunks(params.workspaceId, params.processId),
+  ]);
 
   const pattern = `%${expanded.replace(/%/g, "")}%`;
+  const [processRows, chunkRows, pieceRows] = await Promise.all([
+    prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "Process"
+      WHERE "workspaceId" = ${params.workspaceId}
+      AND (
+        title ILIKE ${pattern}
+        OR number ILIKE ${pattern}
+        OR COALESCE(observations, '') ILIKE ${pattern}
+      )
+      LIMIT 12
+    `,
+    prisma.$queryRaw<Array<{ id: string; text: string }>>`
+      SELECT c.id, c."textPreview" as text
+      FROM "DocumentChunk" c
+      INNER JOIN "Document" d ON d.id = c."documentId"
+      WHERE d."workspaceId" = ${params.workspaceId}
+      AND c."textPreview" ILIKE ${pattern}
+      LIMIT 12
+    `,
+    prisma.$queryRaw<Array<{ id: string; title: string }>>`
+      SELECT id, title FROM "LegalPiece"
+      WHERE "workspaceId" = ${params.workspaceId}
+      AND title ILIKE ${pattern}
+      LIMIT 8
+    `,
+  ]);
 
-  const processRows = await prisma.$queryRaw<Array<{ id: string }>>`
-    SELECT id FROM "Process"
-    WHERE "workspaceId" = ${params.workspaceId}
-    AND (
-      title ILIKE ${pattern}
-      OR number ILIKE ${pattern}
-      OR COALESCE(observations, '') ILIKE ${pattern}
-    )
-    LIMIT 12
-  `;
-
-  const chunkRows = await prisma.$queryRaw<Array<{ id: string; text: string }>>`
-    SELECT c.id, c."textPreview" as text
-    FROM "DocumentChunk" c
-    INNER JOIN "Document" d ON d.id = c."documentId"
-    WHERE d."workspaceId" = ${params.workspaceId}
-    AND c."textPreview" ILIKE ${pattern}
-    LIMIT 12
-  `;
-
-  const pieceRows = await prisma.$queryRaw<Array<{ id: string; title: string }>>`
-    SELECT id, title FROM "LegalPiece"
-    WHERE "workspaceId" = ${params.workspaceId}
-    AND title ILIKE ${pattern}
-    LIMIT 8
-  `;
-
-  // NOTA: a tabela legacy `LegalSource` foi removida no reset canônico do
-  // RAG. Retrieval jurídico (legislação/jurisprudência) passa exclusivamente
-  // por `retrieveLegalContext` (`src/lib/retrieval/legal/index.ts`). Este
-  // engine `retrieveContext` cobre apenas dados de WORKSPACE: processos,
-  // chunks de documentos do usuário, peças e vetores em `lex_main`.
   const lexLists: Array<Array<{ id: string }>> = [
     processRows.map((r) => ({ id: `lex:proc:${r.id}` })),
     chunkRows.map((r) => ({ id: `lex:chunk:${r.id}` })),
     pieceRows.map((r) => ({ id: `lex:piece:${r.id}` })),
   ];
 
-  const vecList = vecRanked.map((v) => ({ id: v.id }));
-  const rrf = reciprocalRankFusion([vecList, ...lexLists], 60);
-
+  const rrf = reciprocalRankFusion(lexLists, 60);
   const mergedIds = [...rrf.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 24)
     .map(([id]) => id);
 
+  const procIds = mergedIds
+    .filter((id) => id.startsWith("lex:proc:"))
+    .map((id) => id.replace("lex:proc:", ""));
+  const pieceIds = mergedIds
+    .filter((id) => id.startsWith("lex:piece:"))
+    .map((id) => id.replace("lex:piece:", ""));
+
+  const [fullProcs, fullPieces] = await Promise.all([
+    procIds.length > 0
+      ? prisma.process.findMany({
+          where: { id: { in: procIds }, workspaceId: params.workspaceId },
+          select: { id: true, title: true, number: true, observations: true },
+        })
+      : Promise.resolve([]),
+    pieceIds.length > 0
+      ? prisma.legalPiece.findMany({
+          where: { id: { in: pieceIds }, workspaceId: params.workspaceId },
+          select: { id: true, title: true, contentJson: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const procMap = new Map(fullProcs.map((p) => [p.id, p]));
+  const pieceMap = new Map(fullPieces.map((p) => [p.id, p]));
+
   const docsForRerank: Array<{ id: string; text: string; chunk: RetrievedChunk }> = [];
 
-  const sourceTypeFromLayer = (layer: LegalLayer): SourceType => {
-    if (layer === "user_documents") return "process_document";
-    if (layer === "legislation") return "legislation";
-    if (layer === "jurisprudence") return "jurisprudence";
-    if (layer === "process_memory") return "process_memory";
-    if (layer === "legal_pieces") return "legal_piece";
-    if (layer === "style_examples") return "style_example";
-    return "unknown";
-  };
-
   for (const mid of mergedIds) {
-    if (mid.startsWith("vec:")) {
-      const hit = vecRanked.find((v) => v.id === mid);
-      if (!hit) continue;
-      const p = hit.payload;
-      const layer = p.layer;
-      docsForRerank.push({
-        id: mid,
-        text: hit.text,
-        chunk: {
-          id: mid,
-          text: hit.text,
-          layer,
-          sourceType: sourceTypeFromLayer(layer),
-          sourceLabel: formatVectorLabel(p),
-          score: typeof hit.score === "number" ? hit.score : null,
-          meta: {
-            workspaceId: p.workspaceId,
-            documentId: p.documentId,
-            processId: p.processId,
-            articleRef: p.articleRef,
-            tribunal: p.tribunal,
-            sourceCode: p.sourceCode,
-            section: p.section ? String(p.section) : undefined,
-            contentHash: p.contentHash,
-          },
-        },
-      });
-      continue;
-    }
     if (mid.startsWith("lex:proc:")) {
       const id = mid.replace("lex:proc:", "");
-      const proc = await prisma.process.findFirst({
-        where: { id, workspaceId: params.workspaceId },
-      });
+      const proc = procMap.get(id);
       if (!proc) continue;
       const text = `${proc.title ?? ""} ${proc.number} ${proc.observations ?? ""}`.trim();
       docsForRerank.push({
@@ -223,9 +163,7 @@ export async function retrieveContext(params: {
       });
     } else if (mid.startsWith("lex:piece:")) {
       const id = mid.replace("lex:piece:", "");
-      const piece = await prisma.legalPiece.findFirst({
-        where: { id, workspaceId: params.workspaceId },
-      });
+      const piece = pieceMap.get(id);
       if (!piece) continue;
       const text = `${piece.title} — ${JSON.stringify(piece.contentJson).slice(0, 2000)}`;
       docsForRerank.push({
@@ -261,10 +199,10 @@ export async function retrieveContext(params: {
     workspaceId: params.workspaceId,
     userId: params.userId,
     kind: "retrieval.hybrid",
-    name: "rrf_rerank",
+    name: "lexical_rerank",
     latencyMs: Date.now() - t0,
     payloadJson: {
-      vecHits: vecHits.length,
+      lexicalCandidates: docsForRerank.length,
       expandedLen: expanded.length,
       hotCount: hot.length,
     },
@@ -272,15 +210,4 @@ export async function retrieveContext(params: {
   });
 
   return { chunks, expandedQuery: expanded };
-}
-
-function formatVectorLabel(p: {
-  layer: LegalLayer;
-  sourceCode?: string;
-  articleRef?: string;
-  tribunal?: string;
-}): string {
-  if (p.layer === "legislation") return `${p.sourceCode ?? "Legislação"} ${p.articleRef ?? ""}`.trim();
-  if (p.layer === "jurisprudence") return `${p.tribunal ?? "Jurisprudência"} ${p.sourceCode ?? ""}`.trim();
-  return p.layer;
 }

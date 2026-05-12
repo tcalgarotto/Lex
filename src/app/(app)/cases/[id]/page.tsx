@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { CaseOverviewTab } from "@/components/cases/case-overview-tab";
-import { CaseTimelineTab } from "@/components/cases/case-timeline-tab";
-import { CaseCollabTab } from "@/components/cases/case-collab-tab";
 import { loadCaseForWorkspace } from "./_load-case";
 
 /**
@@ -15,35 +13,20 @@ import { loadCaseForWorkspace } from "./_load-case";
 export const dynamic = "force-dynamic";
 
 export default async function CaseOverviewPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const { workspaceId } = await getWorkspaceContext();
-  const c = await loadCaseForWorkspace(workspaceId, id);
-  if (!c) notFound();
+ const { id } = await params;
+ const { workspaceId } = await getWorkspaceContext();
+ const c = await loadCaseForWorkspace(workspaceId, id);
+ if (!c) notFound();
 
-  return (
-    <div className="space-y-8">
-      <section aria-labelledby="case-overview-heading" className="space-y-2">
-        <h2 id="case-overview-heading" className="text-sm font-semibold text-foreground">
-          Visão geral
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Progresso do caso, narrativa consolidada e próximos passos sugeridos.
-        </p>
-        <CaseOverviewTab caseData={c} />
-      </section>
-
-      <section aria-labelledby="case-activity-heading" className="space-y-2">
-        <h2 id="case-activity-heading" className="text-sm font-semibold text-foreground">
-          Atividades e colaboração
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Linha do tempo auditável e comentários internos do time.
-        </p>
-        <div className="space-y-6">
-          <CaseTimelineTab events={c.timeline} />
-          <CaseCollabTab caseId={c.id} />
-        </div>
-      </section>
-    </div>
-  );
+ return (
+ <div className="space-y-2">
+ <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+ Visão geral
+ </p>
+ <p className="text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ Progresso do caso, narrativa consolidada, próximos passos, atividades e colaboração interna.
+ </p>
+ <CaseOverviewTab caseData={c} />
+ </div>
+ );
 }

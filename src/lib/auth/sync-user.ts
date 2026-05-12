@@ -37,7 +37,7 @@ export async function syncAuthUserToDatabase(authUser: AuthUser): Promise<{
     const slug = `ws-${user.id.slice(0, 8)}`;
     const workspace = await prisma.workspace.create({
       data: {
-        name: "Meu escritório",
+        name: "Meu workspace",
         slug,
       },
     });

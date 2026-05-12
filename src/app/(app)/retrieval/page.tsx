@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
  * ou via item "Retrieval (debug)" no menu Avançado).
  */
 export default function RetrievalRedirect() {
-  redirect("/pesquisa-juridica");
+ redirect("/pesquisa-juridica");
 }

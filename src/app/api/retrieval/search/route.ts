@@ -2,19 +2,18 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { buildCaseBrainFingerprint } from "@/lib/cases/brain-fingerprint";
-import { retrieveLegalContext } from "@/lib/retrieval/legal";
+import { buildRetrievalSearchCompatiblePayload } from "@/lib/legal-research/retrieval-adapter";
 import { extractRelevantSnippet } from "@/lib/retrieval/legal/snippet";
-import { buildCaseContext } from "@/lib/cases/context";
 import { getCorpusManifest } from "@/lib/corpus/manifest";
 import { getLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/lex-rag-backend";
 
 /**
  * Endpoint "amigável" da Pesquisa jurídica do usuário final.
  *
- * Reaproveita `retrieveLegalContext` mas remove campos técnicos do payload
- * (scores brutos por mecanismo, traces, fallbackFlags). Para o modo
- * auditável/admin, use `/api/retrieval/explain`.
+ * Camada legislação via pesquisa assistida (DeepSeek); demais camadas em
+ * Postgres. Para trilha técnica/admin, use `/api/retrieval/explain`.
  */
 export const dynamic = "force-dynamic";
 
@@ -53,6 +52,7 @@ export async function GET(req: Request) {
         confidence: null,
         ranBy: "skip",
         layers: [...layers],
+        corpusSearchConfigMuted: isAnyCorpusSearchConfigMuted(),
       }),
       requestId,
     );
@@ -76,7 +76,6 @@ export async function GET(req: Request) {
     const wantPecas = layers.has("pecas");
     const wantJuris = layers.has("jurisprudencia");
 
-    let caseContext: { area: string[]; problem?: string } | undefined;
     let caseBrainFingerprint: string | undefined;
     if (caseId) {
       const row = await prisma.case.findFirst({
@@ -86,25 +85,18 @@ export async function GET(req: Request) {
       if (row) {
         caseBrainFingerprint = buildCaseBrainFingerprint(row.metadataJson, row.updatedAt);
       }
-      const ctx = await buildCaseContext({ workspaceId, caseId });
-      if (ctx?.brain) {
-        caseContext = {
-          area: ctx.brain.area ?? [],
-          ...(ctx.brain.problem ? { problem: ctx.brain.problem } : {}),
-        };
-      }
     }
 
     const tSearch = Date.now();
-    const [corpusResult, libraryMatches, casePins, pieceMatches] = await Promise.all([
-      wantLegislacao
-        ? retrieveLegalContext(q, {
-            topK,
-            useCache: true,
+    const corpusMuted = isAnyCorpusSearchConfigMuted();
+    const [legislacaoPayload, libraryMatches, casePins, pieceMatches] = await Promise.all([
+      wantLegislacao && !corpusMuted
+        ? buildRetrievalSearchCompatiblePayload({
             workspaceId,
-            traceId: requestId,
-            ...(caseContext ? { caseContext } : {}),
-            ...(caseBrainFingerprint ? { caseBrainFingerprint } : {}),
+            query: q,
+            topK,
+            ...(caseId ? { caseId } : {}),
+            ...(caseBrainFingerprint ? { caseBrain: caseBrainFingerprint } : {}),
           })
         : Promise.resolve(null),
       wantLibrary && q.length >= 2
@@ -163,29 +155,11 @@ export async function GET(req: Request) {
     ]);
 
     const results =
-      corpusResult?.chunks.map((c) => ({
-        layer: "legislacao" as const,
-        id: c.chunkId,
-        text: c.text,
-        snippet: extractRelevantSnippet(c.text, q, { maxChars: 320 }),
-        articleRef: c.articleRef,
-        hierarchy: c.fullPath,
-        score: roundScore(c.scores.final ?? 0),
-        source: c.norm.title,
-        article: c.articleRef,
-        excerpt: extractRelevantSnippet(c.text, q, { maxChars: 320 }),
-        reason: c.explanation,
-        origin: `Corpus indexado (${(c.provenance ?? []).slice(0, 2).join(", ") || "híbrido"})`,
-        referenceDate: c.validFrom.toISOString(),
-        norm: {
-          id: c.norm.id,
-          urn: c.norm.urn,
-          kind: c.norm.kind,
-          identifier: c.norm.identifier,
-          title: c.norm.title,
-          jurisdiction: c.norm.jurisdiction,
-          tribunal: c.norm.tribunal,
-        },
+      legislacaoPayload?.results.map((r) => ({
+        ...r,
+        snippet: extractRelevantSnippet(r.text, q, { maxChars: 320 }),
+        excerpt: extractRelevantSnippet(r.excerpt || r.text, q, { maxChars: 320 }),
+        score: roundScore(r.score),
       })) ?? [];
 
     const pendingLayers: string[] = [];
@@ -223,7 +197,7 @@ export async function GET(req: Request) {
           useAsModel: f.useAsModel,
           useAsStyle: f.useAsStyle,
           href: `/biblioteca/fundamentos/${f.id}`,
-          origin: "Acervo do escritório",
+          origin: "Biblioteca (workspace)",
           reason: "Texto salvo na biblioteca (não substitui norma indexada).",
         })),
         casePins: casePins.map((p) => ({
@@ -251,8 +225,9 @@ export async function GET(req: Request) {
         pendingLayers,
         total: results.length,
         bases: await dynamicBases(),
-        confidence: corpusResult?.confidence ?? null,
-        cached: corpusResult?.cached ?? false,
+        confidence: legislacaoPayload?.confidence ?? null,
+        cached: legislacaoPayload?.cached ?? false,
+        corpusSearchConfigMuted: corpusMuted,
       }),
       requestId,
     );

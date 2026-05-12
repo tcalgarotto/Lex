@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { DocumentStatus } from "@prisma/client";
+import { DocumentLibraryShelf, DocumentStatus } from "@prisma/client";
 import { nanoid } from "nanoid";
 import { inngest } from "@/lib/inngest/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
@@ -130,6 +130,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       id: documentId,
       workspaceId,
       caseId,
+      uploadedByUserId: user.id,
+      libraryShelf: DocumentLibraryShelf.OFFICE_PRIVATE,
       originalName: file.name,
       mimeType: file.type || "application/octet-stream",
       sizeBytes: buffer.length,

@@ -181,7 +181,13 @@ export async function listCases(
     take,
     include: {
       _count: {
-        select: { facts: true, requests: true, risks: true, drafts: true },
+        select: {
+          facts: true,
+          requests: true,
+          risks: true,
+          drafts: true,
+          documents: { where: { deletedAt: null } },
+        },
       },
     },
   });

@@ -213,7 +213,7 @@ export type LegalRetrievalTrace = {
   timings?: {
     denseMs: number;
     sparseMs: number;
-    ftsMs: number;
+    ftsMs?: number;
     fusionMs: number;
   };
   cache?: {

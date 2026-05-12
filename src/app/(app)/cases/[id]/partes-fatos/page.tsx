@@ -13,30 +13,30 @@ import { loadCaseForWorkspace } from "../_load-case";
 export const dynamic = "force-dynamic";
 
 export default async function CasePartiesFactsPage({
-  params,
+ params,
 }: {
-  params: Promise<{ id: string }>;
+ params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const { workspaceId } = await getWorkspaceContext();
-  const c = await loadCaseForWorkspace(workspaceId, id);
-  if (!c) notFound();
+ const { id } = await params;
+ const { workspaceId } = await getWorkspaceContext();
+ const c = await loadCaseForWorkspace(workspaceId, id);
+ if (!c) notFound();
 
-  return (
-    <div className="space-y-3">
-      <header className="space-y-1">
-        <h2 className="text-sm font-semibold text-foreground">Partes e fatos</h2>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Fatos, partes, pedidos e riscos com edição inline. Cada item mantém origem e status para
-          auditoria.
-        </p>
-      </header>
-      <CaseFactsPartiesTab
-        facts={c.facts}
-        parties={c.parties}
-        requests={c.requests}
-        risks={c.risks}
-      />
-    </div>
-  );
+ return (
+ <div className="space-y-3">
+ <header className="space-y-1">
+ <h2 className="text-sm font-semibold text-foreground">Partes e fatos</h2>
+ <p className="max-w-3xl text-sm text-muted-foreground">
+ Fatos, partes, pedidos e riscos com edição inline. Cada item mantém origem e status para
+ auditoria.
+ </p>
+ </header>
+ <CaseFactsPartiesTab
+ facts={c.facts}
+ parties={c.parties}
+ requests={c.requests}
+ risks={c.risks}
+ />
+ </div>
+ );
 }
