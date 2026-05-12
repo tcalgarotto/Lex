@@ -1,0 +1,176 @@
+/**
+ * Carga consolidada do caso (uma request RSC ou GET /bootstrap).
+ * Evita fan-out de várias rotas `/api/cases/[id]/…` na abertura do caso.
+ */
+
+import type {
+  CaseAnnotation,
+  CaseComment,
+  CaseDraft,
+  CaseLegalSource,
+  DraftApproval,
+} from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { listPinnedJurisprudenceCandidates } from "@/lib/cases/drafting/case-brain-shim";
+import type { PinnedJurisprudenceListItem } from "@/lib/cases/drafting/drafting-types";
+import { loadCaseChecklistStateForBootstrap, type CaseChecklistStatePayload } from "@/lib/cases/case-checklist-state";
+
+export type InterviewTemplateSummary = {
+  id: string;
+  scope: "USER" | "WORKSPACE";
+  title: string;
+  description: string | null;
+  domain: string | null;
+  updatedAt: string;
+};
+
+export type CaseDraftingBootstrapSlice = {
+  casePartiesFacts: {
+    parties: { role: string }[];
+    facts: { id: string }[];
+  };
+  readiness: unknown;
+  draftingStrategy: unknown;
+  approved: boolean;
+  jurisprudenceCandidates: PinnedJurisprudenceListItem[];
+  legalSources: CaseLegalSource[];
+  drafts: CaseDraft[];
+};
+
+export type CaseBootstrapPayload = {
+  collab: {
+    comments: CaseComment[];
+    annotations: CaseAnnotation[];
+    approvals: DraftApproval[];
+  };
+  checklist: CaseChecklistStatePayload;
+  interviewTemplates: InterviewTemplateSummary[];
+  drafting: CaseDraftingBootstrapSlice;
+};
+
+function strategySliceFromMetadata(metadataJson: unknown, juris: PinnedJurisprudenceListItem[]) {
+  const meta = (metadataJson ?? {}) as Record<string, unknown>;
+  const readiness =
+    meta["brain"] &&
+    typeof meta["brain"] === "object" &&
+    (meta["brain"] as { proceduralReadiness?: unknown }).proceduralReadiness
+      ? (meta["brain"] as { proceduralReadiness: unknown }).proceduralReadiness
+      : null;
+
+  return {
+    readiness,
+    draftingStrategy: meta["draftingStrategy"] ?? null,
+    approved: Boolean(meta["draftingStrategyApproved"]),
+    jurisprudenceCandidates: juris,
+  };
+}
+
+/**
+ * Carrega dados iniciais do caso em paralelo, após confirmar `caseId` no `workspaceId`.
+ * Retorna `null` se o caso não pertencer ao workspace.
+ */
+export async function gatherCaseBootstrap(
+  workspaceId: string,
+  caseId: string,
+  userId: string,
+): Promise<CaseBootstrapPayload | null> {
+  const gate = await prisma.case.findFirst({
+    where: { id: caseId, workspaceId },
+    select: { id: true },
+  });
+  if (!gate) return null;
+
+  const [
+    comments,
+    annotations,
+    approvals,
+    checklist,
+    interviewTemplates,
+    caseRow,
+    legalSources,
+    drafts,
+    jurisprudenceCandidates,
+  ] = await Promise.all([
+    prisma.caseComment.findMany({
+      where: { caseId },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+    prisma.caseAnnotation.findMany({
+      where: { caseId },
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    }),
+    prisma.draftApproval.findMany({
+      where: { caseId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    loadCaseChecklistStateForBootstrap(workspaceId, caseId, null),
+    prisma.interviewTemplate.findMany({
+      where: {
+        workspaceId,
+        OR: [{ scope: "WORKSPACE" }, { scope: "USER", ownerUserId: userId }],
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        scope: true,
+        title: true,
+        description: true,
+        domain: true,
+        updatedAt: true,
+      },
+      take: 50,
+    }),
+    prisma.case.findFirst({
+      where: { id: caseId, workspaceId },
+      select: {
+        metadataJson: true,
+        parties: { select: { role: true } },
+        facts: { select: { id: true }, take: 500 },
+      },
+    }),
+    prisma.caseLegalSource.findMany({
+      where: { caseId },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    prisma.caseDraft.findMany({
+      where: { caseId },
+      orderBy: { version: "desc" },
+    }),
+    listPinnedJurisprudenceCandidates(workspaceId, caseId),
+  ]);
+
+  if (!checklist || !caseRow) return null;
+
+  const strategy = strategySliceFromMetadata(caseRow.metadataJson, jurisprudenceCandidates);
+
+  const drafting: CaseDraftingBootstrapSlice = {
+    casePartiesFacts: {
+      parties: caseRow.parties,
+      facts: caseRow.facts,
+    },
+    readiness: strategy.readiness,
+    draftingStrategy: strategy.draftingStrategy,
+    approved: strategy.approved,
+    jurisprudenceCandidates: strategy.jurisprudenceCandidates,
+    legalSources,
+    drafts,
+  };
+
+  return {
+    collab: { comments, annotations, approvals },
+    checklist,
+    interviewTemplates: interviewTemplates.map((t) => ({
+      id: t.id,
+      scope: t.scope,
+      title: t.title,
+      description: t.description,
+      domain: t.domain,
+      updatedAt: t.updatedAt.toISOString(),
+    })),
+    drafting,
+  };
+}

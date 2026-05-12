@@ -1,9 +1,34 @@
+import { cache } from "react";
 import type { User as AuthUser } from "@supabase/supabase-js";
 import { MembershipRole, WorkspaceLicense, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
+type AuthReadiness = { userExists: boolean; membershipExists: boolean };
+
+/**
+ * Sondagem leve por request (sem write). Usada no hot path de páginas protegidas.
+ */
+const authUserReadiness = cache(async (userId: string): Promise<AuthReadiness> => {
+  const [userRow, memRow] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+    prisma.membership.findFirst({ where: { userId }, select: { id: true } }),
+  ]);
+  return { userExists: Boolean(userRow), membershipExists: Boolean(memRow) };
+});
+
+/**
+ * Hot path de leitura: garante que existe `User` + pelo menos uma `Membership`.
+ * Só chama `syncAuthUserToDatabase` (writes) quando falta um dos dois — não faz upsert em toda navegação.
+ */
+export async function ensureAuthUserForRead(authUser: AuthUser): Promise<void> {
+  const r = await authUserReadiness(authUser.id);
+  if (r.userExists && r.membershipExists) return;
+  await syncAuthUserToDatabase(authUser);
+}
+
 /**
  * Sincroniza o usuário Supabase Auth com a tabela `User` e garante workspace + membership.
+ * Usar em login/callback/convites — não no render normal de listagens.
  */
 export async function syncAuthUserToDatabase(authUser: AuthUser): Promise<{
   userId: string;

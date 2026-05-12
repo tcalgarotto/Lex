@@ -22,3 +22,23 @@ export async function encodeDocumentThumbnailWebpFromPng(png: Buffer): Promise<B
     .webp({ quality: THUMB_WEBP_QUALITY, effort: 4 })
     .toBuffer();
 }
+
+const PREVIEW_QUALITY = 55;
+
+/**
+ * Redimensiona miniatura já gravada (WebP ou PNG) para pré-carregamento nos cards
+ * (`?w=120`): payload pequeno; resposta sempre WebP.
+ */
+export async function encodeThumbnailWebpLowRes(input: Buffer, maxWidth: number): Promise<Buffer> {
+  const w = Math.min(240, Math.max(48, Math.trunc(maxWidth)));
+  return sharp(input)
+    .rotate()
+    .resize({
+      width: w,
+      withoutEnlargement: true,
+      fit: "inside",
+    })
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
+    .webp({ quality: PREVIEW_QUALITY, effort: 3 })
+    .toBuffer();
+}

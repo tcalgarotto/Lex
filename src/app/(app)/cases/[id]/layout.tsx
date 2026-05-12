@@ -20,6 +20,8 @@ import { loadCaseForWorkspace } from "./_load-case";
 import { CaseLegacyQueryRedirect } from "@/components/cases/case-legacy-query-redirect";
 import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext, getWorkspacesForUser } from "@/lib/auth/session";
+import { gatherCaseBootstrap } from "@/lib/cases/case-bootstrap";
+import { CaseBootstrapProvider } from "@/components/cases/case-bootstrap-context";
 
 
 function readReadiness(metadataJson: unknown): ProceduralReadiness | null {
@@ -47,9 +49,13 @@ export default async function CaseDetailLayout({
  params: Promise<{ id: string }>;
 }) {
  const { id } = await params;
- const { workspaceId } = await getWorkspaceContext();
- const c = await loadCaseForWorkspace(workspaceId, id);
+ const { workspaceId, user } = await getWorkspaceContext();
+ const [c, caseBootstrap] = await Promise.all([
+ loadCaseForWorkspace(workspaceId, id),
+ gatherCaseBootstrap(workspaceId, id, user.id),
+ ]);
  if (!c) notFound();
+ if (!caseBootstrap) notFound();
 
  const ws = await getWorkspacesForUser();
  const workspaceLabel = ws?.current.name ?? "Workspace";
@@ -155,7 +161,9 @@ export default async function CaseDetailLayout({
  <CaseLegacyQueryRedirect caseId={c.id} />
  </Suspense>
 
+ <CaseBootstrapProvider caseId={c.id} initial={caseBootstrap}>
  {children}
+ </CaseBootstrapProvider>
  </div>
  </>
  );

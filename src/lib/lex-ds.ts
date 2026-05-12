@@ -18,6 +18,16 @@ export const lexGlassCtaClassName = "lex-glass-cta";
 export const lexInsetPanelClassName =
   "rounded-xl border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] text-[color:var(--text-secondary)]";
 
+/**
+ * Base sólida para blocos em `loading.tsx` — sem glass; compor com `rounded-*`, padding, layout.
+ * Mantém o mesmo “peso” visual dos cartões opacos (evita vidro/desfoque durante o carregamento).
+ */
+export const lexRouteSkeletonSurfaceClassName =
+  "border-[0.5px] border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay-strong)]";
+
+/** Cartão de loading padrão (cantos `2xl`, como listas principais). */
+export const lexRouteSkeletonPanelClassName = `${lexRouteSkeletonSurfaceClassName} rounded-2xl`;
+
 /** Superfície de popover (dropdown, menus). */
 export const lexPopoverClassName =
   "border-[0.5px] border-[color:var(--glass-border)] bg-[color:var(--surface-elevated)] text-[color:var(--text-primary)] shadow-lg backdrop-blur-xl";

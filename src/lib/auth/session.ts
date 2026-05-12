@@ -1,8 +1,10 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { syncAuthUserToDatabase } from "@/lib/auth/sync-user";
+import { ensureAuthUserForRead } from "@/lib/auth/sync-user";
 import { resolveWorkspaceId } from "@/lib/auth/workspace";
+import { getActiveWorkspaceMembership } from "@/lib/auth/workspace-membership";
+import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { prisma } from "@/lib/prisma";
 import type { MembershipRole } from "@prisma/client";
 import { can, type PermissionKey } from "@/lib/auth/permissions";
@@ -17,13 +19,19 @@ export const getAuthUser = cache(async () => {
 });
 
 /**
- * Garante `User` + workspace padrão + `Membership` no Prisma (primeiro acesso ou
- * conta criada fora do fluxo `/auth/callback`). Idempotente; memoizado por request.
+ * Sessão autenticada + existência de `User`/`Membership` no Prisma.
+ * No hot path de leitura não executa `upsert` — só grava se faltar linha (primeiro acesso).
+ * Para sync completo (login/callback), usar `syncAuthUserToDatabase` em `@/lib/auth/sync-user`.
  */
 export const getAuthUserAndSync = cache(async () => {
+  const isDev = process.env.NODE_ENV === "development";
+  const t0 = performance.now();
   const user = await getAuthUser();
+  if (isDev) devLogLexTiming("auth.getAuthUser", performance.now() - t0);
   if (!user) return null;
-  await syncAuthUserToDatabase(user);
+  const t1 = performance.now();
+  await ensureAuthUserForRead(user);
+  if (isDev) devLogLexTiming("auth.ensureAuthUserForRead", performance.now() - t1);
   return user;
 });
 
@@ -34,8 +42,11 @@ export const requireAuthUser = cache(async () => {
 });
 
 export const getWorkspaceContext = cache(async () => {
+  const isDev = process.env.NODE_ENV === "development";
   const user = await requireAuthUser();
+  const tw = performance.now();
   const workspaceId = await resolveWorkspaceId(user.id);
+  if (isDev) devLogLexTiming("workspaceCtx.resolveWorkspaceId", performance.now() - tw);
   return { user, workspaceId };
 });
 
@@ -44,18 +55,20 @@ export const getWorkspaceContextWithRole = cache(async (): Promise<{
   workspaceId: string;
   role: MembershipRole | null;
 }> => {
-  const { user, workspaceId } = await getWorkspaceContext();
-  const membership = await prisma.membership.findUnique({
-    where: { workspaceId_userId: { workspaceId, userId: user.id } },
-  });
-  return { user, workspaceId, role: membership?.role ?? null };
+  const isDev = process.env.NODE_ENV === "development";
+  const user = await requireAuthUser();
+  const tw = performance.now();
+  const m = await getActiveWorkspaceMembership(user.id);
+  if (isDev) devLogLexTiming("workspacectx.activeMembership", performance.now() - tw);
+  return { user, workspaceId: m.workspaceId, role: m.role };
 });
 
 /**
  * Lista todos os workspaces aos quais o usuário pertence + identifica o ativo.
  * Útil pro `AppChrome` montar o WorkspaceSwitcher.
+ * Memoizado por request (várias chamadas no mesmo layout não repetem queries).
  */
-export async function getWorkspacesForUser(): Promise<{
+export const getWorkspacesForUser = cache(async (): Promise<{
   current: WorkspaceOption;
   workspaces: WorkspaceOption[];
   viewer: {
@@ -63,9 +76,10 @@ export async function getWorkspacesForUser(): Promise<{
     displayName: string;
     avatarUrl: string | null;
   };
-} | null> {
-  const user = await getAuthUserAndSync();
+} | null> => {
+  const user = await getAuthUser();
   if (!user) return null;
+  await ensureAuthUserForRead(user);
   const activeId = await resolveWorkspaceId(user.id);
   const [memberships, dbUser] = await Promise.all([
     prisma.membership.findMany({
@@ -96,7 +110,7 @@ export async function getWorkspacesForUser(): Promise<{
     avatarUrl: dbUser?.avatarUrl ?? null,
   };
   return { current, workspaces, viewer };
-}
+});
 
 /**
  * Valida que o usuário tem uma permissão específica no workspace ativo.

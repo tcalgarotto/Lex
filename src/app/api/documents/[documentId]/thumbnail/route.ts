@@ -10,7 +10,8 @@ import {
   tryDownloadDocumentBuffer,
 } from "@/lib/storage";
 import { ensurePdfThumbnailInStorage } from "@/lib/documents/document-thumbnail-persist";
-import { serverTimingHeader } from "@/lib/dev/server-timing";
+import { encodeThumbnailWebpLowRes } from "@/lib/documents/pdf-thumbnail-webp";
+import { serverTimingHeader, devLogLexTiming } from "@/lib/dev/server-timing";
 import { getLogger } from "@/lib/logger";
 
 const log = getLogger("lex.api.documents.thumbnail");
@@ -44,6 +45,7 @@ async function loadAuthorizedDoc(documentId: string, workspaceId: string) {
 
 /**
  * Miniatura da primeira página do PDF (WebP quando disponível; fallback PNG legado).
+ * Query opcional `w=48–240`: devolve WebP de baixa resolução (para LQIP progressivo na UI).
  * 1) Se existir no Storage, serve de imediato.
  * 2) Caso contrário, gera (Inngest/after ou sync em `ensurePdfThumbnailInStorage`) e devolve.
  */
@@ -52,7 +54,20 @@ export async function GET(
   context: { params: Promise<{ documentId: string }> },
 ) {
   const { documentId } = await context.params;
+  const reqUrl = new URL(req.url);
+  const wRaw = reqUrl.searchParams.get("w");
+  let previewMaxWidth: number | null = null;
+  if (wRaw != null && wRaw !== "") {
+    const n = Math.trunc(parseInt(wRaw, 10) || 0);
+    if (Number.isFinite(n) && n > 0) {
+      previewMaxWidth = Math.min(240, Math.max(48, n));
+    }
+  }
+  const tAuth = performance.now();
   const { workspaceId, user } = await getWorkspaceContext();
+  if (process.env.NODE_ENV === "development") {
+    devLogLexTiming("api.thumbnail.getWorkspaceContext", performance.now() - tAuth);
+  }
   const marks: { name: string; dur: number }[] = [];
   const t0 = performance.now();
 
@@ -121,16 +136,32 @@ export async function GET(
   if (!image) {
     log.warn("thumbnail unavailable after generate attempt", { documentId: doc.id });
     marks.push({ name: "total", dur: performance.now() - t0 });
+    devLogLexTiming("api.documents.thumbnail", performance.now() - t0);
     return NextResponse.json(
       { error: "Não foi possível gerar a miniatura" },
       { status: 502, headers: serverTimingHeader(marks) },
     );
   }
 
+  if (previewMaxWidth != null) {
+    const tPrev = performance.now();
+    try {
+      image = await encodeThumbnailWebpLowRes(image, previewMaxWidth);
+      contentType = "image/webp";
+      marks.push({ name: "preview", dur: performance.now() - tPrev });
+    } catch (err) {
+      log.warn("thumbnail preview encode failed", {
+        documentId: doc.id,
+        err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+      });
+    }
+  }
+
   const etag = weakEtagForBuffer(image);
   const inm = req.headers.get("if-none-match");
   if (inm && inm === etag) {
     marks.push({ name: "total", dur: performance.now() - t0 });
+    devLogLexTiming("api.documents.thumbnail", performance.now() - t0);
     return new NextResponse(null, {
       status: 304,
       headers: {
@@ -144,6 +175,7 @@ export async function GET(
   }
 
   marks.push({ name: "total", dur: performance.now() - t0 });
+  devLogLexTiming("api.documents.thumbnail", performance.now() - t0);
   return new NextResponse(new Uint8Array(image), {
     status: 200,
     headers: {

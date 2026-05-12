@@ -8,12 +8,14 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { Prisma } from "@prisma/client";
 import { DocumentStatus } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { prisma } from "@/lib/prisma";
 import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 import {
   deriveDocumentDisplayStatus,
   type DocumentDisplayKind,
 } from "@/lib/documents/status-display";
+import { DocumentPdfThumbnail } from "@/components/documents/document-pdf-thumbnail";
 import { DocumentRowActions } from "@/components/documents/document-row-actions";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
 import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
@@ -28,8 +30,11 @@ interface DocumentosPageProps {
 }
 
 export default async function DocumentosPage({ searchParams }: DocumentosPageProps) {
+  const pageT0 = performance.now();
   const sp = await searchParams;
+  const tWs = performance.now();
   const { workspaceId, user } = await getWorkspaceContext();
+  devLogLexTiming("documentos.getWorkspaceContext", performance.now() - tWs);
 
   const andParts: Prisma.DocumentWhereInput[] = [...officePrivateDocumentsAndParts(user.id)];
   if (sp.status && (Object.values(DocumentStatus) as string[]).includes(sp.status)) {
@@ -38,6 +43,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
   if (sp.caseId) andParts.push({ caseId: sp.caseId });
   if (sp.unlinked === "1") andParts.push({ caseId: null });
 
+  const tDb = performance.now();
   const [documents, cases] = await Promise.all([
     prisma.document.findMany({
       where: {
@@ -71,6 +77,8 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
       select: { id: true, title: true },
     }),
   ]);
+  devLogLexTiming("documentos.prisma", performance.now() - tDb);
+  devLogLexTiming("documentos.page", performance.now() - pageT0);
 
   const stalledCount = documents.filter((d) => deriveDocumentDisplayStatus(d).stalled).length;
 
@@ -127,40 +135,57 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
             {documents.map((d) => {
               const status = deriveDocumentDisplayStatus(d);
               const updated = formatDistanceToNow(d.updatedAt, { addSuffix: true, locale: ptBR });
+              const pdf = isPdfMime(d.mimeType, d.originalName);
               return (
                 <li key={d.id}>
                   <article className="lex-glass-card group relative flex flex-col overflow-hidden rounded-2xl p-4 md:p-5 lex-transition">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <StatusChip kind={status.kind} label={status.label} />
-                          {d.case ? (
-                            <Link
-                              href={`/cases/${d.case.id}`}
-                              className="text-[13px] font-medium text-violet-300 hover:underline"
-                            >
-                              {d.case.title}
-                            </Link>
-                          ) : (
-                            <Badge
-                              variant="secondary"
-                              className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
-                            >
-                              Sem caso
-                            </Badge>
-                          )}
+                    <div className="flex gap-4 md:gap-5">
+                      {pdf ? (
+                        <div className="shrink-0 w-[4.5rem] sm:w-24">
+                          <div className="lex-inset aspect-[3/4] w-full overflow-hidden rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay-strong)] shadow-inner">
+                            <DocumentPdfThumbnail
+                              documentId={d.id}
+                              label={d.originalName}
+                              className="size-full"
+                              thumbnailVersion={d.updatedAt.getTime()}
+                            />
+                          </div>
                         </div>
-                        <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-lg">
-                          {d.originalName}
-                        </h2>
-                      </div>
-                      <div className="shrink-0">
-                        <DocumentRowActions
-                          documentId={d.id}
-                          processId={d.processId}
-                          caseId={d.caseId}
-                          cases={cases}
-                        />
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <StatusChip kind={status.kind} label={status.label} />
+                              {d.case ? (
+                                <Link
+                                  href={`/cases/${d.case.id}`}
+                                  className="text-[13px] font-medium text-violet-300 hover:underline"
+                                >
+                                  {d.case.title}
+                                </Link>
+                              ) : (
+                                <Badge
+                                  variant="secondary"
+                                  className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
+                                >
+                                  Sem caso
+                                </Badge>
+                              )}
+                            </div>
+                            <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-lg">
+                              {d.originalName}
+                            </h2>
+                          </div>
+                          <div className="shrink-0">
+                            <DocumentRowActions
+                              documentId={d.id}
+                              processId={d.processId}
+                              caseId={d.caseId}
+                              cases={cases}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-3 flex flex-col gap-1 border-t border-[color:var(--border-subtle)] pt-3 text-[13px] text-[color:var(--text-muted)]">
@@ -184,6 +209,11 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
         )}
     </>
   );
+}
+
+function isPdfMime(mimeType: string, fileName: string): boolean {
+  const mt = mimeType.toLowerCase();
+  return mt.includes("pdf") || fileName.toLowerCase().endsWith(".pdf");
 }
 
 const KIND_TONE: Record<DocumentDisplayKind, string> = {

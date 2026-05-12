@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DocumentLibraryShelf, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { prisma } from "@/lib/prisma";
 import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 import { workspaceDocumentHref } from "@/lib/biblioteca/document-href";
@@ -26,15 +27,21 @@ const shelfLegal = { libraryShelf: DocumentLibraryShelf.SHARED_LEGAL } satisfies
 const shelfBooks = { libraryShelf: DocumentLibraryShelf.SHARED_BOOKS } satisfies Prisma.DocumentWhereInput;
 
 export default async function BibliotecaPage() {
+  const pageT0 = performance.now();
+  const tWs = performance.now();
   const { workspaceId, user } = await getWorkspaceContext();
+  devLogLexTiming("biblioteca.getWorkspaceContext", performance.now() - tWs);
+  const tCat = performance.now();
   const [catalogWorkspaceIds, platformCatalogId] = await Promise.all([
     workspaceIdsForSharedCatalog(workspaceId),
     getPlatformLibraryWorkspaceId(),
   ]);
+  devLogLexTiming("biblioteca.catalogLookups", performance.now() - tCat);
 
   /** Mesmo critério que a lista em `/documentos` (sem filtros de URL). */
   const privateOfficeAnd = [...officePrivateDocumentsAndParts(user.id)];
 
+  const tDb = performance.now();
   const [sharedLegal, sharedBooks, privateOffice] = await Promise.all([
     prisma.document.findMany({
       where: {
@@ -70,6 +77,9 @@ export default async function BibliotecaPage() {
       select: docSelect,
     }),
   ]);
+
+  devLogLexTiming("biblioteca.prisma", performance.now() - tDb);
+  devLogLexTiming("biblioteca.page", performance.now() - pageT0);
 
   return (
     <>

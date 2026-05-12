@@ -11,6 +11,7 @@ import {
  CommandList,
 } from "@/components/ui/command";
 import { useUiStore } from "@/stores/ui-store";
+import { prefetchOnce } from "@/lib/navigation/prefetch-routes";
 
 import type { SearchHit } from "@/types/search";
 
@@ -68,6 +69,9 @@ export function CommandMenu() {
  <CommandItem
  key={`${h.type}-${h.id}`}
  disabled={!h.href}
+ onMouseEnter={() => {
+ if (h.href) prefetchOnce(router, h.href);
+ }}
  onSelect={() => {
  if (!h.href) return;
  setOpen(false);

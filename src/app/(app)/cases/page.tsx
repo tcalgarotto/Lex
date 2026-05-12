@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { lexGlassCtaClassName, lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 import { CaseCardActions } from "@/components/cases/case-card-actions";
+import { HoverPrefetchLink } from "@/components/navigation/hover-prefetch-link";
 
 
 export default async function CasesListPage({
@@ -18,12 +20,18 @@ export default async function CasesListPage({
 }: {
  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+ const pageT0 = performance.now();
+ const tWs = performance.now();
  const { workspaceId } = await getWorkspaceContext();
+ devLogLexTiming("cases.getWorkspaceContext", performance.now() - tWs);
  const sp = (await searchParams) ?? {};
  const qRaw = typeof sp["q"] === "string" ? sp["q"] : Array.isArray(sp["q"]) ? sp["q"][0] : "";
  const q = qRaw?.trim() || null;
  const archived = sp["archived"] === "1";
- const cases = await listCases(workspaceId, { take: 30, q, includeArchived: archived });
+ const tList = performance.now();
+ const cases = await listCases(workspaceId, { take: 25, q, includeArchived: archived });
+ devLogLexTiming("cases.listCases", performance.now() - tList);
+ devLogLexTiming("cases.page", performance.now() - pageT0);
  const casesColLeft = cases.filter((_, i) => i % 2 === 0);
  const casesColRight = cases.filter((_, i) => i % 2 === 1);
 
@@ -162,13 +170,13 @@ function CaseCard({ c }: { c: CaseRow }) {
  ) : null}
  </div>
  <div className="flex shrink-0 items-center gap-0.5">
- <Link
+ <HoverPrefetchLink
  href={`/cases/${c.id}`}
  aria-label={`Abrir caso ${c.title}`}
  className="rounded-lg p-2 text-[color:var(--text-muted)] lex-transition hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-primary)]"
  >
  <ArrowRight className="size-5" aria-hidden />
- </Link>
+ </HoverPrefetchLink>
  <CaseCardActions caseId={c.id} caseTitle={c.title} archived={Boolean(c.archivedAt)} />
  </div>
  </div>

@@ -2,11 +2,13 @@
 
 import { memo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LexLogoMark } from "@/components/brand/lex-logo-mark";
 import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
+import { prefetchOnce } from "@/lib/navigation/prefetch-routes";
 
 export const AppTopbar = memo(function AppTopbar({
   title,
@@ -17,7 +19,9 @@ export const AppTopbar = memo(function AppTopbar({
   workspaceLabel?: string | null;
 }) {
   const setCmd = useUiStore((s) => s.setCommandOpen);
+  const router = useRouter();
   const officeLine = workspaceLabel?.trim() || "Escritório";
+  const warmDashboard = () => prefetchOnce(router, "/dashboard");
 
   return (
     <header
@@ -30,6 +34,9 @@ export const AppTopbar = memo(function AppTopbar({
         <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
           <Link
             href="/dashboard"
+            prefetch={false}
+            onMouseEnter={warmDashboard}
+            onFocus={warmDashboard}
             className="flex shrink-0 items-center rounded-lg p-1 text-[color:var(--text-primary)] transition-colors hover:bg-[color:var(--surface-overlay-strong)]"
             title="Lex — ir ao briefing"
             aria-label="Lex — ir ao briefing"

@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import Link from "next/link";
+import { HoverPrefetchLink } from "@/components/navigation/hover-prefetch-link";
 import {
   Activity,
   AlertTriangle,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import type {
   BriefingActionItem,
   MorningBriefingPayload,
+  MorningBriefingShellProps,
   PulseCasesDetail,
   PulseDocumentsDetail,
   PulseLibraryDetail,
@@ -87,7 +89,7 @@ function PulseBriefCard(props: {
           <p className="text-[9px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Próxima ação sugerida</p>
           <p className="mt-0.5 text-[11.5px] text-[color:var(--text-primary)]">{casesDetail!.nextActionTitle}</p>
           <Button size="sm" className="mt-2 h-7 w-full text-[11px]" asChild>
-            <Link href={casesDetail!.nextHref!}>{casesDetail!.nextCtaLabel}</Link>
+            <HoverPrefetchLink href={casesDetail!.nextHref!}>{casesDetail!.nextCtaLabel}</HoverPrefetchLink>
           </Button>
         </div>
       ) : null}
@@ -95,9 +97,12 @@ function PulseBriefCard(props: {
         <div className="h-0.5 overflow-hidden rounded-sm bg-[color:var(--surface-overlay-strong)]">
           <div className="h-full rounded-sm" style={{ width: `${Math.min(100, detail.barPct)}%`, background: detail.barColor }} />
         </div>
-        <Link href={footerHref} className="mt-2 inline-block text-[11px] font-medium text-violet-400 hover:text-violet-300">
+        <HoverPrefetchLink
+          href={footerHref}
+          className="mt-2 inline-block text-[11px] font-medium text-violet-400 hover:text-violet-300"
+        >
           {footerLabel} →
-        </Link>
+        </HoverPrefetchLink>
       </div>
     </div>
   );
@@ -123,36 +128,20 @@ function PulsePiecesBriefCard({ detail }: { detail: PulsePiecesDetail }) {
         <div className="h-0.5 overflow-hidden rounded-sm bg-[color:var(--surface-overlay-strong)]">
           <div className="h-full rounded-sm" style={{ width: `${Math.min(100, detail.barPct)}%`, background: detail.barColor }} />
         </div>
-        <Link href={detail.nextHref} className="mt-2 inline-block text-[11px] font-medium text-violet-400 hover:text-violet-300">
+        <HoverPrefetchLink
+          href={detail.nextHref}
+          className="mt-2 inline-block text-[11px] font-medium text-violet-400 hover:text-violet-300"
+        >
           {detail.nextCtaLabel} →
-        </Link>
+        </HoverPrefetchLink>
       </div>
     </div>
   );
 }
 
-export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
-  const {
-    pulse,
-    pulseCases,
-    pulseDocuments,
-    pulsePieces,
-    pulseLibrary,
-    urgent,
-    briefingActions,
-    genuinelyAllClear,
-    resumeCases,
-    activities,
-    docPhases,
-    copilotMessage,
-    copilotTitle,
-    displayName,
-    hasNoCases,
-    oldestUnnamedCaseId,
-    daySummaryLine,
-    priorityContinueHref,
-  } = data;
-
+/** Hero + CTAs + estado “sem casos” — renderização rápida sem dados pesados do briefing. */
+export function MorningBriefingHeaderShell(props: MorningBriefingShellProps & { hasNoCases: boolean }) {
+  const { displayName, hasNoCases, daySummaryLine, priorityContinueHref, oldestUnnamedCaseId } = props;
   const dateLine = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
@@ -173,23 +162,23 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[color:var(--text-secondary)]">{daySummaryLine}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={priorityContinueHref} className={lexGlassCtaClassName}>
+          <HoverPrefetchLink href={priorityContinueHref} className={lexGlassCtaClassName}>
             Continuar prioridade
-          </Link>
+          </HoverPrefetchLink>
           {oldestUnnamedCaseId ? (
             <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-              <Link href={`/cases/${oldestUnnamedCaseId}/entrevista`}>Nomear e continuar caso</Link>
+              <HoverPrefetchLink href={`/cases/${oldestUnnamedCaseId}/entrevista`}>Nomear e continuar caso</HoverPrefetchLink>
             </Button>
           ) : (
             <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-              <Link href="/cases/new">Novo caso</Link>
+              <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
             </Button>
           )}
           <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-            <Link href="/documentos">Enviar documento</Link>
+            <HoverPrefetchLink href="/documentos">Enviar documento</HoverPrefetchLink>
           </Button>
           <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-            <Link href="/pesquisa-juridica">Pesquisa jurídica</Link>
+            <HoverPrefetchLink href="/pesquisa-juridica">Pesquisa jurídica</HoverPrefetchLink>
           </Button>
         </div>
       </header>
@@ -201,12 +190,36 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
             Comece por criar um caso e seguir a entrevista guiada. Depois envie os documentos para o Lex organizar fatos e peças.
           </p>
           <Button className="mt-6" asChild>
-            <Link href="/cases/new">Criar primeiro caso</Link>
+            <HoverPrefetchLink href="/cases/new">Criar primeiro caso</HoverPrefetchLink>
           </Button>
         </div>
       ) : null}
+    </>
+  );
+}
 
-      {!hasNoCases ? (
+/** Corpo do briefing (pulso, prioridades, listas) — pode ir dentro de Suspense. */
+export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPayload }) {
+  const {
+    pulse,
+    pulseCases,
+    pulseDocuments,
+    pulsePieces,
+    pulseLibrary,
+    urgent,
+    briefingActions,
+    genuinelyAllClear,
+    resumeCases,
+    activities,
+    docPhases,
+    copilotMessage,
+    copilotTitle,
+    hasNoCases,
+  } = data;
+
+  if (hasNoCases) return null;
+
+  return (
         <div className="flex flex-col gap-5">
           {urgent ? (
             <div
@@ -219,7 +232,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
                 <span className="text-[color:var(--text-secondary)]"> — {urgent.message}</span>
               </div>
               <Button size="sm" variant="outline" className="shrink-0 border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/15" asChild>
-                <Link href={urgent.href}>{urgent.ctaLabel} →</Link>
+                <HoverPrefetchLink href={urgent.href}>{urgent.ctaLabel} →</HoverPrefetchLink>
               </Button>
             </div>
           ) : null}
@@ -250,10 +263,10 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
                       </p>
                       <div className="flex flex-wrap justify-center gap-2">
                         <Button size="sm" asChild>
-                          <Link href="/cases/new">Novo caso</Link>
+                          <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
                         </Button>
                         <Button size="sm" variant="outline" asChild>
-                          <Link href="/biblioteca">Abrir biblioteca</Link>
+                          <HoverPrefetchLink href="/biblioteca">Abrir biblioteca</HoverPrefetchLink>
                         </Button>
                       </div>
                     </div>
@@ -282,7 +295,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
                             </div>
                           </div>
                           <Button size="sm" className="shrink-0 self-start sm:self-center" asChild>
-                            <Link href={item.href}>{item.cta} →</Link>
+                            <HoverPrefetchLink href={item.href}>{item.cta} →</HoverPrefetchLink>
                           </Button>
                         </li>
                       ))}
@@ -297,9 +310,12 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
                 <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
                   <Briefcase className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
                   <h2 className="flex-1 text-[13.5px] font-medium">Casos para retomar</h2>
-                  <Link href="/cases" className="flex items-center gap-0.5 text-xs font-medium text-violet-400 hover:text-violet-300">
+                  <HoverPrefetchLink
+                    href="/cases"
+                    className="flex items-center gap-0.5 text-xs font-medium text-violet-400 hover:text-violet-300"
+                  >
                     Ver todos <ArrowRight className="size-3.5" aria-hidden />
-                  </Link>
+                  </HoverPrefetchLink>
                 </div>
                 <div className="px-[18px] py-1">
                   {resumeCases.length === 0 ? (
@@ -362,7 +378,20 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
             <ConsultLinksBlock />
           </div>
         </div>
-      ) : null}
+  );
+}
+
+export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
+  return (
+    <>
+      <MorningBriefingHeaderShell
+        displayName={data.displayName}
+        hasNoCases={data.hasNoCases}
+        daySummaryLine={data.daySummaryLine}
+        priorityContinueHref={data.priorityContinueHref}
+        oldestUnnamedCaseId={data.oldestUnnamedCaseId}
+      />
+      <MorningBriefingMainWithData data={data} />
     </>
   );
 }
@@ -385,13 +414,15 @@ function CopilotBlock({ message, title, className }: { message: string; title: s
         <p className="text-[12.5px] leading-relaxed text-[color:var(--text-secondary)]">{message}</p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" className="border-violet-500/25 bg-violet-500/10 text-violet-100 hover:bg-violet-500/15" asChild>
-            <Link href="#o-que-fazer-agora">Ver prioridades</Link>
+            <Link prefetch={false} href="#o-que-fazer-agora">
+              Ver prioridades
+            </Link>
           </Button>
           <Button size="sm" variant="outline" className="border-violet-500/25 bg-violet-500/10 text-violet-100 hover:bg-violet-500/15" asChild>
-            <Link href="/pesquisa-juridica">Pesquisa jurídica</Link>
+            <HoverPrefetchLink href="/pesquisa-juridica">Pesquisa jurídica</HoverPrefetchLink>
           </Button>
           <Button size="sm" variant="outline" className="border-violet-500/25 bg-violet-500/10 text-violet-100 hover:bg-violet-500/15" asChild>
-            <Link href="/cases/new">Novo caso</Link>
+            <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
           </Button>
         </div>
       </div>
@@ -447,7 +478,7 @@ function DocPhasesBlock(props: {
           <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             {props.failedCount} documento{props.failedCount > 1 ? "s" : ""} precisam de atenção.
             <Button variant="link" className="h-auto p-0 pl-1 text-amber-200" asChild>
-              <Link href="/documentos">Ver documentos</Link>
+              <HoverPrefetchLink href="/documentos">Ver documentos</HoverPrefetchLink>
             </Button>
           </div>
         ) : null}
@@ -483,7 +514,7 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
   if (row.kind === "unnamed_group") {
     return (
       <li>
-        <Link
+        <HoverPrefetchLink
           href={`/cases/${row.oldestCaseId}/entrevista`}
           className="group flex flex-col gap-1 py-3 transition-colors hover:bg-[color:var(--surface-overlay)] sm:flex-row sm:items-center sm:justify-between"
         >
@@ -501,7 +532,7 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
             </div>
           </div>
           <span className="shrink-0 text-xs font-medium text-violet-400 group-hover:text-violet-300">Organizar →</span>
-        </Link>
+        </HoverPrefetchLink>
       </li>
     );
   }
@@ -509,7 +540,7 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
   if (row.kind === "unnamed_single") {
     return (
       <li>
-        <Link
+        <HoverPrefetchLink
           href={`/cases/${row.id}/entrevista`}
           className="group flex flex-col gap-2 py-3 transition-colors hover:bg-[color:var(--surface-overlay)] sm:flex-row sm:items-start sm:justify-between"
         >
@@ -526,14 +557,14 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
             </div>
           </div>
           <span className="shrink-0 text-xs font-medium text-violet-400 group-hover:text-violet-300">Continuar →</span>
-        </Link>
+        </HoverPrefetchLink>
       </li>
     );
   }
 
   return (
     <li>
-      <Link
+      <HoverPrefetchLink
         href={row.continueHref}
         className="group flex flex-col gap-2 py-3 transition-colors hover:bg-[color:var(--surface-overlay)] sm:flex-row sm:items-start sm:justify-between"
       >
@@ -564,7 +595,7 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
             </div>
           </div>
         </div>
-      </Link>
+      </HoverPrefetchLink>
     </li>
   );
 }
@@ -577,7 +608,7 @@ function QuickLink(props: {
 }) {
   const Ico = props.icon;
   return (
-    <Link
+    <HoverPrefetchLink
       href={props.href}
       className="flex items-center gap-2 rounded-[var(--r-md)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] px-3 py-2.5 text-left transition-colors hover:border-violet-500/20 hover:bg-[rgba(124,58,237,0.06)]"
     >
@@ -585,6 +616,6 @@ function QuickLink(props: {
         <Ico className="size-3.5" aria-hidden />
       </div>
       <span className="text-xs font-medium text-[color:var(--text-primary)]">{props.label}</span>
-    </Link>
+    </HoverPrefetchLink>
   );
 }

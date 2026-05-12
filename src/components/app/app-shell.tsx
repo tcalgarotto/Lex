@@ -9,6 +9,7 @@ import { matchPathTitle } from "@/lib/app-chrome-titles";
 import { cn } from "@/lib/utils";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppTopbar } from "@/components/app/app-topbar";
+import { CoreRoutePrefetcher } from "@/components/app/core-route-prefetcher";
 import { useWorkspaceContext } from "@/components/app/workspace-context";
 
 /** cmdk + dialog — carrega após o shell para não competir com o JS inicial da rota. */
@@ -151,6 +152,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
       </div>
 
       <ChromeTop />
+      <CoreRoutePrefetcher />
       <CommandMenuLazy />
       <ChromeBody>{children}</ChromeBody>
     </div>

@@ -13,6 +13,7 @@ import {
   DocumentStatus,
   DraftApprovalStatus,
   JobRunStatus,
+  type Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { CASE_STATUS_LABEL } from "@/lib/cases/labels";
@@ -378,6 +379,63 @@ const ACTIVITY_PUBLIC: Record<string, string> = {
   "feedback.submitted": "Feedback enviado",
 };
 
+function briefingCountMap(rows: { caseId: string | null; _count: { _all: number } }[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const r of rows) {
+    if (r.caseId != null) m.set(r.caseId, r._count._all);
+  }
+  return m;
+}
+
+/** Casos ativos do briefing com contagens em lote (evita `_count` correlacionado por linha). */
+async function loadBriefingCaseList(activeCaseWhere: Prisma.CaseWhereInput) {
+  const rows = await prisma.case.findMany({
+    where: activeCaseWhere,
+    orderBy: { updatedAt: "desc" },
+    take: 40,
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      processNumber: true,
+      processId: true,
+      metadataJson: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const [factGs, docGs, draftGs] = await Promise.all([
+    prisma.caseFact.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids } },
+      _count: { _all: true },
+    }),
+    prisma.document.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids }, deletedAt: null },
+      _count: { _all: true },
+    }),
+    prisma.caseDraft.groupBy({
+      by: ["caseId"],
+      where: { caseId: { in: ids } },
+      _count: { _all: true },
+    }),
+  ]);
+  const mf = briefingCountMap(factGs);
+  const md = briefingCountMap(docGs);
+  const mr = briefingCountMap(draftGs);
+  return rows.map((r) => ({
+    ...r,
+    _count: {
+      facts: mf.get(r.id) ?? 0,
+      documents: md.get(r.id) ?? 0,
+      drafts: mr.get(r.id) ?? 0,
+    },
+  }));
+}
+
 function activityPublicLine(kind: string, title: string): string | null {
   const mapped = ACTIVITY_PUBLIC[kind];
   if (mapped) return mapped;
@@ -385,30 +443,42 @@ function activityPublicLine(kind: string, title: string): string | null {
   return null;
 }
 
-export async function getMorningBriefingData(args: {
+export type MorningBriefingRequestArgs = {
   workspaceId: string;
   userId: string;
   userEmail: string;
   isAdmin: boolean;
-}): Promise<MorningBriefingPayload> {
-  const { workspaceId, userId, userEmail, isAdmin } = args;
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  displayNameHint?: string | null;
+};
 
-  const activeCaseWhere = {
+export function activeCaseWhereFor(workspaceId: string): Prisma.CaseWhereInput {
+  return {
     workspaceId,
     deletedAt: null,
     archivedAt: null,
     status: { notIn: [CaseStatus.CLOSED, CaseStatus.ARCHIVED] as CaseStatus[] },
   };
+}
+
+/** Agregados leves (sem lista de casos nem alertas/atividades/travados). */
+export async function fetchMorningBriefingAggRows(
+  args: MorningBriefingRequestArgs,
+  activeCaseWhere: Prisma.CaseWhereInput,
+) {
+  const { workspaceId, userId, displayNameHint } = args;
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const unnamedTitleOr: Prisma.CaseWhereInput[] = [
+    { title: "" },
+    { title: { startsWith: "Novo caso", mode: "insensitive" } },
+  ];
 
   const [
     dbUser,
     activeCases,
-    caseList,
     docByStatus,
     storageAgg,
     draftsOpen,
@@ -417,32 +487,16 @@ export async function getMorningBriefingData(args: {
     approvalCaseLink,
     openHighRisks,
     failedJobs7d,
-    alerts,
     openDeadlines,
-    activities,
-    stalledDocs,
     draftsApprovedCount,
-    libraryFoundationTotal,
-    libraryModelsCount,
+    libraryStats,
+    coletaApproxCount,
+    oldestUnnamedBare,
   ] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
+    displayNameHint?.trim()
+      ? Promise.resolve(null)
+      : prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true } }),
     prisma.case.count({ where: activeCaseWhere }),
-    prisma.case.findMany({
-      where: activeCaseWhere,
-      orderBy: { updatedAt: "desc" },
-      take: 40,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        processNumber: true,
-        processId: true,
-        metadataJson: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: { select: { facts: true, documents: true, drafts: true } },
-      },
-    }),
     prisma.document.groupBy({
       by: ["status"],
       where: { workspaceId, deletedAt: null },
@@ -489,6 +543,70 @@ export async function getMorningBriefingData(args: {
         updatedAt: { gte: since7d },
       },
     }),
+    prisma.caseAlert.count({
+      where: {
+        workspaceId,
+        status: CaseAlertStatus.OPEN,
+        kind: CaseAlertKind.DEADLINE,
+      },
+    }),
+    prisma.caseDraft.count({
+      where: {
+        status: CaseDraftStatus.APPROVED,
+        case: { workspaceId, deletedAt: null },
+      },
+    }),
+    prisma.libraryFoundation
+      .groupBy({
+        by: ["useAsModel"],
+        where: { workspaceId, deletedAt: null, archivedAt: null },
+        _count: { _all: true },
+      })
+      .then((libGroup) => {
+        let libraryFoundationTotal = 0;
+        let libraryModelsCount = 0;
+        for (const g of libGroup) {
+          libraryFoundationTotal += g._count._all;
+          if (g.useAsModel === true) libraryModelsCount += g._count._all;
+        }
+        return { libraryFoundationTotal, libraryModelsCount };
+      }),
+    prisma.case.count({
+      where: {
+        ...activeCaseWhere,
+        OR: [{ status: CaseStatus.INTAKE }, ...unnamedTitleOr],
+      },
+    }),
+    prisma.case.findFirst({
+      where: { ...activeCaseWhere, OR: unnamedTitleOr },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    }),
+  ]);
+
+  return {
+    dbUser,
+    activeCases,
+    docByStatus,
+    storageAgg,
+    draftsOpen,
+    piecesMonth,
+    pendingApprovals,
+    approvalCaseLink,
+    openHighRisks,
+    failedJobs7d,
+    openDeadlines,
+    draftsApprovedCount,
+    libraryStats,
+    coletaApproxCount,
+    oldestUnnamedBare,
+  };
+}
+
+export async function fetchMorningBriefingHeavyRows(activeCaseWhere: Prisma.CaseWhereInput, workspaceId: string) {
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [caseList, alerts, activities, stalledDocs] = await Promise.all([
+    loadBriefingCaseList(activeCaseWhere),
     prisma.caseAlert.findMany({
       where: {
         workspaceId,
@@ -498,7 +616,7 @@ export async function getMorningBriefingData(args: {
           { severity: { in: [CaseAlertSeverity.HIGH, CaseAlertSeverity.CRITICAL] } },
         ],
       },
-      take: 12,
+      take: 5,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -509,33 +627,92 @@ export async function getMorningBriefingData(args: {
         case: { select: { id: true, title: true } },
       },
     }),
-    prisma.caseAlert.count({
-      where: {
-        workspaceId,
-        status: CaseAlertStatus.OPEN,
-        kind: CaseAlertKind.DEADLINE,
-      },
-    }),
     prisma.activity.findMany({
       where: { workspaceId, createdAt: { gte: since24h } },
       orderBy: { createdAt: "desc" },
-      take: 12,
+      take: 8,
       select: { id: true, title: true, kind: true, createdAt: true },
     }),
     findStalledDocuments(workspaceId, { take: 5 }),
-    prisma.caseDraft.count({
-      where: {
-        status: CaseDraftStatus.APPROVED,
-        case: { workspaceId, deletedAt: null },
-      },
-    }),
-    prisma.libraryFoundation.count({
-      where: { workspaceId, deletedAt: null, archivedAt: null },
-    }),
-    prisma.libraryFoundation.count({
-      where: { workspaceId, deletedAt: null, archivedAt: null, useAsModel: true },
-    }),
   ]);
+  return { caseList, alerts, activities, stalledDocs };
+}
+
+export type MorningBriefingShellProps = {
+  displayName: string;
+  hasNoCases: boolean;
+  daySummaryLine: string;
+  priorityContinueHref: string;
+  oldestUnnamedCaseId: string | null;
+};
+
+/** Props do hero/CTA a partir só dos agregados (rápido). */
+export function mapMorningBriefingAggToShellProps(
+  args: MorningBriefingRequestArgs,
+  agg: Awaited<ReturnType<typeof fetchMorningBriefingAggRows>>,
+): MorningBriefingShellProps {
+  const { userEmail, displayNameHint } = args;
+  const { dbUser, activeCases, docByStatus, coletaApproxCount, oldestUnnamedBare } = agg;
+  const statusMap = new Map(docByStatus.map((g) => [g.status, g._count._all]));
+  const n = (s: DocumentStatus) => statusMap.get(s) ?? 0;
+  const received = n(DocumentStatus.UPLOADED);
+  const inAnalysis = n(DocumentStatus.PARSING) + n(DocumentStatus.CHUNKING) + n(DocumentStatus.EMBEDDING);
+  const pendingReadingCount = received + inAnalysis;
+
+  const displayName =
+    displayNameHint?.trim()?.split(/\s+/)[0] ??
+    dbUser?.name?.trim()?.split(/\s+/)[0] ??
+    dbUser?.email?.split("@")[0] ??
+    userEmail.split("@")[0] ??
+    "Dr.";
+
+  const daySummaryLine = buildDaySummaryLine({
+    coletaCount: coletaApproxCount,
+    docsAwaiting: pendingReadingCount,
+    activeCases,
+  });
+
+  const oldestUnnamedCaseId = oldestUnnamedBare?.id ?? null;
+  const priorityContinueHref =
+    oldestUnnamedCaseId != null
+      ? `/cases/${oldestUnnamedCaseId}/entrevista`
+      : activeCases > 0
+        ? "/cases"
+        : "/cases/new";
+
+  return {
+    displayName,
+    hasNoCases: activeCases === 0,
+    daySummaryLine,
+    priorityContinueHref,
+    oldestUnnamedCaseId,
+  };
+}
+
+function buildMorningBriefingPayloadFromParts(
+  args: MorningBriefingRequestArgs,
+  agg: Awaited<ReturnType<typeof fetchMorningBriefingAggRows>>,
+  heavy: Awaited<ReturnType<typeof fetchMorningBriefingHeavyRows>>,
+): MorningBriefingPayload {
+  const { workspaceId, userEmail, isAdmin, displayNameHint } = args;
+  const {
+    dbUser,
+    activeCases,
+    docByStatus,
+    storageAgg,
+    draftsOpen,
+    piecesMonth,
+    pendingApprovals,
+    approvalCaseLink,
+    openHighRisks,
+    failedJobs7d,
+    openDeadlines,
+    draftsApprovedCount,
+    libraryStats,
+  } = agg;
+  const { caseList, alerts, activities, stalledDocs } = heavy;
+
+  const { libraryFoundationTotal, libraryModelsCount } = libraryStats;
 
   const statusMap = new Map(docByStatus.map((g) => [g.status, g._count._all]));
   const n = (s: DocumentStatus) => statusMap.get(s) ?? 0;
@@ -567,7 +744,6 @@ export async function getMorningBriefingData(args: {
       !isCaseUnnamed(c.title),
   );
 
-  let casesNeedingNextStep = 0;
   const countSet = new Set<string>();
   for (const c of caseList) {
     if (isCaseUnnamed(c.title)) countSet.add(c.id);
@@ -575,7 +751,7 @@ export async function getMorningBriefingData(args: {
     else if (c._count.facts > 0 && c._count.drafts === 0 && !readStrategyPresent(c.metadataJson)) countSet.add(c.id);
     else if (!c.processNumber?.trim() && !c.processId && c.status !== CaseStatus.INTAKE) countSet.add(c.id);
   }
-  casesNeedingNextStep = countSet.size;
+  const casesNeedingNextStep = countSet.size;
 
   const phaseTotal = Math.max(1, received + inAnalysis + ready + failed);
   const docPhases: BriefingDocPhase[] = [
@@ -908,6 +1084,7 @@ export async function getMorningBriefingData(args: {
   });
 
   const displayName =
+    displayNameHint?.trim()?.split(/\s+/)[0] ??
     dbUser?.name?.trim()?.split(/\s+/)[0] ??
     dbUser?.email?.split("@")[0] ??
     userEmail.split("@")[0] ??
@@ -936,6 +1113,25 @@ export async function getMorningBriefingData(args: {
     copilotTitle: "Resumo do dia",
     oldestUnnamedCaseId,
   };
+}
+
+export async function getMorningBriefingData(args: MorningBriefingRequestArgs): Promise<MorningBriefingPayload> {
+  const activeCaseWhere = activeCaseWhereFor(args.workspaceId);
+  const [agg, heavy] = await Promise.all([
+    fetchMorningBriefingAggRows(args, activeCaseWhere),
+    fetchMorningBriefingHeavyRows(activeCaseWhere, args.workspaceId),
+  ]);
+  return buildMorningBriefingPayloadFromParts(args, agg, heavy);
+}
+
+/** Só a parte pesada (lista de casos, alertas, atividades, travados) — usar com `agg` já carregado no shell. */
+export async function loadMorningBriefingDeferredPayload(
+  args: MorningBriefingRequestArgs,
+  agg: Awaited<ReturnType<typeof fetchMorningBriefingAggRows>>,
+): Promise<MorningBriefingPayload> {
+  const activeCaseWhere = activeCaseWhereFor(args.workspaceId);
+  const heavy = await fetchMorningBriefingHeavyRows(activeCaseWhere, args.workspaceId);
+  return buildMorningBriefingPayloadFromParts(args, agg, heavy);
 }
 
 function formatActivityTime(d: Date): string {

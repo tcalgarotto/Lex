@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { ScrollText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HoverPrefetchLink } from "@/components/navigation/hover-prefetch-link";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -50,7 +50,7 @@ export default async function PiecesIndexPage() {
  <ul className="space-y-2">
  {pieces.map((p) => (
  <li key={p.id}>
- <Link href={`/editor/${p.id}`} className="block">
+ <HoverPrefetchLink href={`/editor/${p.id}`} className="block">
  <Card className="p-3 hover:bg-[color:var(--surface-overlay)]">
  <div className="flex flex-wrap items-start justify-between gap-2">
  <div className="min-w-0 flex-1">
@@ -71,7 +71,7 @@ export default async function PiecesIndexPage() {
  </div>
  </div>
  </Card>
- </Link>
+ </HoverPrefetchLink>
  </li>
  ))}
  </ul>

@@ -2,7 +2,7 @@
 
 import { memo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Briefcase,
   ChevronDown,
@@ -26,6 +26,7 @@ import { useUiStore } from "@/stores/ui-store";
 import { useWorkspaceContext } from "@/components/app/workspace-context";
 import { SidebarAccountFooter } from "@/components/app/sidebar-account-footer";
 import { hasAtLeast } from "@/lib/auth/permissions";
+import { prefetchOnce } from "@/lib/navigation/prefetch-routes";
 import { MembershipRole } from "@prisma/client";
 
 interface NavItem {
@@ -65,10 +66,12 @@ const NavLink = memo(function NavLink({
   collapsed: boolean;
   muted?: boolean;
 }) {
+  const router = useRouter();
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
   const Icon = item.icon;
+  const warm = () => prefetchOnce(router, item.href);
   return (
-    <Link href={item.href}>
+    <Link href={item.href} prefetch={false} onMouseEnter={warm} onFocus={warm}>
       <span
         className={cn(
           "relative flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-lg font-medium leading-snug transition-colors hover:bg-[var(--bg-hover)]",

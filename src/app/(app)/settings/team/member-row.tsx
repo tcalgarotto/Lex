@@ -85,14 +85,16 @@ export function MemberRow({
  return (
  <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[color:var(--border-subtle)] px-3 py-2">
  <div className="min-w-0">
- <p className="truncate text-sm font-medium">
+ <div className="flex min-w-0 flex-wrap items-center gap-2">
+ <span className="truncate text-sm font-medium">
  {membership.name ?? membership.email}
+ </span>
  {isSelf ? (
- <Badge variant="outline" className="ml-2 text-[10px]">
+ <Badge variant="outline" className="text-[10px]">
  você
  </Badge>
  ) : null}
- </p>
+ </div>
  {membership.name ? (
  <p className="truncate text-xs text-muted-foreground">{membership.email}</p>
  ) : null}

@@ -27,6 +27,8 @@ let client: Redis | null = null;
 let lastFailAt = 0;
 let lastAvailableAt = 0;
 let cachedAvailable: boolean | null = null;
+/** Em dev, após ECONNREFUSED local, não recria socket a cada request. */
+let devRedisCircuitOpen = false;
 
 /** TTL do cache de probe `PING`. */
 const AVAILABILITY_TTL_MS = 5_000;
@@ -131,6 +133,9 @@ function buildOptions(info: RedisUrlInfo): RedisOptions {
  * NÃO chama `connect()` — quem usar deve estar pronto para falhar.
  */
 export function getRedis(): Redis | null {
+  if (devRedisCircuitOpen && process.env.NODE_ENV === "development") {
+    return null;
+  }
   if (client) return client;
   const url = getRedisUrl();
   if (!url) {
@@ -142,6 +147,21 @@ export function getRedis(): Redis | null {
   client.on("error", (err: Error) => {
     lastFailAt = Date.now();
     cachedAvailable = false;
+    const code = (err as NodeJS.ErrnoException).code;
+    if (process.env.NODE_ENV === "development" && (code === "ECONNREFUSED" || code === "ENOTFOUND")) {
+      devRedisCircuitOpen = true;
+      try {
+        client?.disconnect();
+      } catch {
+        /* ignore */
+      }
+      client = null;
+      log.warnOnce(
+        "dev-circuit",
+        "Redis indisponível em desenvolvimento — cache desativado até reiniciar o processo.",
+      );
+      return;
+    }
     // Mensagem segura: nunca contém senha — ioredis não loga URL completa.
     log.warnOnce("error", `Redis indisponível: ${err.message}`);
   });
@@ -345,6 +365,7 @@ export function _resetRedisForTests(): void {
     }
   }
   client = null;
+  devRedisCircuitOpen = false;
   cachedAvailable = null;
   lastFailAt = 0;
   lastAvailableAt = 0;

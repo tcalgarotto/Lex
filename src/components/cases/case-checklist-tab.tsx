@@ -35,6 +35,7 @@ import type {
  ChecklistTemplate,
 } from "@/lib/cases/checklists/registry";
 import { listChecklistTemplates } from "@/lib/cases/checklists/registry";
+import { useOptionalCaseBootstrap } from "@/components/cases/case-bootstrap-context";
 
 type InterviewTemplateListItem = {
  id: string;
@@ -66,41 +67,56 @@ interface Props {
 }
 
 export function CaseChecklistTab({ caseId, initial }: Props) {
- const [data, setData] = useState<ChecklistApiResponse | null>(initial ?? null);
- const [loading, setLoading] = useState(!initial);
- const [err, setErr] = useState<string | null>(null);
- const [answers, setAnswers] = useState<Record<string, unknown>>(initial?.answers ?? {});
- const [openSections, setOpenSections] = useState<Set<string>>(
- new Set(initial?.template?.sections.map((s) => s.id) ?? []),
- );
- const [saving, startSaving] = useTransition();
- const [savedAt, setSavedAt] = useState<string | null>(initial?.answeredAt ?? null);
- const [nextAction, setNextAction] = useState<string | null>(null);
- const templates = useMemo(() => listChecklistTemplates(), []);
- const [savedTemplates, setSavedTemplates] = useState<InterviewTemplateListItem[] | null>(null);
+  const boot = useOptionalCaseBootstrap();
+  const checklistBootstrap = boot?.payload.checklist ?? null;
+  const mergedInitial = initial ?? checklistBootstrap ?? null;
 
- useEffect(() => {
- if (initial) return;
- setLoading(true);
- fetch(`/api/cases/${caseId}/checklist`)
- .then((r) => r.json())
- .then((j: ChecklistApiResponse) => {
- setData(j);
- setAnswers(j.answers ?? {});
- setOpenSections(new Set(j.template?.sections.map((s) => s.id) ?? []));
- setSavedAt(j.answeredAt);
- })
- .catch((e) => setErr((e as Error).message))
- .finally(() => setLoading(false));
- }, [caseId, initial]);
+  const [data, setData] = useState<ChecklistApiResponse | null>(mergedInitial);
+  const [loading, setLoading] = useState(!mergedInitial);
+  const [err, setErr] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, unknown>>(mergedInitial?.answers ?? {});
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    new Set(mergedInitial?.template?.sections.map((s) => s.id) ?? []),
+  );
+  const [saving, startSaving] = useTransition();
+  const [savedAt, setSavedAt] = useState<string | null>(mergedInitial?.answeredAt ?? null);
+  const [nextAction, setNextAction] = useState<string | null>(null);
+  const templates = useMemo(() => listChecklistTemplates(), []);
+  const [savedTemplates, setSavedTemplates] = useState<InterviewTemplateListItem[] | null>(() =>
+    boot?.payload.interviewTemplates ?? null,
+  );
 
- useEffect(() => {
- // best-effort: carrega modelos salvos (F6). Não quebra se falhar.
- fetch("/api/interview-templates")
- .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`falha ${r.status}`))))
- .then((j: { templates: InterviewTemplateListItem[] }) => setSavedTemplates(j.templates ?? []))
- .catch(() => setSavedTemplates([]));
- }, []);
+  useEffect(() => {
+    if (initial) return;
+    const fromBoot = boot?.payload.checklist;
+    if (fromBoot) {
+      setData(fromBoot);
+      setAnswers(fromBoot.answers ?? {});
+      setOpenSections(new Set(fromBoot.template?.sections.map((s) => s.id) ?? []));
+      setSavedAt(fromBoot.answeredAt);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    fetch(`/api/cases/${caseId}/checklist`)
+      .then((r) => r.json())
+      .then((j: ChecklistApiResponse) => {
+        setData(j);
+        setAnswers(j.answers ?? {});
+        setOpenSections(new Set(j.template?.sections.map((s) => s.id) ?? []));
+        setSavedAt(j.answeredAt);
+      })
+      .catch((e) => setErr((e as Error).message))
+      .finally(() => setLoading(false));
+  }, [caseId, initial, boot?.payload.checklist, boot?.version]);
+
+  useEffect(() => {
+    if (boot?.payload.interviewTemplates) return;
+    fetch("/api/interview-templates")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`falha ${r.status}`))))
+      .then((j: { templates: InterviewTemplateListItem[] }) => setSavedTemplates(j.templates ?? []))
+      .catch(() => setSavedTemplates([]));
+  }, [boot?.payload.interviewTemplates]);
 
  const template = data?.template ?? null;
  const missingFields = useMemo(() => {

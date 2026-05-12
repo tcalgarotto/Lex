@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { encodeDocumentThumbnailWebpFromPng } from "./pdf-thumbnail-webp";
+import { encodeDocumentThumbnailWebpFromPng, encodeThumbnailWebpLowRes } from "./pdf-thumbnail-webp";
 
 describe("encodeDocumentThumbnailWebpFromPng", () => {
   it("produz image/webp com largura máxima 480px a partir de PNG largo", async () => {
@@ -21,5 +21,26 @@ describe("encodeDocumentThumbnailWebpFromPng", () => {
     expect(meta.format).toBe("webp");
     expect(meta.width).toBeLessThanOrEqual(480);
     expect(meta.height).toBeLessThanOrEqual(480);
+  });
+});
+
+describe("encodeThumbnailWebpLowRes", () => {
+  it("reduz largura e mantém formato webp", async () => {
+    const png = await sharp({
+      create: {
+        width: 600,
+        height: 400,
+        channels: 3,
+        background: { r: 30, g: 50, b: 90 },
+      },
+    })
+      .png()
+      .toBuffer();
+    const full = await encodeDocumentThumbnailWebpFromPng(png);
+    const low = await encodeThumbnailWebpLowRes(full, 120);
+    expect(low.length).toBeLessThan(full.length);
+    const meta = await sharp(low).metadata();
+    expect(meta.format).toBe("webp");
+    expect(meta.width).toBeLessThanOrEqual(120);
   });
 });
