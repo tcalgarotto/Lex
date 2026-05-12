@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { expandQuery } from "@/lib/ai/llm";
 import { rerankDocuments } from "@/lib/ai/reranker";
 import { reciprocalRankFusion } from "@/lib/retrieval/rrf";
@@ -6,6 +7,7 @@ import { sha256Hex } from "@/lib/util/content-hash";
 import { getHotContextChunks } from "@/lib/memory/hot-cache";
 import { recordObservabilityLog } from "@/lib/observability/record";
 import type { RetrievedChunk } from "@/lib/retrieval/types";
+import { getPlatformLibraryWorkspaceId } from "@/lib/biblioteca/platform-library";
 
 export type { RetrievedChunk } from "@/lib/retrieval/types";
 
@@ -59,6 +61,9 @@ export async function retrieveContext(params: {
   ]);
 
   const pattern = `%${expanded.replace(/%/g, "")}%`;
+  const platformId = await getPlatformLibraryWorkspaceId();
+  const docWorkspaceIds = [...new Set([params.workspaceId, ...(platformId ? [platformId] : [])])];
+
   const [processRows, chunkRows, pieceRows] = await Promise.all([
     prisma.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM "Process"
@@ -74,7 +79,7 @@ export async function retrieveContext(params: {
       SELECT c.id, c."textPreview" as text
       FROM "DocumentChunk" c
       INNER JOIN "Document" d ON d.id = c."documentId"
-      WHERE d."workspaceId" = ${params.workspaceId}
+      WHERE d."workspaceId" IN (${Prisma.join(docWorkspaceIds)})
       AND c."textPreview" ILIKE ${pattern}
       LIMIT 12
     `,

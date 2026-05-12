@@ -285,6 +285,7 @@ model Document {
   caseId          String?
   /**
    * Quem enviou o ficheiro (auditoria e documentos privados OFFICE_PRIVATE).
+   * Catálogo global da plataforma: pode ser `null` (scripts para `lex-platform-catalog`).
    */
   uploadedByUserId String?
   /**

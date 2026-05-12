@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { documentReadScopeOr } from "@/lib/biblioteca/platform-library";
 import { userCanReadDocument } from "@/lib/documents/document-access";
 import { LexBibliotecaPdfViewer } from "@/components/biblioteca/lex-biblioteca-pdf-viewer";
 import { DocumentRowActions } from "@/components/documents/document-row-actions";
@@ -16,7 +17,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function shelfLabel(shelf: DocumentLibraryShelf): string {
+function shelfLabel(shelf: DocumentLibraryShelf, scope: "workspace" | "lex-platform"): string {
+  if (scope === "lex-platform") {
+    return shelf === DocumentLibraryShelf.SHARED_LEGAL
+      ? "Catálogo Lex (plataforma): leis e normas"
+      : "Catálogo Lex (plataforma): livros";
+  }
   switch (shelf) {
     case DocumentLibraryShelf.SHARED_LEGAL:
       return "Catálogo: leis e normas";
@@ -54,11 +60,13 @@ export default async function BibliotecaDocumentoPage({
 }) {
   const { documentId } = await params;
   const { workspaceId, user } = await getWorkspaceContext();
+  const readScope = await documentReadScopeOr(workspaceId);
 
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, workspaceId, deletedAt: null },
+    where: { id: documentId, deletedAt: null, OR: readScope },
     select: {
       id: true,
+      workspaceId: true,
       originalName: true,
       mimeType: true,
       sizeBytes: true,
@@ -78,6 +86,13 @@ export default async function BibliotecaDocumentoPage({
   if (!doc || !userCanReadDocument(user.id, doc)) {
     notFound();
   }
+
+  const catalogScope: "workspace" | "lex-platform" =
+    doc.workspaceId !== workspaceId &&
+    (doc.libraryShelf === DocumentLibraryShelf.SHARED_LEGAL ||
+      doc.libraryShelf === DocumentLibraryShelf.SHARED_BOOKS)
+      ? "lex-platform"
+      : "workspace";
 
   const [cases] = await Promise.all([
     prisma.case.findMany({
@@ -110,7 +125,7 @@ export default async function BibliotecaDocumentoPage({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-[10px]">
-                {shelfLabel(doc.libraryShelf)}
+                {shelfLabel(doc.libraryShelf, catalogScope)}
               </Badge>
               <StatusChip kind={status.kind} label={status.label} />
               <span className="text-xs text-muted-foreground">
@@ -129,12 +144,14 @@ export default async function BibliotecaDocumentoPage({
                 Descarregar
               </a>
             </Button>
-            <DocumentRowActions
-              documentId={doc.id}
-              processId={doc.processId}
-              caseId={doc.caseId}
-              cases={cases}
-            />
+            {doc.workspaceId === workspaceId ? (
+              <DocumentRowActions
+                documentId={doc.id}
+                processId={doc.processId}
+                caseId={doc.caseId}
+                cases={cases}
+              />
+            ) : null}
           </div>
         </div>
 

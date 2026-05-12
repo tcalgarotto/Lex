@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { DocumentLibraryShelf } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { documentReadScopeOr } from "@/lib/biblioteca/platform-library";
 import { userCanReadDocument } from "@/lib/documents/document-access";
 import { downloadDocumentBuffer } from "@/lib/storage";
 import { isThumbnailMostlyBlankPng } from "@/lib/documents/pdf-thumbnail-blank";
@@ -35,9 +36,10 @@ export async function GET(
 ) {
   const { documentId } = await context.params;
   const { workspaceId, user } = await getWorkspaceContext();
+  const readScope = await documentReadScopeOr(workspaceId);
 
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, workspaceId, deletedAt: null },
+    where: { id: documentId, deletedAt: null, OR: readScope },
     select: {
       id: true,
       mimeType: true,

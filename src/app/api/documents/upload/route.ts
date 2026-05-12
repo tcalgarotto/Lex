@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { DocumentLibraryShelf, DocumentStatus, MembershipRole } from "@prisma/client";
+import { DocumentLibraryShelf, DocumentStatus } from "@prisma/client";
 import { nanoid } from "nanoid";
 import { inngest } from "@/lib/inngest/client";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
-import { hasAtLeast } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
@@ -23,7 +22,7 @@ const ALLOWED_MIME = new Set([
 ]);
 
 export async function POST(req: Request) {
-  const { workspaceId, user, role } = await getWorkspaceContextWithRole();
+  const { workspaceId, user } = await getWorkspaceContextWithRole();
 
   const rl = await rateLimit({
     key: `upload:${user.id}`,
@@ -46,29 +45,11 @@ export async function POST(req: Request) {
   const caseId =
     typeof caseIdRaw === "string" && caseIdRaw.length > 0 ? caseIdRaw : null;
 
-  const shelfRaw = form.get("libraryShelf");
-  let libraryShelf: DocumentLibraryShelf = DocumentLibraryShelf.OFFICE_PRIVATE;
-  if (typeof shelfRaw === "string") {
-    if (shelfRaw === "SHARED_LEGAL") {
-      libraryShelf = DocumentLibraryShelf.SHARED_LEGAL;
-    } else if (shelfRaw === "SHARED_BOOKS") {
-      libraryShelf = DocumentLibraryShelf.SHARED_BOOKS;
-    }
-  }
-  if (libraryShelf !== DocumentLibraryShelf.OFFICE_PRIVATE) {
-    if (caseId || processId) {
-      return NextResponse.json(
-        { error: "Catálogo partilhado só permite envio sem vínculo a caso ou processo." },
-        { status: 400 },
-      );
-    }
-    if (!role || !hasAtLeast(role, MembershipRole.LAWYER)) {
-      return NextResponse.json(
-        { error: "Apenas advogados (ou funções superiores) podem publicar no catálogo partilhado." },
-        { status: 403 },
-      );
-    }
-  }
+  /**
+   * Catálogo global (leis/livros) só entra pela operação (scripts → workspace
+   * `lex-platform-catalog`). Upload pela app fica sempre privado da equipa.
+   */
+  const libraryShelf = DocumentLibraryShelf.OFFICE_PRIVATE;
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });

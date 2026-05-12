@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { DocumentStatus } from "@prisma/client";
-import { getWorkspaceContext } from "@/lib/auth/session";
+import { DocumentStatus, MembershipRole } from "@prisma/client";
+import { getWorkspaceContextWithRole } from "@/lib/auth/session";
+import { hasAtLeast } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
+import {
+  documentReadScopeOr,
+  isPlatformSharedShelf,
+} from "@/lib/biblioteca/platform-library";
 import { userCanReadDocument } from "@/lib/documents/document-access";
 import { inngest } from "@/lib/inngest/client";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
@@ -11,14 +16,17 @@ const log = getLogger("lex.api.documents.reprocess");
 
 /**
  * Reprocessar um documento:
- *  1. Verifica que o documento existe e pertence ao workspace do usuário.
+ *  1. Verifica que o documento existe e é legível (workspace ativo ou catálogo global SHARED_*).
  *  2. Reseta os campos do pipeline (`status=UPLOADED`, progress, contadores).
  *  3. Apaga `DocumentChunk` antigos no Postgres (cascade-friendly).
  *  4. Apaga pontos no Qdrant — **somente** na collection `lex_main`, com
- *     filtro estrito por `documentId` E `workspaceId`. Nunca toca em
+ *     filtro estrito por `documentId` E `workspaceId` do próprio documento. Nunca toca em
  *     `lex_corpus_norms` / `lex_corpus_jurisprudence` (corpus oficial).
  *  5. Reenfileira o evento Inngest `lex/document.ingest`.
- *  6. Registra `Activity kind=document.reprocess`.
+ *  6. Registra `Activity kind=document.reprocess` no workspace da sessão.
+ *
+ * Catálogo global: advogado+ pode reprocessar documentos do workspace `lex-platform-catalog`
+ * enquanto tiver outro workspace ativo na sessão.
  *
  * Em caso de falha na limpeza Qdrant, mantemos o reprocess seguindo
  * (ingest reescreverá os pontos com mesmos `chunkIndex`).
@@ -28,16 +36,26 @@ export async function POST(
   context: { params: Promise<{ documentId: string }> },
 ) {
   const { documentId } = await context.params;
-  const { workspaceId, user } = await getWorkspaceContext();
+  const { workspaceId, user, role } = await getWorkspaceContextWithRole();
+  const readScope = await documentReadScopeOr(workspaceId);
 
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, workspaceId },
+    where: { id: documentId, OR: readScope },
   });
-  if (!doc) {
+  if (!doc || doc.deletedAt) {
     return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
   }
   if (!userCanReadDocument(user.id, doc)) {
     return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
+  if (doc.workspaceId !== workspaceId) {
+    const canCrossReprocess =
+      isPlatformSharedShelf(doc.libraryShelf) &&
+      !!role &&
+      hasAtLeast(role, MembershipRole.LAWYER);
+    if (!canCrossReprocess) {
+      return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
+    }
   }
 
   await prisma.document.update({

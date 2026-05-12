@@ -5,6 +5,7 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 import { workspaceDocumentHref } from "@/lib/biblioteca/document-href";
+import { workspaceIdsForSharedCatalog, getPlatformLibraryWorkspaceId } from "@/lib/biblioteca/platform-library";
 import { BibliotecaShelfCarousel, BibliotecaShelfSection } from "@/components/biblioteca/biblioteca-shelf-section";
 import { BibliotecaOfficeDocumentCard } from "@/components/biblioteca/biblioteca-office-document-card";
 
@@ -26,6 +27,10 @@ const shelfBooks = { libraryShelf: DocumentLibraryShelf.SHARED_BOOKS } satisfies
 
 export default async function BibliotecaPage() {
   const { workspaceId, user } = await getWorkspaceContext();
+  const [catalogWorkspaceIds, platformCatalogId] = await Promise.all([
+    workspaceIdsForSharedCatalog(workspaceId),
+    getPlatformLibraryWorkspaceId(),
+  ]);
 
   /** Mesmo critério que a lista em `/documentos` (sem filtros de URL). */
   const privateOfficeAnd = [...officePrivateDocumentsAndParts(user.id)];
@@ -33,7 +38,7 @@ export default async function BibliotecaPage() {
   const [sharedLegal, sharedBooks, privateOffice] = await Promise.all([
     prisma.document.findMany({
       where: {
-        workspaceId,
+        workspaceId: { in: catalogWorkspaceIds },
         deletedAt: null,
         archivedAt: null,
         ...shelfLegal,
@@ -44,7 +49,7 @@ export default async function BibliotecaPage() {
     }),
     prisma.document.findMany({
       where: {
-        workspaceId,
+        workspaceId: { in: catalogWorkspaceIds },
         deletedAt: null,
         archivedAt: null,
         ...shelfBooks,
@@ -79,7 +84,7 @@ export default async function BibliotecaPage() {
                 Biblioteca
               </h1>
               <p className="max-w-4xl text-base leading-relaxed text-[color:var(--text-secondary)] lg:max-w-5xl">
-                Catálogo Lex com{" "}
+                Catálogo Lex (global na plataforma) com{" "}
                 <strong className="font-semibold text-[color:var(--text-primary)]">
                   leis, códigos e normas
                 </strong>
@@ -87,11 +92,11 @@ export default async function BibliotecaPage() {
                 <strong className="font-semibold text-[color:var(--text-primary)]">
                   leituras em destaque
                 </strong>
-                , mais os{" "}
+                ; à parte, os{" "}
                 <strong className="font-semibold text-[color:var(--text-primary)]">
-                  documentos que a equipe carrega
+                  documentos que a sua equipe envia em Documentos
                 </strong>{" "}
-                . Pré-visualização em PDF quando o ficheiro for compatível.
+                ficam na linha «Documentos da equipe». Pré-visualização em PDF quando o ficheiro for compatível.
               </p>
             </div>
           </header>
@@ -99,14 +104,20 @@ export default async function BibliotecaPage() {
           <BibliotecaShelfSection
             id="shelf-leis-codigos-normas"
             title="Leis, códigos e normas"
-            subtitle="Base indexada pela Lex, disponível para toda a equipe."
+            subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
             verMaisHref="/pesquisa-juridica"
             verMaisLabel="Pesquisa jurídica"
           >
             {sharedLegal.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
-                Ainda não há entradas nesta prateleira. Quem tiver permissão pode acrescentar ficheiros ao
-                catálogo partilhado a partir de Documentos (destino “Leis, códigos e normas”).
+                Ainda não há entradas nesta prateleira. O catálogo global é preenchido pela operação Lex
+                (scripts de upload para o workspace de plataforma), não pelo envio em Documentos.
+                {!platformCatalogId ? (
+                  <span className="mt-3 block text-xs text-[color:var(--text-secondary)]/90">
+                    Neste ambiente ainda não existe o workspace «lex-platform-catalog». Aplique as migrations
+                    em produção e volte a correr o script de upload com a URL da base de produção.
+                  </span>
+                ) : null}
               </p>
             ) : (
               <BibliotecaShelfCarousel>
@@ -130,14 +141,15 @@ export default async function BibliotecaPage() {
           <BibliotecaShelfSection
             id="shelf-livros-recomendados"
             title="Livros em destaque"
-            subtitle="Obras recomendadas no catálogo Lex."
+            subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
             verMaisHref="/pesquisa-juridica"
             verMaisLabel="Pesquisa jurídica"
           >
             {sharedBooks.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
-                Ainda não há obras nesta prateleira. Perfis autorizados podem publicar no catálogo a partir
-                de Documentos (destino “Livros em destaque”).
+                Ainda não há obras nesta prateleira. Use o script de upload com{" "}
+                <code className="rounded bg-black/20 px-1 py-0.5 text-[11px]">--shelf=SHARED_BOOKS</code> no
+                workspace de catálogo global (mesmo fluxo que leis e normas).
               </p>
             ) : (
               <BibliotecaShelfCarousel>

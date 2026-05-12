@@ -36,10 +36,6 @@ interface Props {
  accept?: string;
  /** Callback após upload bem-sucedido. */
  onUploaded?: (result: UploadResult) => void;
- /**
- * Publica no catálogo partilhado da biblioteca (sem caso/processo).
- */
- libraryShelf?: "SHARED_LEGAL" | "SHARED_BOOKS";
 }
 
 const DEFAULT_ACCEPT = ".pdf,.docx,.doc,.txt,application/pdf";
@@ -59,7 +55,6 @@ export function DocumentUploadButton({
  className,
  accept = DEFAULT_ACCEPT,
  onUploaded,
- libraryShelf,
 }: Props) {
  const router = useRouter();
  const inputRef = useRef<HTMLInputElement>(null);
@@ -73,14 +68,10 @@ export function DocumentUploadButton({
  setError(null);
  setBusy(true);
  try {
- if (libraryShelf && (caseId || processId)) {
- throw new Error("Catálogo partilhado não combina com caso ou processo.");
- }
  const fd = new FormData();
  fd.append("file", file);
  if (caseId) fd.append("caseId", caseId);
  if (processId) fd.append("processId", processId);
- if (libraryShelf) fd.append("libraryShelf", libraryShelf);
  const res = await fetch("/api/documents/upload", { method: "POST", body: fd });
  if (!res.ok) {
  const t = await res.text().catch(() => "");

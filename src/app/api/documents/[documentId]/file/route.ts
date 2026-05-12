@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { documentReadScopeOr } from "@/lib/biblioteca/platform-library";
 import { userCanReadDocument } from "@/lib/documents/document-access";
 import { downloadDocumentBuffer } from "@/lib/storage";
 import { getLogger } from "@/lib/logger";
@@ -11,8 +12,8 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * Ficheiro original no bucket (autenticado, escopo workspace).
- * Usado na página de leitura da Biblioteca (iframe / PDF).
+ * Ficheiro original no bucket (autenticado). Leitura no workspace ativo ou no
+ * catálogo global Lex (`SHARED_*` no workspace `lex-platform-catalog`).
  */
 export async function GET(
   req: Request,
@@ -23,9 +24,10 @@ export async function GET(
   const asDownload = searchParams.get("download") === "1";
 
   const { workspaceId, user } = await getWorkspaceContext();
+  const readScope = await documentReadScopeOr(workspaceId);
 
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, workspaceId, deletedAt: null },
+    where: { id: documentId, deletedAt: null, OR: readScope },
     select: {
       id: true,
       mimeType: true,
