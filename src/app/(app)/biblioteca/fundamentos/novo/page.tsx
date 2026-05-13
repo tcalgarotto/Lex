@@ -14,7 +14,7 @@ export default function NewFoundationPage() {
  const [title, setTitle] = useState("");
  const [tags, setTags] = useState("");
  const [contentMd, setContentMd] = useState("");
- const [optInRag, setOptInRag] = useState(false);
+ const [optInSearch, setOptInRag] = useState(false);
  const [optInMemory, setOptInMemory] = useState(false);
  const [saving, setSaving] = useState(false);
  const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export default function NewFoundationPage() {
  .split(",")
  .map((t) => t.trim())
  .filter(Boolean),
- optInRag,
+ optInSearch,
  optInMemory,
  }),
  });
@@ -72,8 +72,8 @@ export default function NewFoundationPage() {
  </div>
 
  <div className="flex flex-wrap items-center gap-2">
- <Button type="button" variant={optInRag ? "default" : "outline"} onClick={() => setOptInRag((v) => !v)}>
- {optInRag ? "Busca assistida: ligada" : "Busca assistida: desligada"}
+ <Button type="button" variant={optInSearch ? "default" : "outline"} onClick={() => setOptInRag((v) => !v)}>
+ {optInSearch ? "Busca assistida: ligada" : "Busca assistida: desligada"}
  </Button>
  <Button type="button" variant={optInMemory ? "default" : "outline"} onClick={() => setOptInMemory((v) => !v)}>
  {optInMemory ? "Memória: ativada" : "Memória: desativada"}

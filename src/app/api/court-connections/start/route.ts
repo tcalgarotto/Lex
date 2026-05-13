@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { getCourtConnectorDefinition } from "@/lib/court-connectors/registry";
 
 const Body = z.object({
   provider: z.nativeEnum(CourtConnectorType),
@@ -14,19 +15,22 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
 
   const isDataJud = parsed.data.provider === CourtConnectorType.DATAJUD_PUBLIC;
+  const definition = getCourtConnectorDefinition(parsed.data.provider);
+  const status = isDataJud ? CourtConnectorStatus.active : definition?.status ?? CourtConnectorStatus.requires_official_authorization;
+  const authType = isDataJud ? CourtConnectionAuthType.NONE : definition?.authType ?? CourtConnectionAuthType.OFFICIAL_TOKEN;
   const connection = await prisma.courtConnection.upsert({
     where: { workspaceId_provider: { workspaceId, provider: parsed.data.provider } },
     update: {
-      status: isDataJud ? CourtConnectorStatus.active : CourtConnectorStatus.requires_official_authorization,
-      authType: isDataJud ? CourtConnectionAuthType.NONE : CourtConnectionAuthType.OFFICIAL_TOKEN,
+      status,
+      authType,
       revokedAt: null,
       lastConnectedAt: isDataJud ? new Date() : null,
     },
     create: {
       workspaceId,
       provider: parsed.data.provider,
-      status: isDataJud ? CourtConnectorStatus.active : CourtConnectorStatus.requires_official_authorization,
-      authType: isDataJud ? CourtConnectionAuthType.NONE : CourtConnectionAuthType.OFFICIAL_TOKEN,
+      status,
+      authType,
       createdByUserId: user.id,
       lastConnectedAt: isDataJud ? new Date() : null,
     },
@@ -37,7 +41,7 @@ export async function POST(req: Request) {
       connectionId: connection.id,
       action: "start",
       status: connection.status,
-      metadataJson: { provider: connection.provider, officialOnly: !isDataJud },
+      metadataJson: { provider: connection.provider, officialOnly: !isDataJud, manualBridge: definition?.requiresHumanAction ?? false },
     },
   });
   return NextResponse.json({ connection });

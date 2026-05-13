@@ -147,20 +147,31 @@ enum CourtConnectorType {
   DATAJUD_PUBLIC
   ESCRITORIO_DIGITAL
   MNI
+  DOMICILIO_JUDICIAL
+  DJEN
+  OFFICIAL_GAZETTE
+  TRIBUNAL_PUBLIC_QUERY
   PJE
   ESAJ
   EPROC
   PROJUDI
   MANUAL_UPLOAD
+  MANUAL_PASTE
 }
 
 enum CourtConnectorStatus {
   active
+  available
   pending_credentials
+  requires_user_login
+  requires_certificate
   requires_official_authorization
+  public_read_only
+  manual_bridge
   unavailable
   planned
   disabled
+  blocked
 }
 
 enum CourtConnectionAuthType {
@@ -169,6 +180,31 @@ enum CourtConnectionAuthType {
   OFFICIAL_TOKEN
   CERTIFICATE_TOKEN
   MANUAL
+}
+
+enum OfficialCommunicationSource {
+  DOMICILIO_JUDICIAL
+  DJEN
+  ESCRITORIO_DIGITAL
+  OFFICIAL_GAZETTE
+  TRIBUNAL_PUBLIC_QUERY
+  MANUAL
+  OTHER_OFFICIAL
+}
+
+enum OfficialCommunicationType {
+  CITACAO
+  INTIMACAO
+  OFICIO
+  AUDIENCIA
+  PUBLICACAO
+  OUTRO
+}
+
+enum OfficialCommunicationStatus {
+  NEEDS_REVIEW
+  REVIEWED
+  DISCARDED
 }
 
 model User {
@@ -180,7 +216,6 @@ model User {
   updatedAt                 DateTime            @updatedAt
   memberships               Membership[]
   styleProfiles             StyleProfile[]
-  interviewTemplates        InterviewTemplate[]
   libraryFoundationsCreated LibraryFoundation[] @relation("LibraryFoundationCreatedBy")
   libraryFoundationsOwned   LibraryFoundation[] @relation("LibraryFoundationOwnerUser")
   officeMemoriesOwned       OfficeMemory[]      @relation("OfficeMemoryOwnerUser")
@@ -256,7 +291,7 @@ model Workspace {
   legalProcessAlerts       LegalProcessAlert[]
   courtConnections         CourtConnection[]
   courtConnectionAuditLogs CourtConnectionAuditLog[]
-  interviewTemplates       InterviewTemplate[]
+  officialCommunications   OfficialCommunication[]
   libraryFoundations       LibraryFoundation[]
   officeMemories           OfficeMemory[]
 }
@@ -285,7 +320,7 @@ model LibraryFoundation {
   contentMd   String                 @db.Text
   tags        String[]               @default([])
   sourceJson  Json?
-  optInRag    Boolean                @default(false)
+  optInSearch    Boolean                @default(false) @map("optInRag")
   optInMemory Boolean                @default(false)
   useAsModel  Boolean                @default(false)
   useAsStyle  Boolean                @default(false)
@@ -358,86 +393,88 @@ model Client {
 }
 
 model Process {
-  id             String                 @id @default(cuid())
-  workspaceId    String
-  clientId       String?
-  number         String
-  title          String?
-  vara           String?
-  tribunal       String?
-  observations   String?
-  tags           String[]               @default([])
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  workspace      Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  client         Client?                @relation(fields: [clientId], references: [id])
-  documents      Document[]
-  threads        ChatThread[]
-  pieces         LegalPiece[]
-  memories       MemoryEntry[]
-  timeline       ProcessTimelineEvent[]
-  legalProcesses LegalProcess[]
-  feedbacks      FeedbackEntry[]
+  id                     String                  @id @default(cuid())
+  workspaceId            String
+  clientId               String?
+  number                 String
+  title                  String?
+  vara                   String?
+  tribunal               String?
+  observations           String?
+  tags                   String[]                @default([])
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  workspace              Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client                 Client?                 @relation(fields: [clientId], references: [id])
+  documents              Document[]
+  threads                ChatThread[]
+  pieces                 LegalPiece[]
+  memories               MemoryEntry[]
+  timeline               ProcessTimelineEvent[]
+  legalProcesses         LegalProcess[]
+  feedbacks              FeedbackEntry[]
+  officialCommunications OfficialCommunication[]
   /**
    * Backref: Case.processId? aponta pra cá (1:1 opcional).
    */
-  case           Case?
+  case                   Case?
 
   @@index([workspaceId])
   @@index([workspaceId, number])
 }
 
 model Document {
-  id               String               @id @default(cuid())
-  workspaceId      String
-  processId        String?
+  id                     String                  @id @default(cuid())
+  workspaceId            String
+  processId              String?
   /**
    * Vínculo opcional ao Case (jornada centrada em caso). Coexiste com
    * `processId` (legado, /processos). Um documento pode estar standalone,
    * vinculado a um Process, vinculado a um Case, ou ambos.
    */
-  caseId           String?
+  caseId                 String?
   /**
    * Quem enviou o ficheiro (auditoria e documentos privados OFFICE_PRIVATE).
    * Catálogo global da plataforma: pode ser `null` (scripts para `lex-platform-catalog`).
    */
-  uploadedByUserId String?
+  uploadedByUserId       String?
   /**
    * Prateleira na biblioteca: catálogo partilhado vs. privado do escritório.
    */
-  libraryShelf     DocumentLibraryShelf @default(OFFICE_PRIVATE)
-  originalName     String
-  mimeType         String
-  sizeBytes        Int
-  storagePath      String
-  status           DocumentStatus       @default(UPLOADED)
-  errorMessage     String?
+  libraryShelf           DocumentLibraryShelf    @default(OFFICE_PRIVATE)
+  originalName           String
+  mimeType               String
+  sizeBytes              Int
+  storagePath            String
+  status                 DocumentStatus          @default(UPLOADED)
+  errorMessage           String?
   /**
    * Texto extraído (para viewer e debug); pode ser truncado.
    */
-  extractedText    String?              @db.Text
-  extractedAt      DateTime?
+  extractedText          String?                 @db.Text
+  extractedAt            DateTime?
   /**
    * Progresso aproximado 0..1 para UX (pipeline async).
    */
-  progress         Float                @default(0)
-  totalChunks      Int?
-  processedChunks  Int?
-  indexedAt        DateTime?
+  progress               Float                   @default(0)
+  totalChunks            Int?
+  processedChunks        Int?
+  indexedAt              DateTime?
   /**
    * F11 — Soft delete: arquivar/restaurar + excluir definitivo.
    * - archivedAt: ocultar da UI padrão, mantendo histórico.
    * - deletedAt: marcação para exclusão definitiva (API remove storage + chunks).
    */
-  archivedAt       DateTime?
-  deletedAt        DateTime?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  workspace        Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  process          Process?             @relation(fields: [processId], references: [id])
-  case             Case?                @relation(fields: [caseId], references: [id])
-  uploadedBy       User?                @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
-  chunks           DocumentChunk[]
+  archivedAt             DateTime?
+  deletedAt              DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  workspace              Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process                Process?                @relation(fields: [processId], references: [id])
+  case                   Case?                   @relation(fields: [caseId], references: [id])
+  uploadedBy             User?                   @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+  chunks                 DocumentChunk[]
+  officialCommunications OfficialCommunication[]
 
   @@index([workspaceId])
   @@index([processId])
@@ -640,12 +677,13 @@ model LegalProcess {
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
 
-  workspace Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  case      Case?                  @relation(fields: [caseId], references: [id], onDelete: SetNull)
-  process   Process?               @relation(fields: [processId], references: [id], onDelete: SetNull)
-  movements LegalProcessMovement[]
-  syncLogs  LegalProcessSyncLog[]
-  alerts    LegalProcessAlert[]
+  workspace              Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  case                   Case?                   @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  process                Process?                @relation(fields: [processId], references: [id], onDelete: SetNull)
+  movements              LegalProcessMovement[]
+  syncLogs               LegalProcessSyncLog[]
+  alerts                 LegalProcessAlert[]
+  officialCommunications OfficialCommunication[]
 
   @@unique([workspaceId, cnj])
   @@index([workspaceId, caseId])
@@ -762,6 +800,41 @@ model CourtConnectionAuditLog {
 
   @@index([workspaceId, createdAt])
   @@index([connectionId, createdAt])
+}
+
+model OfficialCommunication {
+  id                String                      @id @default(cuid())
+  workspaceId       String
+  legalProcessId    String?
+  processId         String?
+  caseId            String?
+  documentId        String?
+  source            OfficialCommunicationSource
+  communicationType OfficialCommunicationType   @default(OUTRO)
+  receivedAt        DateTime?
+  availableAt       DateTime?
+  readAt            DateTime?
+  dueReviewAt       DateTime?
+  status            OfficialCommunicationStatus @default(NEEDS_REVIEW)
+  title             String
+  description       String?                     @db.Text
+  rawText           String?                     @db.Text
+  createdByUserId   String?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  legalProcess LegalProcess? @relation(fields: [legalProcessId], references: [id], onDelete: SetNull)
+  process      Process?      @relation(fields: [processId], references: [id], onDelete: SetNull)
+  case         Case?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  document     Document?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status, dueReviewAt])
+  @@index([workspaceId, source, createdAt])
+  @@index([legalProcessId])
+  @@index([processId])
+  @@index([caseId])
+  @@index([documentId])
 }
 
 model CostLedgerEntry {
@@ -1342,23 +1415,24 @@ model Case {
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
-  workspace      Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  process        Process?            @relation(fields: [processId], references: [id])
-  facts          CaseFact[]
-  parties        CaseParty[]
-  requests       CaseRequest[]
-  risks          CaseRisk[]
-  drafts         CaseDraft[]
-  reviews        CaseReview[]
-  timeline       CaseTimelineEvent[]
-  comments       CaseComment[]
-  annotations    CaseAnnotation[]
-  approvals      DraftApproval[]
-  alerts         CaseAlert[]
-  legalProcesses LegalProcess[]
-  documents      Document[]
-  legalSources   CaseLegalSource[]
-  officeMemories OfficeMemory[]
+  workspace              Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  process                Process?                @relation(fields: [processId], references: [id])
+  facts                  CaseFact[]
+  parties                CaseParty[]
+  requests               CaseRequest[]
+  risks                  CaseRisk[]
+  drafts                 CaseDraft[]
+  reviews                CaseReview[]
+  timeline               CaseTimelineEvent[]
+  comments               CaseComment[]
+  annotations            CaseAnnotation[]
+  approvals              DraftApproval[]
+  alerts                 CaseAlert[]
+  legalProcesses         LegalProcess[]
+  documents              Document[]
+  legalSources           CaseLegalSource[]
+  officialCommunications OfficialCommunication[]
+  officeMemories         OfficeMemory[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])
@@ -1377,7 +1451,7 @@ model OfficeMemory {
   contentMd   String            @db.Text
   useAsModel  Boolean           @default(false)
   useAsStyle  Boolean           @default(false)
-  optInRag    Boolean           @default(false)
+  optInSearch    Boolean           @default(false) @map("optInRag")
   private     Boolean           @default(false)
   originType  String?
   originId    String?
@@ -1764,36 +1838,6 @@ model CaseAlert {
   @@index([workspaceId, status, severity])
   @@index([caseId, status])
   @@index([workspaceId, kind, createdAt])
-}
-
-/**
- * F6 — Roteiros de entrevista (templates do escritório/usuário).
- * Guarda a estrutura de perguntas/sections em JSON para permitir
- * criar/editar/reordenar sem inflar o schema com tabelas auxiliares.
- */
-enum InterviewTemplateScope {
-  USER
-  WORKSPACE
-}
-
-model InterviewTemplate {
-  id          String                 @id @default(cuid())
-  workspaceId String
-  scope       InterviewTemplateScope @default(WORKSPACE)
-  ownerUserId String?
-  title       String
-  description String?                @db.Text
-  domain      String?
-  schemaJson  Json
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  owner     User?     @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
-
-  @@index([workspaceId, scope, updatedAt])
-  @@index([workspaceId, domain])
-  @@index([ownerUserId])
 }
 
 enum IntegrationProvider {

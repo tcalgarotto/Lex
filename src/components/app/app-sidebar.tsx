@@ -7,7 +7,6 @@ import {
   Briefcase,
   ChevronDown,
   ChevronRight,
-  ClipboardList,
   FileText,
   Library,
   FolderKanban,
@@ -47,7 +46,6 @@ const CORE_NAV: NavItem[] = [
 
 const WORKSPACE_ADMIN_NAV: NavItem[] = [
   { href: "/settings/team", label: "Equipe", icon: Users },
-  { href: "/settings/roteiros", label: "Roteiros de entrevista", icon: ClipboardList },
 ];
 
 function isAdmin(role: MembershipRole | undefined): boolean {

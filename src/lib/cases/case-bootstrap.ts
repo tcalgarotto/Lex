@@ -16,15 +16,6 @@ import type { PinnedJurisprudenceListItem } from "@/lib/cases/drafting/drafting-
 import { loadCaseChecklistStateForBootstrap, type CaseChecklistStatePayload } from "@/lib/cases/case-checklist-state";
 import { listPinnedFoundations } from "@/lib/cases/case-brain/pinned-foundations";
 
-export type InterviewTemplateSummary = {
-  id: string;
-  scope: "USER" | "WORKSPACE";
-  title: string;
-  description: string | null;
-  domain: string | null;
-  updatedAt: string;
-};
-
 export type CaseDraftingBootstrapSlice = {
   casePartiesFacts: {
     parties: { role: string }[];
@@ -49,7 +40,6 @@ export type CaseBootstrapPayload = {
     approvals: DraftApproval[];
   };
   checklist: CaseChecklistStatePayload;
-  interviewTemplates: InterviewTemplateSummary[];
   drafting: CaseDraftingBootstrapSlice;
 };
 
@@ -77,7 +67,7 @@ function strategySliceFromMetadata(metadataJson: unknown, juris: PinnedJurisprud
 export async function gatherCaseBootstrap(
   workspaceId: string,
   caseId: string,
-  userId: string,
+  _userId: string,
 ): Promise<CaseBootstrapPayload | null> {
   const gate = await prisma.case.findFirst({
     where: { id: caseId, workspaceId },
@@ -85,70 +75,44 @@ export async function gatherCaseBootstrap(
   });
   if (!gate) return null;
 
-  const [
-    comments,
-    annotations,
-    approvals,
-    checklist,
-    interviewTemplates,
-    caseRow,
-    legalSources,
-    drafts,
-    jurisprudenceCandidates,
-    brainPins,
-  ] = await Promise.all([
-    prisma.caseComment.findMany({
-      where: { caseId },
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    }),
-    prisma.caseAnnotation.findMany({
-      where: { caseId },
-      orderBy: { createdAt: "desc" },
-      take: 500,
-    }),
-    prisma.draftApproval.findMany({
-      where: { caseId },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    loadCaseChecklistStateForBootstrap(workspaceId, caseId, null),
-    prisma.interviewTemplate.findMany({
-      where: {
-        workspaceId,
-        OR: [{ scope: "WORKSPACE" }, { scope: "USER", ownerUserId: userId }],
-      },
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        scope: true,
-        title: true,
-        description: true,
-        domain: true,
-        updatedAt: true,
-      },
-      take: 50,
-    }),
-    prisma.case.findFirst({
-      where: { id: caseId, workspaceId },
-      select: {
-        metadataJson: true,
-        parties: { select: { role: true } },
-        facts: { select: { id: true }, take: 500 },
-      },
-    }),
-    prisma.caseLegalSource.findMany({
-      where: { caseId },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
-    prisma.caseDraft.findMany({
-      where: { caseId },
-      orderBy: { version: "desc" },
-    }),
-    listPinnedJurisprudenceCandidates(workspaceId, caseId),
-    listPinnedFoundations(caseId, workspaceId),
-  ]);
+  const [comments, annotations, approvals, checklist, caseRow, legalSources, drafts, jurisprudenceCandidates, brainPins] =
+    await Promise.all([
+      prisma.caseComment.findMany({
+        where: { caseId },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      }),
+      prisma.caseAnnotation.findMany({
+        where: { caseId },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+      }),
+      prisma.draftApproval.findMany({
+        where: { caseId },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      loadCaseChecklistStateForBootstrap(workspaceId, caseId, null),
+      prisma.case.findFirst({
+        where: { id: caseId, workspaceId },
+        select: {
+          metadataJson: true,
+          parties: { select: { role: true } },
+          facts: { select: { id: true }, take: 500 },
+        },
+      }),
+      prisma.caseLegalSource.findMany({
+        where: { caseId },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      prisma.caseDraft.findMany({
+        where: { caseId },
+        orderBy: { version: "desc" },
+      }),
+      listPinnedJurisprudenceCandidates(workspaceId, caseId),
+      listPinnedFoundations(caseId, workspaceId),
+    ]);
 
   if (!checklist || !caseRow) return null;
 
@@ -181,14 +145,6 @@ export async function gatherCaseBootstrap(
   return {
     collab: { comments, annotations, approvals },
     checklist,
-    interviewTemplates: interviewTemplates.map((t) => ({
-      id: t.id,
-      scope: t.scope,
-      title: t.title,
-      description: t.description,
-      domain: t.domain,
-      updatedAt: t.updatedAt.toISOString(),
-    })),
     drafting,
   };
 }

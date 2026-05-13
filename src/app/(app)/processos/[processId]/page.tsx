@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CourtConnectorType } from "@prisma/client";
 import { SetPageTitle } from "@/components/app/set-page-title";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -21,9 +22,12 @@ import {
  createMemoryEntryAction,
  addTimelineEventAction,
 syncLegalProcessAction,
+createOfficialCommunicationAction,
 } from "@/app/(app)/processos/actions";
 import { computeProcessHealth } from "@/lib/legal-processes/process-health";
 import { buildProcessCopilotBrief } from "@/lib/legal-processes/process-copilot";
+import { getCourtConnectorDefinitions } from "@/lib/court-connectors/registry";
+import { buildCourtPublicQueryUrl, buildDataJudOfficialLink } from "@/lib/court-links";
 
 export default async function ProcessDetailPage({
  params,
@@ -57,6 +61,18 @@ export default async function ProcessDetailPage({
  alerts: { orderBy: { createdAt: "desc" }, take: 10 },
  syncLogs: { orderBy: { startedAt: "desc" }, take: 5 },
  },
+ });
+
+ const officialCommunications = await prisma.officialCommunication.findMany({
+ where: {
+ workspaceId,
+ OR: [
+ { processId: proc.id },
+ ...(legalProcess ? [{ legalProcessId: legalProcess.id }] : []),
+ ],
+ },
+ orderBy: { createdAt: "desc" },
+ take: 10,
  });
 
  const [dataJudHealth, copilotBrief] = legalProcess
@@ -111,6 +127,24 @@ export default async function ProcessDetailPage({
  ]
  .filter(Boolean)
  .join(" · ");
+ const officialSourceProviderSet = new Set<CourtConnectorType>([
+ CourtConnectorType.DATAJUD_PUBLIC,
+ CourtConnectorType.TRIBUNAL_PUBLIC_QUERY,
+ CourtConnectorType.ESCRITORIO_DIGITAL,
+ CourtConnectorType.DOMICILIO_JUDICIAL,
+ CourtConnectorType.DJEN,
+ CourtConnectorType.MANUAL_UPLOAD,
+ CourtConnectorType.MANUAL_PASTE,
+ ]);
+ const officialSourceCards = getCourtConnectorDefinitions().filter((connector) =>
+ officialSourceProviderSet.has(connector.provider),
+ );
+ const courtLink = buildCourtPublicQueryUrl({
+ cnj: proc.number,
+ tribunalAcronym: legalProcess?.tribunalAcronym ?? proc.tribunal,
+ system: legalProcess?.sistemaNome ?? null,
+ });
+ const dataJudLink = buildDataJudOfficialLink();
 
  return (
  <>
@@ -198,6 +232,7 @@ export default async function ProcessDetailPage({
  <TabsTrigger value="chat">Chat IA</TabsTrigger>
  <TabsTrigger value="docs">Documentos</TabsTrigger>
  <TabsTrigger value="datajud">DataJud</TabsTrigger>
+<TabsTrigger value="official-sources">Fontes oficiais</TabsTrigger>
  <TabsTrigger value="timeline">Linha do tempo</TabsTrigger>
  <TabsTrigger value="memory">Memória</TabsTrigger>
  <TabsTrigger value="pecas">Peças</TabsTrigger>
@@ -363,6 +398,143 @@ export default async function ProcessDetailPage({
  </Card>
  )}
  </TabsContent>
+
+<TabsContent value="official-sources" className="space-y-4">
+<Card>
+<CardHeader>
+<CardTitle className="text-base">Consultar na fonte oficial</CardTitle>
+<p className="text-sm text-muted-foreground">
+Abra fontes oficiais e registre no Lex apenas o que você conferiu. O Lex não armazena senha, PIN, certificado ou sessão de tribunal.
+</p>
+</CardHeader>
+<CardContent className="grid gap-3 md:grid-cols-2">
+<div className="rounded-xl border border-[color:var(--border-default)] p-3 text-sm">
+<p className="font-medium">{dataJudLink.label}</p>
+<p className="mt-1 text-xs text-muted-foreground">{dataJudLink.instruction}</p>
+<Button asChild size="sm" variant="outline" className="mt-3">
+<Link href={dataJudLink.url} target="_blank" rel="noreferrer">Abrir DataJud</Link>
+</Button>
+</div>
+<div className="rounded-xl border border-[color:var(--border-default)] p-3 text-sm">
+<p className="font-medium">{courtLink.label}</p>
+<p className="mt-1 text-xs text-muted-foreground">{courtLink.instruction}</p>
+{courtLink.url ? (
+<Button asChild size="sm" variant="outline" className="mt-3">
+<Link href={courtLink.url} target="_blank" rel="noreferrer">Abrir fonte oficial</Link>
+</Button>
+) : null}
+</div>
+</CardContent>
+</Card>
+
+<div className="grid gap-3 md:grid-cols-2">
+{officialSourceCards.map((connector) => (
+<Card key={connector.provider}>
+<CardHeader>
+<div className="flex items-start justify-between gap-3">
+<div>
+<CardTitle className="text-base">{connector.shortName}</CardTitle>
+<p className="mt-1 text-sm text-muted-foreground">{connector.description}</p>
+</div>
+<Badge variant="outline">{connector.status === "active" ? "Ativo" : connector.status === "manual_bridge" ? "Abertura assistida" : connector.status === "public_read_only" ? "Público" : "Oficial-only"}</Badge>
+</div>
+</CardHeader>
+<CardContent className="space-y-3 text-sm text-muted-foreground">
+<p>{connector.delivers[0]}</p>
+<p className="text-xs">Limite: {connector.limitations[0]}</p>
+{connector.primaryActionUrl ? (
+<Button asChild size="sm" variant="outline">
+<Link href={connector.primaryActionUrl} target="_blank" rel="noreferrer">{connector.primaryActionLabel}</Link>
+</Button>
+) : null}
+</CardContent>
+</Card>
+))}
+</div>
+
+<Card>
+<CardHeader>
+<CardTitle className="text-base">Importar da fonte oficial</CardTitle>
+<p className="text-sm text-muted-foreground">
+Cole uma intimação, publicação ou movimentação obtida em fonte oficial. O registro ficará marcado para revisão humana e não calcula prazo final automaticamente.
+</p>
+</CardHeader>
+<CardContent>
+<form action={createOfficialCommunicationAction} className="grid gap-4 md:grid-cols-2">
+<input type="hidden" name="processId" value={proc.id} />
+{legalProcess ? <input type="hidden" name="legalProcessId" value={legalProcess.id} /> : null}
+<div className="space-y-1">
+<Label htmlFor="official-source">Fonte</Label>
+<select id="official-source" name="source" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+<option value="ESCRITORIO_DIGITAL">Escritório Digital</option>
+<option value="DOMICILIO_JUDICIAL">Domicílio Judicial</option>
+<option value="DJEN">DJEN</option>
+<option value="OFFICIAL_GAZETTE">Diário oficial</option>
+<option value="TRIBUNAL_PUBLIC_QUERY">Tribunal</option>
+<option value="MANUAL">Outra fonte oficial</option>
+</select>
+</div>
+<div className="space-y-1">
+<Label htmlFor="official-type">Tipo</Label>
+<select id="official-type" name="communicationType" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+<option value="INTIMACAO">Intimação</option>
+<option value="CITACAO">Citação</option>
+<option value="OFICIO">Ofício</option>
+<option value="AUDIENCIA">Audiência</option>
+<option value="PUBLICACAO">Publicação</option>
+<option value="OUTRO">Outro</option>
+</select>
+</div>
+<div className="space-y-1">
+<Label htmlFor="official-received">Recebido/publicado em</Label>
+<Input id="official-received" name="receivedAt" type="date" />
+</div>
+<div className="space-y-1">
+<Label htmlFor="official-review">Revisar até</Label>
+<Input id="official-review" name="dueReviewAt" type="date" />
+</div>
+<div className="space-y-1 md:col-span-2">
+<Label htmlFor="official-title">Título</Label>
+<Input id="official-title" name="title" required placeholder="Ex.: Intimação recebida no Domicílio Judicial" />
+</div>
+<div className="space-y-1 md:col-span-2">
+<Label htmlFor="official-description">Resumo</Label>
+<Textarea id="official-description" name="description" rows={2} />
+</div>
+<div className="space-y-1 md:col-span-2">
+<Label htmlFor="official-raw">Texto colado</Label>
+<Textarea id="official-raw" name="rawText" rows={5} />
+</div>
+<div className="md:col-span-2">
+<Button type="submit">Registrar e criar revisão</Button>
+</div>
+</form>
+</CardContent>
+</Card>
+
+<Card>
+<CardHeader>
+<CardTitle className="text-base">Registros importados</CardTitle>
+</CardHeader>
+<CardContent className="space-y-3">
+{officialCommunications.length === 0 ? (
+<p className="text-sm text-muted-foreground">Nenhuma comunicação oficial registrada manualmente para este processo.</p>
+) : null}
+{officialCommunications.map((item) => (
+<div key={item.id} className="rounded-xl border border-[color:var(--border-default)] p-3 text-sm">
+<div className="flex flex-wrap items-center justify-between gap-2">
+<p className="font-medium">{item.title}</p>
+<Badge variant="outline">{item.status}</Badge>
+</div>
+<p className="mt-1 text-xs text-muted-foreground">
+{item.source} · {item.communicationType} · revisão humana obrigatória
+</p>
+{item.description ? <p className="mt-2 text-muted-foreground">{item.description}</p> : null}
+</div>
+))}
+</CardContent>
+</Card>
+</TabsContent>
 
  <TabsContent value="timeline" className="space-y-4">
  <Card>

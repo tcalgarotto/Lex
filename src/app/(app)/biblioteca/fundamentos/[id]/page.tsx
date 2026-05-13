@@ -15,14 +15,14 @@ type Foundation = {
  title: string;
  contentMd: string;
  tags: string[];
- optInRag: boolean;
+ optInSearch: boolean;
  optInMemory: boolean;
  useAsModel: boolean;
  useAsStyle: boolean;
  archivedAt: string | null;
 };
 
-type Patch = Partial<Pick<Foundation, "title" | "contentMd" | "tags" | "optInRag" | "optInMemory" | "useAsModel" | "useAsStyle">> & {
+type Patch = Partial<Pick<Foundation, "title" | "contentMd" | "tags" | "optInSearch" | "optInMemory" | "useAsModel" | "useAsStyle">> & {
  archived?: boolean;
 };
 
@@ -131,7 +131,7 @@ export default function FoundationDetailPage() {
  <div className="space-y-1">
  <h1 className="text-2xl font-semibold">{f.title}</h1>
  <div className="flex flex-wrap items-center gap-2">
- {f.optInRag ? <Badge>Busca assistida</Badge> : <Badge variant="outline">Busca assistida: desligada</Badge>}
+ {f.optInSearch ? <Badge>Busca assistida</Badge> : <Badge variant="outline">Busca assistida: desligada</Badge>}
  {f.optInMemory ? <Badge variant="secondary">Memória</Badge> : <Badge variant="outline">Memória: desativada</Badge>}
  {f.archivedAt ? <Badge variant="secondary">Arquivado</Badge> : null}
  </div>
@@ -176,15 +176,15 @@ export default function FoundationDetailPage() {
  <div className="flex flex-wrap items-center gap-2">
  <Button
  type="button"
- variant={f.optInRag ? "default" : "outline"}
+ variant={f.optInSearch ? "default" : "outline"}
  onClick={async () => {
- const next = !f.optInRag;
- setF({ ...f, optInRag: next });
- await save({ optInRag: next });
+ const next = !f.optInSearch;
+ setF({ ...f, optInSearch: next });
+ await save({ optInSearch: next });
  }}
  disabled={saving}
  >
- {f.optInRag ? "Busca assistida: ligada" : "Busca assistida: desligada"}
+ {f.optInSearch ? "Busca assistida: ligada" : "Busca assistida: desligada"}
  </Button>
  <Button
  type="button"

@@ -65,7 +65,7 @@ describe("office memory (multi-tenant)", () => {
           title: "Mem A",
           contentMd: "Texto mínimo.",
           scope: "WORKSPACE",
-          optInRag: false,
+          optInSearch: false,
         }),
       }),
     );

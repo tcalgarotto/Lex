@@ -54,7 +54,7 @@ describe("library foundations (multi-tenant)", () => {
           title: "Fundamento A",
           contentMd: "Conteúdo suficientemente longo para teste.",
           tags: ["saúde"],
-          optInRag: false,
+          optInSearch: false,
           optInMemory: true,
         }),
       }),

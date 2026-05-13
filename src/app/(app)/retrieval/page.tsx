@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 
 /**
- * Rota legada `/retrieval` redireciona para o nome amigável `/pesquisa-juridica`.
- * `/retrieval/explain` continua funcional como modo admin/debug (acesso direto via URL
- * ou via item "Retrieval (debug)" no menu Avançado).
+ * Rota legada `/retrieval` redireciona para `/pesquisa-juridica`.
  */
 export default function RetrievalRedirect() {
  redirect("/pesquisa-juridica");

@@ -7,13 +7,13 @@ import { extractRelevantSnippet } from "@/lib/retrieval/legal/snippet";
 import { getCorpusManifest } from "@/lib/corpus/manifest";
 import { getLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/lex-rag-backend";
+import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/corpus-search-flags";
 
 /**
  * Endpoint "amigável" da Pesquisa jurídica do usuário final.
  *
  * Camada legislação via pesquisa assistida (DeepSeek); demais camadas em
- * Postgres. Para trilha técnica/admin, use `/api/retrieval/explain`.
+ * Postgres. Modo técnico de auditoria do motor de busca foi descontinuado nesta fase.
  */
 
 const log = getLogger("lex.api.retrieval.search");
@@ -116,7 +116,7 @@ export async function GET(req: Request) {
               title: true,
               tags: true,
               updatedAt: true,
-              optInRag: true,
+              optInSearch: true,
               useAsModel: true,
               useAsStyle: true,
             },
@@ -192,7 +192,7 @@ export async function GET(req: Request) {
           title: f.title,
           tags: f.tags,
           updatedAt: f.updatedAt.toISOString(),
-          optInRag: f.optInRag,
+          optInSearch: f.optInSearch,
           useAsModel: f.useAsModel,
           useAsStyle: f.useAsStyle,
           href: `/biblioteca/fundamentos/${f.id}`,

@@ -3,7 +3,6 @@ import { HoverPrefetchLink } from "@/components/navigation/hover-prefetch-link";
 import {
   Activity,
   AlertTriangle,
-  ArrowRight,
   Briefcase,
   Calendar,
   FileText,
@@ -17,7 +16,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
-  BriefingActionDiscreteOrigin,
   BriefingActionEisenhowerBucket,
   BriefingActionItem,
   MorningBriefingPayload,
@@ -68,12 +66,38 @@ function salutation(): string {
 
 function ActionIcon({ type }: { type: BriefingActionItem["type"] }) {
   const cls =
-    "flex size-8 shrink-0 items-center justify-center rounded-[var(--r-md)] bg-[color:var(--surface-overlay)] text-[color:var(--text-secondary)]";
-  if (type === "documento") return <div className={cls}><FileText className="size-[15px]" aria-hidden /></div>;
-  if (type === "peça") return <div className={cls}><Scale className="size-[15px]" aria-hidden /></div>;
-  if (type === "processo") return <div className={cls}><Link2 className="size-[15px]" aria-hidden /></div>;
-  if (type === "pesquisa") return <div className={cls}><Search className="size-[15px]" aria-hidden /></div>;
-  return <div className={cls}><Briefcase className="size-[15px]" aria-hidden /></div>;
+    "flex size-11 shrink-0 items-center justify-center rounded-[var(--r-md)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay-strong)] text-[color:var(--text-primary)]";
+  const iconCls = "size-[22px] shrink-0";
+  const stroke = 2.25;
+  if (type === "documento")
+    return (
+      <div className={cls}>
+        <FileText className={iconCls} strokeWidth={stroke} aria-hidden />
+      </div>
+    );
+  if (type === "peça")
+    return (
+      <div className={cls}>
+        <Scale className={iconCls} strokeWidth={stroke} aria-hidden />
+      </div>
+    );
+  if (type === "processo")
+    return (
+      <div className={cls}>
+        <Link2 className={iconCls} strokeWidth={stroke} aria-hidden />
+      </div>
+    );
+  if (type === "pesquisa")
+    return (
+      <div className={cls}>
+        <Search className={iconCls} strokeWidth={stroke} aria-hidden />
+      </div>
+    );
+  return (
+    <div className={cls}>
+      <Briefcase className={iconCls} strokeWidth={stroke} aria-hidden />
+    </div>
+  );
 }
 
 function priorityStyles(p: BriefingActionItem["priority"]): string {
@@ -198,13 +222,6 @@ export function MorningBriefingHeaderShell(
   );
 }
 
-function discreteOriginLabel(origin: BriefingActionDiscreteOrigin | undefined): string {
-  if (origin === "aguardando_cliente") return "Aguardando cliente";
-  if (origin === "aguardando_responsavel") return "Aguardando responsável";
-  if (origin === "lex_sugerido") return "Sugerido pelo Lex";
-  return "Sugerido pelo Lex";
-}
-
 /** Referência: metodologias por trás da home estão descritas em docs (sem jargão na UI). */
 function WeeklyPlanningBlock({ className, id }: { className?: string; id?: string }) {
   return (
@@ -316,9 +333,6 @@ function BriefingActionRows({ items }: { items: BriefingActionItem[] }) {
             <ActionIcon type={item.type} />
             <div className="min-w-0">
               <p className="text-[13px] font-medium text-[color:var(--text-primary)]">{item.title}</p>
-              {item.discreteOrigin ? (
-                <p className="mt-0.5 text-[10px] text-[color:var(--text-muted)]">{discreteOriginLabel(item.discreteOrigin)}</p>
-              ) : null}
               <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Motivo</p>
               <p className="mt-0.5 text-xs leading-relaxed text-[color:var(--text-secondary)]">{item.reason}</p>
               {item.statusHint ? <p className="mt-1 text-[10.5px] text-[color:var(--text-muted)]">{item.statusHint}</p> : null}
@@ -331,7 +345,7 @@ function BriefingActionRows({ items }: { items: BriefingActionItem[] }) {
           </div>
           <Button
             size="sm"
-            className="h-9 w-full max-w-[14rem] shrink-0 justify-center self-start sm:w-56 sm:self-center"
+            className="h-9 w-40 max-w-full shrink-0 justify-center self-start px-2 text-xs leading-tight sm:self-center"
             asChild
           >
             <HoverPrefetchLink href={item.href}>{item.cta}</HoverPrefetchLink>
@@ -431,7 +445,7 @@ export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPay
               {briefingActionsOverflow > 0 ? (
                 <div className="flex justify-end border-t border-[color:var(--border-subtle)] pt-3">
                   <HoverPrefetchLink href="/cases" className="text-xs font-medium text-violet-400 hover:text-violet-300">
-                    Ver mais na lista de casos (+{briefingActionsOverflow} na fila completa)
+                    Ver mais na lista de casos
                   </HoverPrefetchLink>
                 </div>
               ) : null}
@@ -444,11 +458,8 @@ export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPay
         <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
           <Briefcase className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
           <h2 className="flex-1 text-[13.5px] font-medium">{DASHBOARD_HOME_UI_COPY.casosPorFluxo}</h2>
-          <HoverPrefetchLink
-            href="/cases"
-            className="flex items-center gap-0.5 text-xs font-medium text-violet-400 hover:text-violet-300"
-          >
-            Ver todos <ArrowRight className="size-3.5" aria-hidden />
+          <HoverPrefetchLink href="/cases" className="text-xs font-medium text-violet-400 hover:text-violet-300">
+            Ver todos
           </HoverPrefetchLink>
         </div>
         <ResumeCasesFlow rows={resumeCases} />
@@ -659,7 +670,7 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
               </p>
             </div>
           </div>
-          <span className="inline-flex h-8 w-44 shrink-0 items-center justify-center rounded-md border border-violet-500/20 bg-violet-500/10 text-xs font-medium text-violet-300 group-hover:border-violet-500/35 group-hover:bg-violet-500/15">
+          <span className="inline-flex h-8 w-40 shrink-0 items-center justify-center rounded-md border border-violet-500/20 bg-violet-500/10 text-xs font-medium text-violet-300 group-hover:border-violet-500/35 group-hover:bg-violet-500/15">
             Organizar agora
           </span>
         </HoverPrefetchLink>
@@ -686,7 +697,7 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
               <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">Próxima ação: {row.nextActionLabel}</p>
             </div>
           </div>
-          <span className="inline-flex h-8 w-44 shrink-0 items-center justify-center rounded-md border border-violet-500/20 bg-violet-500/10 text-xs font-medium text-violet-300 group-hover:border-violet-500/35 group-hover:bg-violet-500/15">
+          <span className="inline-flex h-8 w-40 shrink-0 items-center justify-center rounded-md border border-violet-500/20 bg-violet-500/10 text-xs font-medium text-violet-300 group-hover:border-violet-500/35 group-hover:bg-violet-500/15">
             Continuar
           </span>
         </HoverPrefetchLink>

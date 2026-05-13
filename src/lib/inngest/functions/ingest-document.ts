@@ -68,7 +68,7 @@ export const ingestDocument = inngest.createFunction(
 
     const ingestMode = await step.run("resolve-ingest-mode", async () => {
       const { caseDocumentAllowsSemanticIndex } = await import(
-        "@/lib/cases/case-brain/document-rag-policy"
+        "@/lib/cases/case-brain/document-semantic-index-policy"
       );
       if (!doc.caseId) return "full" as const;
       const allow = await caseDocumentAllowsSemanticIndex(doc.caseId, doc.id);

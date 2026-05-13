@@ -12,7 +12,7 @@
  * que persiste e dispara `lex/case.brain` (sem espera bloqueante na UI).
  *
  * A lista "Próximas perguntas para a cliente" é gerada do backend via
- * `missingFields` e tem botão "Copiar roteiro" para WhatsApp/telefone.
+ * `missingFields` e tem botão para copiar o texto (WhatsApp/telefone).
  */
 
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -36,15 +36,6 @@ import type {
 } from "@/lib/cases/checklists/registry";
 import { listChecklistTemplates } from "@/lib/cases/checklists/registry";
 import { useOptionalCaseBootstrap } from "@/components/cases/case-bootstrap-context";
-
-type InterviewTemplateListItem = {
- id: string;
- scope: "USER" | "WORKSPACE";
- title: string;
- description: string | null;
- domain: string | null;
- updatedAt: string;
-};
 
 type ChecklistApiResponse = {
  template: ChecklistTemplate | null;
@@ -82,9 +73,6 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
   const [savedAt, setSavedAt] = useState<string | null>(mergedInitial?.answeredAt ?? null);
   const [nextAction, setNextAction] = useState<string | null>(null);
   const templates = useMemo(() => listChecklistTemplates(), []);
-  const [savedTemplates, setSavedTemplates] = useState<InterviewTemplateListItem[] | null>(() =>
-    boot?.payload.interviewTemplates ?? null,
-  );
 
   useEffect(() => {
     if (initial) return;
@@ -109,14 +97,6 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
       .catch((e) => setErr((e as Error).message))
       .finally(() => setLoading(false));
   }, [caseId, initial, boot?.payload.checklist, boot?.version]);
-
-  useEffect(() => {
-    if (boot?.payload.interviewTemplates) return;
-    fetch("/api/interview-templates")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`falha ${r.status}`))))
-      .then((j: { templates: InterviewTemplateListItem[] }) => setSavedTemplates(j.templates ?? []))
-      .catch(() => setSavedTemplates([]));
-  }, [boot?.payload.interviewTemplates]);
 
  const template = data?.template ?? null;
  const missingFields = useMemo(() => {
@@ -147,7 +127,7 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  function copyScript() {
  if (missingFields.length === 0) return;
  const lines = missingFields.map((f, i) => `${i + 1}. ${f.label}${f.helpText ? ` (${f.helpText})` : ""}`);
- const head = `Roteiro de perguntas para a cliente — ${template?.label ?? ""}\n\n`;
+ const head = `Perguntas para a cliente — ${template?.label ?? ""}\n\n`;
  void navigator.clipboard.writeText(head + lines.join("\n"));
  }
 
@@ -175,21 +155,18 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
 
  async function changeTemplate(templateId: string) {
  try {
- const staticTpl = templates.find((t) => t.id === templateId) ?? null;
- let resolved: ChecklistTemplate | null = staticTpl;
+ const resolved = templates.find((t) => t.id === templateId) ?? null;
  if (!resolved) {
- const j = (await fetch(
- `/api/cases/${caseId}/checklist?templateId=${encodeURIComponent(templateId)}`,
- ).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`falha ${r.status}`))))) as ChecklistApiResponse;
- resolved = j.template ?? null;
+ setErr("Modelo de entrevista não encontrado.");
+ return;
  }
 
  setData((prev) => {
  if (!prev) return prev;
- return { ...prev, template: resolved ?? prev.template, suggestedTemplate: false };
+ return { ...prev, template: resolved, suggestedTemplate: false };
  });
  setAnswers({});
- setOpenSections(new Set(resolved?.sections.map((s) => s.id) ?? []));
+ setOpenSections(new Set(resolved.sections.map((s) => s.id)));
  setSavedAt(null);
  setNextAction(null);
  } catch (e) {
@@ -256,44 +233,15 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  <Dialog>
  <DialogTrigger asChild>
  <Button type="button" size="sm" variant="outline">
- Trocar roteiro
+ Trocar modelo
  </Button>
  </DialogTrigger>
  <DialogContent className="max-w-xl">
  <DialogHeader>
- <DialogTitle>Escolher roteiro de entrevista</DialogTitle>
+ <DialogTitle>Escolher modelo de entrevista guiada</DialogTitle>
  </DialogHeader>
  <div className="grid gap-2">
- {savedTemplates && savedTemplates.length > 0 ? (
- <>
- <p className="text-xs font-medium text-muted-foreground">Modelos salvos</p>
- {savedTemplates.slice(0, 10).map((t) => (
- <button
- key={t.id}
- type="button"
- onClick={() => void changeTemplate(t.id)}
- className="rounded-md border p-3 text-left hover:bg-[color:var(--surface-overlay)]"
- >
- <div className="flex items-center justify-between gap-3">
- <div className="min-w-0">
- <p className="text-sm font-medium">{t.title}</p>
- <p className="mt-0.5 text-xs text-muted-foreground">
- {t.scope === "WORKSPACE" ? "Workspace" : "Meu"}{" "}
- {t.domain ? `· ${t.domain}` : ""} · atualizado{" "}
- {new Date(t.updatedAt).toLocaleDateString("pt-BR")}
- </p>
- </div>
- <Badge variant={t.id === template.id ? "default" : "outline"} className="text-[10px]">
- {t.id === template.id ? "Atual" : "Selecionar"}
- </Badge>
- </div>
- </button>
- ))}
- <div className="h-px bg-white/10" />
- </>
- ) : null}
-
- <p className="text-xs font-medium text-muted-foreground">Modelos padrão</p>
+ <p className="text-xs font-medium text-muted-foreground">Modelos disponíveis</p>
  {templates.map((t) => (
  <button
  key={t.id}
@@ -316,7 +264,7 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  ))}
  </div>
  <p className="text-xs text-muted-foreground">
- Trocar o roteiro não apaga o caso, mas as respostas desta aba serão reiniciadas para o roteiro selecionado.
+ Trocar o modelo não apaga o caso, mas as respostas desta aba serão reiniciadas.
  </p>
  </DialogContent>
  </Dialog>
@@ -342,7 +290,7 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  </ol>
  </div>
  <Button type="button" variant="ghost" size="sm" onClick={copyScript}>
- <Copy className="mr-1 size-3" /> Copiar roteiro
+ <Copy className="mr-1 size-3" /> Copiar perguntas
  </Button>
  </div>
  </Card>

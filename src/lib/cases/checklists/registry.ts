@@ -1,7 +1,7 @@
 /**
  * Registry de checklists jurídicos guiados (F2.1).
  *
- * Cada `ChecklistTemplate` é um roteiro de entrevista para um tipo de caso.
+ * Cada `ChecklistTemplate` é um modelo fixo de entrevista guiada por tipo de caso.
  * Estrutura assistida (acordeão por seção) na UI, alimenta o Case Brain
  * via `metadataJson.brain.checklistResponses`.
  *

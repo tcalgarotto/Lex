@@ -7,6 +7,12 @@ import { getWorkspaceContext, requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
 import { syncProcessMovements } from "@/lib/legal-processes/sync-process-movements";
+import {
+  createOfficialCommunication,
+  normalizeOfficialCommunicationSource,
+  normalizeOfficialCommunicationType,
+  parseOfficialCommunicationDate,
+} from "@/lib/official-communications/service";
 
 export async function createProcessAction(formData: FormData) {
   const { workspaceId } = await getWorkspaceContext();
@@ -174,6 +180,41 @@ export async function syncLegalProcessAction(formData: FormData) {
   });
   if (!legalProcess) throw new Error("Processo DataJud não encontrado");
   await syncProcessMovements({ workspaceId, legalProcessId });
+  revalidatePath(`/processos/${processId}`);
+  revalidatePath("/processos");
+  revalidatePath("/dashboard");
+}
+
+export async function createOfficialCommunicationAction(formData: FormData) {
+  const { workspaceId, user } = await getWorkspaceContext();
+  const processId = String(formData.get("processId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  if (!processId || !title) throw new Error("Dados incompletos");
+
+  const proc = await prisma.process.findFirst({
+    where: { id: processId, workspaceId },
+    select: { id: true },
+  });
+  if (!proc) throw new Error("Processo não encontrado");
+
+  await createOfficialCommunication({
+    workspaceId,
+    createdByUserId: user.id,
+    processId,
+    legalProcessId: String(formData.get("legalProcessId") ?? "") || null,
+    caseId: String(formData.get("caseId") ?? "") || null,
+    documentId: String(formData.get("documentId") ?? "") || null,
+    source: normalizeOfficialCommunicationSource(formData.get("source")),
+    communicationType: normalizeOfficialCommunicationType(formData.get("communicationType")),
+    receivedAt: parseOfficialCommunicationDate(formData.get("receivedAt")),
+    availableAt: parseOfficialCommunicationDate(formData.get("availableAt")),
+    readAt: parseOfficialCommunicationDate(formData.get("readAt")),
+    dueReviewAt: parseOfficialCommunicationDate(formData.get("dueReviewAt")),
+    title,
+    description: String(formData.get("description") ?? "").trim() || null,
+    rawText: String(formData.get("rawText") ?? "").trim() || null,
+  });
+
   revalidatePath(`/processos/${processId}`);
   revalidatePath("/processos");
   revalidatePath("/dashboard");

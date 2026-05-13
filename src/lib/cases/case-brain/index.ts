@@ -14,6 +14,6 @@ export * from "./interview-extraction";
 export * from "./pinned-foundations";
 export * from "./snapshot";
 export * from "./document-suggestions";
-export * from "./document-rag-policy";
+export * from "./document-semantic-index-policy";
 export * from "./intake-checklist-helpers";
 export * from "./api-case-access";

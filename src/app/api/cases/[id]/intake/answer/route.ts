@@ -16,7 +16,7 @@ import { mergeInterviewExtractIntoCase } from "@/lib/cases/case-brain/interview-
 import { mergeCaseMetadataJson } from "@/lib/cases/case-brain/case-metadata-merge";
 import {
   computeMissingFields,
-  resolveInterviewTemplate,
+  resolveChecklistTemplate,
 } from "@/lib/cases/case-brain/intake-checklist-helpers";
 
 const Body = z.object({
@@ -56,7 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   const meta = (c.metadataJson ?? {}) as Record<string, unknown>;
-  const template = await resolveInterviewTemplate(workspaceId, body.templateId);
+  const template = await resolveChecklistTemplate(workspaceId, body.templateId);
   if (body.mergeChecklist && template) {
     const previousBrain = (meta["brain"] as Record<string, unknown>) ?? {};
     const previousChecklist = previousBrain["checklistResponses"] as

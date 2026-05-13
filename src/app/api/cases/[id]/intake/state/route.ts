@@ -14,7 +14,7 @@ import {
   suggestChecklistTemplate,
 } from "@/lib/cases/checklists/registry";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
-import { resolveInterviewTemplate } from "@/lib/cases/case-brain/intake-checklist-helpers";
+import { resolveChecklistTemplate } from "@/lib/cases/case-brain/intake-checklist-helpers";
 
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -46,7 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     existingResponses?.templateId ??
     (typeof meta["checklistTemplateId"] === "string" ? (meta["checklistTemplateId"] as string) : null);
 
-  let template = explicitTemplateId ? await resolveInterviewTemplate(workspaceId, explicitTemplateId) : null;
+  let template = explicitTemplateId ? await resolveChecklistTemplate(workspaceId, explicitTemplateId) : null;
   let suggested = false;
   if (!template) {
     const areas = Array.isArray(brain["area"]) ? (brain["area"] as string[]) : [];

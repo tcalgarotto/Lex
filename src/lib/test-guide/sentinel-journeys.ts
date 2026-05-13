@@ -1,5 +1,5 @@
 /**
- * Jornadas sentinela copiáveis para o roteiro `/test-guide`.
+ * Jornadas sentinela copiáveis para o guia `/test-guide`.
  * Mantido em lib para uso por Server + Client sem duplicar dados.
  */
 export const SENTINEL_JOURNEYS = [

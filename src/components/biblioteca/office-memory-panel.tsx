@@ -22,7 +22,7 @@ export type OfficeMemoryRow = {
  private: boolean;
  useAsModel: boolean;
  useAsStyle: boolean;
- optInRag: boolean;
+ optInSearch: boolean;
  originType: string | null;
  originId: string | null;
  archivedAt: string | null;
@@ -43,7 +43,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  const [privateMem, setPrivateMem] = useState(false);
  const [useAsModel, setUseAsModel] = useState(false);
  const [useAsStyle, setUseAsStyle] = useState(false);
- const [optInRag, setOptInRag] = useState(false);
+ const [optInSearch, setOptInRag] = useState(false);
 
  const caseOptions = useMemo(
  () => props.cases.map((c) => ({ value: c.id, label: c.title || "Sem título" })),
@@ -79,7 +79,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  private: privateMem,
  useAsModel,
  useAsStyle,
- optInRag,
+ optInSearch,
  }),
  });
  if (!res.ok) {
@@ -201,7 +201,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  Referência de estilo
  </label>
  <label className="flex items-center gap-2">
- <input type="checkbox" checked={optInRag} onChange={(e) => setOptInRag(e.target.checked)} />
+ <input type="checkbox" checked={optInSearch} onChange={(e) => setOptInRag(e.target.checked)} />
  Incluir na busca assistida (quando suportado)
  </label>
  </div>
@@ -243,7 +243,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  {m.useAsStyle ? (
  <Badge className="text-[10px]">estilo</Badge>
  ) : null}
- {m.optInRag ? (
+ {m.optInSearch ? (
  <Badge variant="secondary" className="text-[10px]">
  busca assistida
  </Badge>
@@ -264,9 +264,9 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  size="sm"
  variant="outline"
  disabled={busy === m.id}
- onClick={() => patch(m.id, { optInRag: !m.optInRag })}
+ onClick={() => patch(m.id, { optInSearch: !m.optInSearch })}
  >
- Busca assistida: {m.optInRag ? "desligar" : "ligar"}
+ Busca assistida: {m.optInSearch ? "desligar" : "ligar"}
  </Button>
  <Button
  type="button"

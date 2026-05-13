@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { getLogger } from "@/lib/logger";
 import type { SearchHit } from "@/types/search";
 import { getLegalResearchProvider } from "@/lib/legal-research";
-import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/lex-rag-backend";
+import { isAnyCorpusSearchConfigMuted } from "@/lib/retrieval/corpus-search-flags";
 
 const log = getLogger("lex.api.search");
 

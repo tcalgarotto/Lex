@@ -27,7 +27,7 @@ export default async function BibliotecaMemoriaPage() {
  private: true,
  useAsModel: true,
  useAsStyle: true,
- optInRag: true,
+ optInSearch: true,
  originType: true,
  originId: true,
  archivedAt: true,

@@ -1,5 +1,5 @@
 /**
- * Roteiro premium do "primeiro teste com advogado".
+ * Guia premium do "primeiro teste com advogado".
  *
  * Página interna (autenticada) que serve de checklist + formulário de feedback.
  * O conteúdo aqui DEVE bater com `docs/FIRST_LAWYER_TEST_GUIDE.md`.
@@ -30,7 +30,7 @@ const STEPS = [
  title: "Crie um caso",
  href: "/cases/new",
  icon: Briefcase,
- body: "Use um dos relatos fictícios abaixo. Dê preferência a “Relato livre” para ver extração automática ou “Entrevista guiada” para roteiro estruturado.",
+ body: "Use um dos relatos fictícios abaixo. Dê preferência a “Relato livre” para ver extração automática ou “Entrevista guiada” para checklist estruturada.",
  },
  {
  id: 2,

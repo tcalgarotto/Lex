@@ -54,7 +54,7 @@ interface LibraryMatch {
  href: string;
  origin?: string;
  reason?: string;
- optInRag: boolean;
+ optInSearch: boolean;
  useAsModel: boolean;
  useAsStyle: boolean;
 }
@@ -87,7 +87,7 @@ interface LibraryMatch {
   href: string;
   origin?: string;
   reason?: string;
-  optInRag: boolean;
+  optInSearch: boolean;
   useAsModel: boolean;
   useAsStyle: boolean;
 }
@@ -551,7 +551,7 @@ function Body({
  </Link>
  <MetaLine source={f.title} origin={f.origin} reason={f.reason} />
  <div className="flex flex-wrap gap-1">
- {f.optInRag ? (
+ {f.optInSearch ? (
  <Badge className="text-[10px]">{LIBRARY_BADGE_OPT_IN_SEARCH}</Badge>
  ) : null}
  {f.useAsModel ? (
