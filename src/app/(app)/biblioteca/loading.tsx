@@ -25,20 +25,10 @@ function ShelfSkeleton() {
 
 export default function BibliotecaLoading() {
   return (
-    <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-        <div className="min-w-0 space-y-2">
-          <Skeleton className="h-9 w-40 rounded-lg md:h-10 md:w-48" />
-          <Skeleton className="h-4 w-full max-w-3xl rounded-md" />
-          <Skeleton className="h-4 w-full max-w-3xl rounded-md" />
-        </div>
-      </header>
-
-      <div className="flex flex-col gap-10">
-        <ShelfSkeleton />
-        <ShelfSkeleton />
-        <ShelfSkeleton />
-      </div>
-    </>
+    <div className="flex flex-col gap-10">
+      <ShelfSkeleton />
+      <ShelfSkeleton />
+      <ShelfSkeleton />
+    </div>
   );
 }

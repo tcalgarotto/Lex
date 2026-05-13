@@ -8,7 +8,6 @@ import { workspaceDocumentHref } from "@/lib/biblioteca/document-href";
 import { workspaceIdsForSharedCatalog, getPlatformLibraryWorkspaceId } from "@/lib/biblioteca/platform-library";
 import { BibliotecaShelfCarousel, BibliotecaShelfSection } from "@/components/biblioteca/biblioteca-shelf-section";
 import { BibliotecaOfficeDocumentCard } from "@/components/biblioteca/biblioteca-office-document-card";
-import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
 
 
 const docSelect = {
@@ -26,6 +25,9 @@ const docSelect = {
 const shelfLegal = { libraryShelf: DocumentLibraryShelf.SHARED_LEGAL } satisfies Prisma.DocumentWhereInput;
 const shelfBooks = { libraryShelf: DocumentLibraryShelf.SHARED_BOOKS } satisfies Prisma.DocumentWhereInput;
 
+/** Máximo de capas por prateleira na home (mesmo padrão nas 3 fileiras). */
+const BIBLIOTECA_HOME_SHELF_PREVIEW = 8;
+
 export default async function BibliotecaPage() {
   const pageT0 = performance.now();
   const tWs = performance.now();
@@ -41,41 +43,57 @@ export default async function BibliotecaPage() {
   /** Mesmo critério que a lista em `/documentos` (sem filtros de URL). */
   const privateOfficeAnd = [...officePrivateDocumentsAndParts(user.id)];
 
+  const whereLeisCatalogo = {
+    workspaceId: { in: catalogWorkspaceIds },
+    deletedAt: null,
+    archivedAt: null,
+    ...shelfLegal,
+  } satisfies Prisma.DocumentWhereInput;
+
+  const whereLivrosCatalogo = {
+    workspaceId: { in: catalogWorkspaceIds },
+    deletedAt: null,
+    archivedAt: null,
+    ...shelfBooks,
+  } satisfies Prisma.DocumentWhereInput;
+
+  const whereEquipe = {
+    workspaceId,
+    deletedAt: null,
+    archivedAt: null,
+    AND: privateOfficeAnd,
+  } satisfies Prisma.DocumentWhereInput;
+
   const tDb = performance.now();
-  const [sharedLegal, sharedBooks, privateOffice] = await Promise.all([
+  const [
+    sharedLegalPreview,
+    leisCatalogoCount,
+    sharedBooksPreview,
+    livrosCatalogoCount,
+    privateOfficePreview,
+    equipeDocumentCount,
+  ] = await Promise.all([
     prisma.document.findMany({
-      where: {
-        workspaceId: { in: catalogWorkspaceIds },
-        deletedAt: null,
-        archivedAt: null,
-        ...shelfLegal,
-      },
+      where: whereLeisCatalogo,
       orderBy: { createdAt: "desc" },
-      take: 40,
+      take: BIBLIOTECA_HOME_SHELF_PREVIEW,
       select: docSelect,
     }),
+    prisma.document.count({ where: whereLeisCatalogo }),
     prisma.document.findMany({
-      where: {
-        workspaceId: { in: catalogWorkspaceIds },
-        deletedAt: null,
-        archivedAt: null,
-        ...shelfBooks,
-      },
+      where: whereLivrosCatalogo,
       orderBy: { createdAt: "desc" },
-      take: 40,
+      take: BIBLIOTECA_HOME_SHELF_PREVIEW,
       select: docSelect,
     }),
+    prisma.document.count({ where: whereLivrosCatalogo }),
     prisma.document.findMany({
-      where: {
-        workspaceId,
-        deletedAt: null,
-        archivedAt: null,
-        AND: privateOfficeAnd,
-      },
+      where: whereEquipe,
       orderBy: { updatedAt: "desc" },
-      take: 100,
+      take: BIBLIOTECA_HOME_SHELF_PREVIEW,
       select: docSelect,
     }),
+    prisma.document.count({ where: whereEquipe }),
   ]);
 
   devLogLexTiming("biblioteca.prisma", performance.now() - tDb);
@@ -83,35 +101,18 @@ export default async function BibliotecaPage() {
 
   return (
     <>
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-          <div className="min-w-0 space-y-2">
-            <h1 className={lexPageTitleClassName}>Biblioteca</h1>
-            <p className={lexPageLeadClassName}>
-              Catálogo Lex (global na plataforma) com{" "}
-              <strong className="font-semibold text-[color:var(--text-primary)]">
-                leis, códigos e normas
-              </strong>{" "}
-              e{" "}
-              <strong className="font-semibold text-[color:var(--text-primary)]">
-                leituras em destaque
-              </strong>
-              ; à parte, os{" "}
-              <strong className="font-semibold text-[color:var(--text-primary)]">
-                documentos que a sua equipe envia em Documentos
-              </strong>{" "}
-              ficam na linha «Documentos da equipe». Pré-visualização em PDF quando o ficheiro for compatível.
-            </p>
-          </div>
-        </header>
-
         <BibliotecaShelfSection
           id="shelf-leis-codigos-normas"
           title="Leis, códigos e normas"
           subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
-          verMaisHref="/pesquisa-juridica"
-          verMaisLabel="Pesquisa jurídica"
+          verMaisHref={leisCatalogoCount > 0 ? "/biblioteca/leis" : null}
+          verMaisLabel={
+            leisCatalogoCount > BIBLIOTECA_HOME_SHELF_PREVIEW
+              ? `Ver mais (${leisCatalogoCount})`
+              : "Ver todos"
+          }
         >
-          {sharedLegal.length === 0 ? (
+          {leisCatalogoCount === 0 ? (
             <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
               Ainda não há entradas nesta prateleira. O catálogo global é preenchido pela operação Lex
               (scripts de upload para o workspace de plataforma), não pelo envio em Documentos.
@@ -124,7 +125,7 @@ export default async function BibliotecaPage() {
             </p>
           ) : (
             <BibliotecaShelfCarousel>
-              {sharedLegal.map((d, i) => (
+              {sharedLegalPreview.map((d, i) => (
                 <BibliotecaOfficeDocumentCard
                   key={d.id}
                   href={workspaceDocumentHref(d)}
@@ -147,10 +148,14 @@ export default async function BibliotecaPage() {
           id="shelf-livros-recomendados"
           title="Livros em destaque"
           subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
-          verMaisHref="/pesquisa-juridica"
-          verMaisLabel="Pesquisa jurídica"
+          verMaisHref={livrosCatalogoCount > 0 ? "/biblioteca/livros" : null}
+          verMaisLabel={
+            livrosCatalogoCount > BIBLIOTECA_HOME_SHELF_PREVIEW
+              ? `Ver mais (${livrosCatalogoCount})`
+              : "Ver todos"
+          }
         >
-          {sharedBooks.length === 0 ? (
+          {livrosCatalogoCount === 0 ? (
             <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
               Ainda não há obras nesta prateleira. Use o script de upload com{" "}
               <code className="rounded bg-black/20 px-1 py-0.5 text-[11px]">--shelf=SHARED_BOOKS</code> no
@@ -158,7 +163,7 @@ export default async function BibliotecaPage() {
             </p>
           ) : (
             <BibliotecaShelfCarousel>
-              {sharedBooks.map((d, i) => (
+              {sharedBooksPreview.map((d, i) => (
                 <BibliotecaOfficeDocumentCard
                   key={d.id}
                   href={workspaceDocumentHref(d)}
@@ -181,10 +186,14 @@ export default async function BibliotecaPage() {
           id="shelf-documentos-equipe"
           title="Documentos da equipe"
           subtitle="Documentos privados e disponíveis apenas para a sua equipe."
-          verMaisHref="/documentos"
-          verMaisLabel="Ir a Documentos"
+          verMaisHref={equipeDocumentCount > 0 ? "/documentos" : null}
+          verMaisLabel={
+            equipeDocumentCount > BIBLIOTECA_HOME_SHELF_PREVIEW
+              ? `Ver mais (${equipeDocumentCount})`
+              : "Ver todos"
+          }
         >
-          {privateOffice.length === 0 ? (
+          {equipeDocumentCount === 0 ? (
             <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
               Não há documentos a mostrar. Carregue ficheiros em{" "}
               <Link
@@ -197,7 +206,7 @@ export default async function BibliotecaPage() {
             </p>
           ) : (
             <BibliotecaShelfCarousel>
-              {privateOffice.map((d, i) => (
+              {privateOfficePreview.map((d, i) => (
                 <BibliotecaOfficeDocumentCard
                   key={d.id}
                   href={workspaceDocumentHref(d)}

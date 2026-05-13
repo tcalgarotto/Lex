@@ -1,5 +1,6 @@
 /**
- * Envia os ficheiros de `docs/Leis, Códigos e Normas/` para o storage e cria
+ * Envia os ficheiros de `docs/Leis, Códigos e Normas/` (predefinição) ou de outra pasta
+ * (`--dir=...` relativo à raiz do repo) para o storage e cria
  * `Document` com `libraryShelf = SHARED_LEGAL` (predefinição) ou `SHARED_BOOKS` com `--shelf=SHARED_BOOKS`.
  *
  * Destino **recomendado**: workspace global `lex-platform-catalog` (sem `uploadedByUserId`), visível
@@ -11,6 +12,7 @@
  *   npx tsx --env-file=.env scripts/upload-leis-codigos-normas-to-library.ts
  *   npx tsx --env-file=.env scripts/upload-leis-codigos-normas-to-library.ts -- --workspace=<id|slug> --user=<userId>
  *   npx tsx --env-file=.env scripts/upload-leis-codigos-normas-to-library.ts -- --shelf=SHARED_BOOKS
+ *   npx tsx --env-file=.env scripts/upload-leis-codigos-normas-to-library.ts -- --shelf=SHARED_BOOKS --dir="docs/Livros recomendados"
  *
  * Idempotente: ignora se já existir documento com o mesmo `originalName` no mesmo
  * workspace e mesma prateleira (`SHARED_LEGAL` ou `SHARED_BOOKS`), salvo com `--replace`.
@@ -39,7 +41,7 @@ import { documentStoragePath, removeDocumentBuffer, uploadDocumentBuffer } from 
 import { getQdrantVectorStore } from "../src/lib/retrieval/vector-store/qdrant-store";
 import { inngest } from "../src/lib/inngest/client";
 
-const DIR_SEGMENTS = ["docs", "Leis, Códigos e Normas"] as const;
+const DEFAULT_DIR_REL = path.join("docs", "Leis, Códigos e Normas");
 const EXT = new Set([".pdf", ".docx", ".doc", ".txt"]);
 
 function parseArgs(): {
@@ -47,17 +49,21 @@ function parseArgs(): {
   user?: string;
   replace: boolean;
   shelf: DocumentLibraryShelf;
+  /** Caminho relativo à raiz do repo (ex.: docs/Livros recomendados). */
+  dirRel?: string;
 } {
   const out: {
     workspace?: string;
     user?: string;
     replace: boolean;
     shelf: DocumentLibraryShelf;
+    dirRel?: string;
   } = { replace: false, shelf: DocumentLibraryShelf.SHARED_LEGAL };
   for (const a of process.argv.slice(2)) {
     if (a.startsWith("--workspace=")) out.workspace = a.slice("--workspace=".length);
     else if (a.startsWith("--user=")) out.user = a.slice("--user=".length);
     else if (a === "--replace") out.replace = true;
+    else if (a.startsWith("--dir=")) out.dirRel = a.slice("--dir=".length).trim();
     else if (a.startsWith("--shelf=")) {
       const v = a.slice("--shelf=".length).trim();
       if (v === "SHARED_LEGAL" || v === "SHARED_BOOKS") {
@@ -68,6 +74,17 @@ function parseArgs(): {
     }
   }
   return out;
+}
+
+function resolveSourceDir(repoRoot: string, dirRel?: string): string {
+  const rel = (dirRel?.trim() || DEFAULT_DIR_REL).replace(/\\/g, path.sep);
+  const abs = path.resolve(repoRoot, rel);
+  const root = path.resolve(repoRoot);
+  const relCheck = path.relative(root, abs);
+  if (relCheck.startsWith("..") || path.isAbsolute(relCheck)) {
+    throw new Error(`--dir fora da raiz do repositório: ${dirRel ?? DEFAULT_DIR_REL}`);
+  }
+  return abs;
 }
 
 function isPdfMagic(buf: Buffer): boolean {
@@ -168,7 +185,7 @@ function mimeFor(fileName: string, buffer: Buffer): string | null {
 }
 
 async function main() {
-  const { workspace: wsArg, user: userArg, replace, shelf: targetShelf } = parseArgs();
+  const { workspace: wsArg, user: userArg, replace, shelf: targetShelf, dirRel } = parseArgs();
   const workspaceId = await resolveWorkspaceId(wsArg);
   const systemCatalog = await isPlatformCatalogDocumentWorkspace(workspaceId);
   const uploadedByUserId = systemCatalog ? null : await resolveUploaderUserId(workspaceId, userArg);
@@ -177,7 +194,7 @@ async function main() {
   }
 
   const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const dir = path.join(repoRoot, ...DIR_SEGMENTS);
+  const dir = resolveSourceDir(repoRoot, dirRel);
   let names: string[];
   try {
     names = await fs.readdir(dir);
