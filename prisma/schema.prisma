@@ -222,6 +222,8 @@ model User {
   officeMemoriesCreated     OfficeMemory[]      @relation("OfficeMemoryCreatedBy")
   officeMemoriesUpdated     OfficeMemory[]      @relation("OfficeMemoryUpdatedBy")
   documentsUploaded         Document[]          @relation("DocumentUploadedBy")
+  calendarEventsCreated     CalendarEvent[]     @relation("CalendarEventCreator")
+  calendarEventsAssigned    CalendarEvent[]     @relation("CalendarEventAssignee")
 }
 
 enum WorkspaceLicense {
@@ -265,6 +267,16 @@ model Workspace {
    * Em outros planos deve ser `null`.
    */
   customSeatLimit          Int?
+  /**
+   * Quota de armazenamento (bytes) para documentos do workspace na nuvem Lex.
+   * Padrão comercial: 2 GiB. Planos futuros podem elevar via billing ou override.
+   */
+  storageQuotaBytes        BigInt                    @default(2147483648)
+  /**
+   * Uso agregado (soma dos `Document.sizeBytes` ativos). Atualizado após uploads
+   * e exclusões; `recalculateWorkspaceStorageUsage` reconcilia com a soma real.
+   */
+  storageUsedBytes         BigInt                    @default(0)
   createdAt                DateTime                  @default(now())
   updatedAt                DateTime                  @updatedAt
   memberships              Membership[]
@@ -294,6 +306,7 @@ model Workspace {
   officialCommunications   OfficialCommunication[]
   libraryFoundations       LibraryFoundation[]
   officeMemories           OfficeMemory[]
+  calendarEvents           CalendarEvent[]
 }
 
 enum LibraryFoundationScope {
@@ -414,6 +427,7 @@ model Process {
   legalProcesses         LegalProcess[]
   feedbacks              FeedbackEntry[]
   officialCommunications OfficialCommunication[]
+  calendarEvents         CalendarEvent[]
   /**
    * Backref: Case.processId? aponta pra cá (1:1 opcional).
    */
@@ -475,6 +489,7 @@ model Document {
   uploadedBy             User?                   @relation("DocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
   chunks                 DocumentChunk[]
   officialCommunications OfficialCommunication[]
+  calendarEvents         CalendarEvent[]
 
   @@index([workspaceId])
   @@index([processId])
@@ -684,6 +699,7 @@ model LegalProcess {
   syncLogs               LegalProcessSyncLog[]
   alerts                 LegalProcessAlert[]
   officialCommunications OfficialCommunication[]
+  calendarEvents         CalendarEvent[]
 
   @@unique([workspaceId, cnj])
   @@index([workspaceId, caseId])
@@ -835,6 +851,75 @@ model OfficialCommunication {
   @@index([processId])
   @@index([caseId])
   @@index([documentId])
+}
+
+enum CalendarEventType {
+  CLIENT_MEETING
+  HEARING
+  REVIEW_DEADLINE
+  REVIEW_COMMUNICATION
+  FOLLOW_UP
+  INTERNAL_TASK
+  OTHER
+}
+
+enum CalendarEventStatus {
+  PENDING
+  DONE
+  CANCELLED
+}
+
+enum CalendarEventSource {
+  MANUAL
+  OFFICIAL_COMMUNICATION
+  OTHER
+}
+
+/**
+ * P1 — Agenda jurídica interna (sem Google Calendar). Multi-tenant por workspace.
+ */
+model CalendarEvent {
+  id                    String               @id @default(cuid())
+  workspaceId         String
+  caseId              String?
+  legalProcessId      String?
+  processId           String?
+  documentId          String?
+  title               String
+  description         String?              @db.Text
+  eventType           CalendarEventType    @default(OTHER)
+  status              CalendarEventStatus  @default(PENDING)
+  startsAt            DateTime
+  endsAt              DateTime?
+  allDay              Boolean              @default(false)
+  timezone            String               @default("America/Sao_Paulo")
+  assignedToUserId    String?
+  createdByUserId     String
+  source              CalendarEventSource  @default(MANUAL)
+  sourceRefId         String?
+  /**
+   * Quando o evento vem de comunicação oficial, exige revisão humana (não gera prazo automático).
+   */
+  requiresHumanReview Boolean              @default(false)
+  reminderMinutesBefore Int?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  case         Case?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  legalProcess LegalProcess? @relation(fields: [legalProcessId], references: [id], onDelete: SetNull)
+  process      Process?      @relation(fields: [processId], references: [id], onDelete: SetNull)
+  document     Document?     @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  assignedTo   User?         @relation("CalendarEventAssignee", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  createdBy    User          @relation("CalendarEventCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, startsAt])
+  @@index([workspaceId, status, startsAt])
+  @@index([caseId, startsAt])
+  @@index([legalProcessId, startsAt])
+  @@index([processId, startsAt])
+  @@index([documentId])
+  @@index([assignedToUserId, startsAt])
 }
 
 model CostLedgerEntry {
@@ -1433,6 +1518,7 @@ model Case {
   legalSources           CaseLegalSource[]
   officialCommunications OfficialCommunication[]
   officeMemories         OfficeMemory[]
+  calendarEvents         CalendarEvent[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])

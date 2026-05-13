@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ProcessDocuments } from "@/components/process/process-documents";
+import { ProcessCalendarTab } from "@/components/calendar/process-calendar-tab";
 import { GeneratePieceDialog } from "@/components/process/generate-piece-dialog";
 import type { JSONValue } from "ai";
 import { formatDistanceToNow } from "date-fns";
@@ -159,7 +160,7 @@ export default async function ProcessDetailPage({
  <p className="mt-1 text-sm text-muted-foreground">{statusLine}</p>
  <div className="mt-3 flex flex-wrap gap-1">
  {proc.tags.map((t) => (
- <Badge key={t} variant="outline" className="text-[10px]">
+ <Badge key={t} variant="outline" className="whitespace-nowrap text-caption">
  {t}
  </Badge>
  ))}
@@ -231,6 +232,7 @@ export default async function ProcessDetailPage({
  <TabsList>
  <TabsTrigger value="chat">Chat IA</TabsTrigger>
  <TabsTrigger value="docs">Documentos</TabsTrigger>
+ <TabsTrigger value="agenda">Agenda</TabsTrigger>
  <TabsTrigger value="datajud">DataJud</TabsTrigger>
 <TabsTrigger value="official-sources">Fontes oficiais</TabsTrigger>
  <TabsTrigger value="timeline">Linha do tempo</TabsTrigger>
@@ -260,6 +262,14 @@ export default async function ProcessDetailPage({
 
  <TabsContent value="docs" className="space-y-4">
  <ProcessDocuments processId={proc.id} />
+ </TabsContent>
+
+ <TabsContent value="agenda" className="space-y-4">
+ <ProcessCalendarTab
+ workspaceId={workspaceId}
+ processId={proc.id}
+ legalProcessId={legalProcess?.id ?? null}
+ />
  </TabsContent>
 
  <TabsContent value="datajud" className="space-y-4">
@@ -348,7 +358,7 @@ export default async function ProcessDetailPage({
  <div key={movement.id} className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay)] p-3 text-sm">
  <div className="flex flex-wrap items-center justify-between gap-2">
  <div className="flex flex-wrap items-center gap-2">
- <Badge variant="outline" className="text-[10px]">{movement.category}</Badge>
+ <Badge variant="outline" className="whitespace-nowrap text-caption">{movement.category}</Badge>
  <p className="font-medium">{movement.nome}</p>
  </div>
  <p className="text-xs text-muted-foreground">
@@ -554,7 +564,7 @@ Cole uma intimação, publicação ou movimentação obtida em fonte oficial. O 
  <div key={a.id} className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay)] p-3">
  <div className="flex flex-wrap items-center justify-between gap-2">
  <div className="flex flex-wrap items-center gap-2">
- <Badge variant="outline" className="text-[10px]">
+ <Badge variant="outline" className="whitespace-nowrap text-caption">
  {a.kind}
  </Badge>
  <p className="font-medium">{a.title}</p>
@@ -622,7 +632,7 @@ Cole uma intimação, publicação ou movimentação obtida em fonte oficial. O 
  <div className="space-y-2">
  {proc.memories.map((m) => (
  <div key={m.id} className="rounded-lg border border-[color:var(--border-default)] px-4 py-3 text-sm">
- <Badge variant="outline" className="mb-1 text-[10px]">
+ <Badge variant="outline" className="mb-1 whitespace-nowrap text-caption">
  {m.kind}
  </Badge>
  {m.title ? <p className="font-medium">{m.title}</p> : null}

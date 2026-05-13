@@ -16,6 +16,7 @@ import {
   MorningBriefingBodySkeleton,
   MorningBriefingDeferred,
 } from "@/components/dashboard/morning-briefing-deferred";
+import { DashboardCalendarCards } from "@/components/calendar/dashboard-calendar-cards";
 import { devLogLexTiming } from "@/lib/dev/server-timing";
 
 function displayNameHintFromUserMetadata(meta: unknown): string | null {
@@ -64,7 +65,7 @@ export default async function DashboardPage() {
       <Card className="min-w-0 border-border/60 shadow-sm">
         <CardContent className="flex min-w-0 flex-col gap-0.5 p-2 px-1.5 sm:px-2">
           <p
-            className="truncate text-center text-[11px] font-medium leading-tight text-muted-foreground"
+            className="truncate text-center text-caption font-medium leading-tight text-muted-foreground"
             title="processos"
           >
             processos
@@ -75,7 +76,7 @@ export default async function DashboardPage() {
       <Card className="min-w-0 border-border/60 shadow-sm">
         <CardContent className="flex min-w-0 flex-col gap-0.5 p-2 px-1.5 sm:px-2">
           <p
-            className="truncate text-center text-[11px] font-medium leading-tight text-muted-foreground"
+            className="truncate text-center text-caption font-medium leading-tight text-muted-foreground"
             title="movimentações"
           >
             movimentações
@@ -88,7 +89,7 @@ export default async function DashboardPage() {
       <Card className="min-w-0 border-border/60 shadow-sm">
         <CardContent className="flex min-w-0 flex-col gap-0.5 p-2 px-1.5 sm:px-2">
           <p
-            className="truncate text-center text-[11px] font-medium leading-tight text-muted-foreground"
+            className="truncate text-center text-caption font-medium leading-tight text-muted-foreground"
             title="alertas"
           >
             alertas
@@ -112,6 +113,7 @@ export default async function DashboardPage() {
           <MorningBriefingDeferred briefingArgs={briefingArgs} agg={agg} />
         </Suspense>
       )}
+      <DashboardCalendarCards workspaceId={workspaceId} />
     </div>
   );
 }

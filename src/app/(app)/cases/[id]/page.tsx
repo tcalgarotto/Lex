@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { CaseOverviewTab } from "@/components/cases/case-overview-tab";
+import { CaseCalendarSection } from "@/components/calendar/case-calendar-section";
 import { loadCaseForWorkspace } from "./_load-case";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -37,10 +38,10 @@ export default async function CaseOverviewPage({ params }: { params: Promise<{ i
  return (
  <div className="space-y-4">
  <div className="space-y-2">
- <p className="text-[10px] font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+ <p className="text-micro font-semibold uppercase tracking-widest text-[color:var(--text-secondary)]">
  Visão geral
  </p>
- <p className="text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">
  Progresso do caso, narrativa consolidada, próximos passos, atividades e colaboração interna.
  </p>
  </div>
@@ -73,6 +74,7 @@ export default async function CaseOverviewPage({ params }: { params: Promise<{ i
  <p className="mt-3 text-sm text-muted-foreground">Nenhum processo DataJud vinculado ainda.</p>
  )}
  </div>
+ <CaseCalendarSection workspaceId={workspaceId} caseId={id} />
  <CaseOverviewTab caseData={c} />
  </div>
  );

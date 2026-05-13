@@ -15,6 +15,7 @@ export const CORE_IDLE_PREFETCH_ROUTES = [
   "/pesquisa-juridica",
   "/processos",
   "/editor",
+  "/agenda",
   "/dashboard",
 ] as const;
 

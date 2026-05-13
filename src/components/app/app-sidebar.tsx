@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Briefcase,
+  Calendar,
   ChevronDown,
   ChevronRight,
   FileText,
@@ -37,6 +38,7 @@ interface NavItem {
 const CORE_NAV: NavItem[] = [
   { href: "/dashboard", label: "Início", icon: Home },
   { href: "/cases", label: "Casos", icon: Briefcase },
+  { href: "/agenda", label: "Agenda", icon: Calendar },
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/biblioteca", label: "Biblioteca", icon: Library },
   { href: "/pesquisa-juridica", label: "Pesquisa jurídica", icon: Search },
