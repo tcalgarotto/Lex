@@ -67,7 +67,7 @@ function pickProvider(p: CorpusProvider): CorpusProviderClient {
     case CorpusProvider.STJ:
       return new StjCorpusProvider();
     case CorpusProvider.DATAJUD: {
-      const alias = process.env["DATAJUD_ALIAS"] ?? "api_publica_tjsp";
+      const alias = process.env["DATAJUD_DEFAULT_ALIAS"] ?? "api_publica_tjrs";
       const apiKey = process.env["DATAJUD_API_KEY"];
       return new DatajudCorpusProvider({ alias, ...(apiKey ? { apiKey } : {}) });
     }

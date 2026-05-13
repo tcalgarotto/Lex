@@ -83,7 +83,7 @@ export function DraftActionsBar({
  }}
  >
  {busy === "create-draft" ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
- <span className="ml-1.5">Criar minuta (DeepSeek)</span>
+ <span className="ml-1.5">Criar minuta (Lex AI)</span>
  </Button>
 
  <Button
@@ -105,7 +105,7 @@ export function DraftActionsBar({
  }}
  >
  {busy === "strategy" ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
- <span className="ml-1.5">Gerar estratégia (DeepSeek)</span>
+ <span className="ml-1.5">Gerar estratégia (Lex AI)</span>
  </Button>
 
  <Button
@@ -130,7 +130,7 @@ export function DraftActionsBar({
  }}
  >
  {busy === "piece" ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
- <span className="ml-1.5">Redigir minuta (DeepSeek)</span>
+ <span className="ml-1.5">Redigir minuta (Lex AI)</span>
  </Button>
 
  <Button
@@ -153,7 +153,7 @@ export function DraftActionsBar({
  }}
  >
  {busy === "review" ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
- <span className="ml-1.5">Revisar minuta (DeepSeek)</span>
+ <span className="ml-1.5">Revisar minuta (Lex AI)</span>
  </Button>
 
  <Button

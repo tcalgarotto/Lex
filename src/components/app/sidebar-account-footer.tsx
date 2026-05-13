@@ -118,8 +118,8 @@ export function SidebarAccountFooter({
             {!collapsed ? (
               <>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-medium leading-tight">{viewer.displayName}</p>
-                  <p className="truncate text-sm text-[color:var(--text-muted)]">{roleLabel}</p>
+                  <p className="truncate text-base font-medium leading-snug">{viewer.displayName}</p>
+                  <p className="truncate text-sm font-medium leading-snug text-[color:var(--text-secondary)]">{roleLabel}</p>
                 </div>
                 <ChevronsUpDown className="size-4 shrink-0 text-[color:var(--text-muted)]" aria-hidden />
               </>
@@ -140,7 +140,7 @@ export function SidebarAccountFooter({
         )}
       >
         <div className="min-w-0 max-w-full px-1 pb-2 pt-0.5">
-          <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+          <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
             Tema da interface
           </p>
           <LexSidebarThemeToggle collapsed={false} compact />

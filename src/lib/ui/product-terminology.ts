@@ -21,7 +21,7 @@ export const PRODUCT_TERMINOLOGY = {
   "Chunk recuperado": "Trecho encontrado",
   Embedding: "Índice de busca",
   embedding: "Índice de busca",
-  "Fallback DeepSeek": "Pesquisa assistida por IA",
+  "Fallback DeepSeek": "Pesquisa assistida Lex AI",
   "Legal foundation candidate": "Fundamento sugerido",
   Unverified: "A conferir",
   "AI_RECOMMENDED_UNVERIFIED": "A conferir",
@@ -59,7 +59,7 @@ export const USER_FACING_MESSAGES = {
   INTERNAL_SEARCH_TEMPORARY_NOTICE:
     "O acervo interno está em otimização; esta busca usa assistência de IA externa temporariamente.",
   DEEPSEEK_TRANSPARENCY_TOP:
-    "Pesquisa assistida por IA via DeepSeek. Resultados são sugestões — revise e confirme fontes antes de protocolar.",
+    "Pesquisa assistida por Lex AI. Resultados são sugestões — revise e confirme fontes antes de protocolar.",
   GLOBAL_RESEARCH_EMPTY:
     "Nenhum resultado ainda. Ajuste os filtros ou refine a pergunta para encontrar fundamentos aplicáveis.",
 } as const;

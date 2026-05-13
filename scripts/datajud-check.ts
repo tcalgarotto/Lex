@@ -2,7 +2,7 @@
  * `npm run datajud:check`
  *
  * Diagnóstico rápido do DataJud: lê env, mostra status do registry, e — se
- * tiver chave — faz uma probe HTTP simples ao alias configurado para
+ * tiver chave — faz uma probe HTTP simples ao tribunal padrao configurado para
  * confirmar autenticação e conectividade.
  *
  * Não modifica banco, não escreve no Qdrant. Saída: JSON pretty-print.
@@ -19,9 +19,10 @@ import { getProviderEntry } from "../src/lib/corpus/providers/registry";
 import { CorpusProvider } from "@prisma/client";
 import {
   DatajudCorpusProvider,
+  buildDatajudAuthorizationHeader,
   buildDatajudListQuery,
 } from "../src/lib/corpus/providers/datajud";
-import { DATAJUD_ALIASES, getAliasEntry } from "../src/lib/corpus/providers/datajud-aliases";
+import { DATAJUD_ALIASES, getAliasEntry } from "../src/lib/datajud/datajud-aliases";
 
 type CheckResult = {
   status: string;
@@ -51,7 +52,7 @@ async function probe(
     const res = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `APIKey ${apiKey}`,
+        Authorization: buildDatajudAuthorizationHeader(apiKey),
         "Content-Type": "application/json",
         "User-Agent": "lex-corpus-sync/1.0 (+https://lex-navy.vercel.app)",
       },
@@ -93,13 +94,13 @@ async function main() {
     mode: status.mode,
     envKeysSet: {
       DATAJUD_API_KEY: Boolean(env.DATAJUD_API_KEY),
-      DATAJUD_ALIAS: Boolean(env.DATAJUD_ALIAS),
+      DATAJUD_DEFAULT_ALIAS: Boolean(env.DATAJUD_DEFAULT_ALIAS),
       DATAJUD_BASE_URL: Boolean(env.DATAJUD_BASE_URL),
       ENABLE_DATAJUD: bool(env.ENABLE_DATAJUD),
     },
-    ...(env.DATAJUD_ALIAS ? { alias: env.DATAJUD_ALIAS } : {}),
-    ...(env.DATAJUD_ALIAS
-      ? { aliasEntry: getAliasEntry(env.DATAJUD_ALIAS) ?? null as never }
+    ...(env.DATAJUD_DEFAULT_ALIAS ? { alias: env.DATAJUD_DEFAULT_ALIAS } : {}),
+    ...(env.DATAJUD_DEFAULT_ALIAS
+      ? { aliasEntry: getAliasEntry(env.DATAJUD_DEFAULT_ALIAS) ?? null as never }
       : {}),
     ...(env.DATAJUD_BASE_URL ? { baseUrl: env.DATAJUD_BASE_URL } : {}),
     ...(status.hint ? { hint: status.hint } : {}),
@@ -121,18 +122,18 @@ async function main() {
     process.exit(0);
   }
 
-  if (status.status === "ok" && env.DATAJUD_API_KEY && env.DATAJUD_ALIAS) {
+  if (status.status === "ok" && env.DATAJUD_API_KEY && env.DATAJUD_DEFAULT_ALIAS) {
     console.log("Probing DataJud...");
     result.probe = await probe(
       env.DATAJUD_BASE_URL,
-      env.DATAJUD_ALIAS,
+      env.DATAJUD_DEFAULT_ALIAS,
       env.DATAJUD_API_KEY,
     );
 
     // Sanity check do query builder via instância (não envia)
     const sample = DatajudCorpusProvider.buildQuery({
       size: 3,
-      tribunal: getAliasEntry(env.DATAJUD_ALIAS)?.tribunal ?? "TJSP",
+      tribunal: getAliasEntry(env.DATAJUD_DEFAULT_ALIAS)?.tribunal ?? "TJRS",
     });
     console.log("Sample query:", JSON.stringify(sample, null, 2));
   }

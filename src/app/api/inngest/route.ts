@@ -32,6 +32,7 @@ import { ingestConstitution } from "@/lib/inngest/functions/ingest-constitution"
 import { consolidateCaseBrainFn } from "@/lib/inngest/functions/consolidate-case-brain";
 import { checkDocumentConsistencyFn } from "@/lib/inngest/functions/check-document-consistency";
 import { generateDocumentThumbnailFn } from "@/lib/inngest/functions/generate-document-thumbnail";
+import { dataJudProcessDailySync } from "@/lib/inngest/functions/datajud-process-sync";
 import { getLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -52,6 +53,7 @@ const handlers = serve({
     consolidateCaseBrainFn,
     checkDocumentConsistencyFn,
     generateDocumentThumbnailFn,
+    dataJudProcessDailySync,
   ],
 });
 

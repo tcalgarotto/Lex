@@ -267,7 +267,10 @@ function isQdrantRequired(): boolean {
 
 export async function GET() {
   const redisRequired = isRedisRequired();
-  const qdrantRequired = isQdrantRequired();
+  const legalRetrievalEnabled = !["false", "0", "off"].includes(
+    String(process.env["ENABLE_LEGAL_RETRIEVAL"] ?? "true").toLowerCase(),
+  );
+  const qdrantRequired = legalRetrievalEnabled && isQdrantRequired();
 
   const [db, redis, qdrant, supabase] = await Promise.all([
     checkWithTimeout(
@@ -286,6 +289,9 @@ export async function GET() {
       "qdrant",
       qdrantRequired,
       async () => {
+        if (!legalRetrievalEnabled) {
+          return { hint: "RAG/Qdrant desativado por enquanto." };
+        }
         const url = process.env["QDRANT_URL"];
         if (!url) {
           if (qdrantRequired) throw new Error("QDRANT_URL ausente");

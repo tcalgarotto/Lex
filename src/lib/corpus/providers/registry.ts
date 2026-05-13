@@ -18,6 +18,7 @@ import { LexmlCorpusProvider } from "./lexml";
 import { StfCorpusProvider } from "./stf";
 import { StjCorpusProvider } from "./stj";
 import { DatajudCorpusProvider } from "./datajud";
+import { getAliasEntry } from "@/lib/datajud/datajud-aliases";
 import { CamaraCorpusProvider } from "./camara";
 import { SenadoCorpusProvider } from "./senado";
 import { PlanaltoCorpusProvider } from "./planalto";
@@ -226,8 +227,8 @@ const DATAJUD_ENTRY: CorpusProviderEntry = {
   envKeys: [
     "DATAJUD_BASE_URL",
     "DATAJUD_API_KEY",
-    "DATAJUD_ALIAS",
-    "DATAJUD_PROVIDER_MODE",
+    "DATAJUD_DEFAULT_ALIAS",
+    "DATAJUD_MODE",
     "ENABLE_DATAJUD",
   ],
   sourceKind: "process_metadata",
@@ -235,9 +236,10 @@ const DATAJUD_ENTRY: CorpusProviderEntry = {
     const env = getEnv();
     const enabled = bool(env.ENABLE_DATAJUD);
     const hasKey = (env.DATAJUD_API_KEY || "").trim().length > 0;
-    const hasAlias = (env.DATAJUD_ALIAS || "").trim().length > 0;
+    const defaultAlias = (env.DATAJUD_DEFAULT_ALIAS || "").trim();
+    const hasValidDefaultAlias = Boolean(defaultAlias && getAliasEntry(defaultAlias));
 
-    if (!enabled || env.DATAJUD_PROVIDER_MODE === "disabled") {
+    if (!enabled || env.DATAJUD_MODE === "disabled") {
       return {
         id: CorpusProvider.DATAJUD,
         label: this.label,
@@ -247,31 +249,31 @@ const DATAJUD_ENTRY: CorpusProviderEntry = {
         envKeys: this.envKeys,
         baseUrl: env.DATAJUD_BASE_URL,
         rateLimitPerMinute: env.DATAJUD_RATE_LIMIT_PER_MINUTE,
-        hint: "Defina ENABLE_DATAJUD=true e DATAJUD_PROVIDER_MODE=live para ativar.",
+        hint: "Ative o DataJud quando quiser consultar movimentações processuais.",
       };
     }
-    if (!hasKey || !hasAlias) {
+    if (!hasKey || !hasValidDefaultAlias) {
       const missing: string[] = [];
-      if (!hasKey) missing.push("DATAJUD_API_KEY");
-      if (!hasAlias) missing.push("DATAJUD_ALIAS");
+      if (!hasKey) missing.push("chave do CNJ");
+      if (!hasValidDefaultAlias) missing.push("tribunal padrão");
       return {
         id: CorpusProvider.DATAJUD,
         label: this.label,
         status: "not_configured",
-        mode: env.DATAJUD_PROVIDER_MODE,
+        mode: env.DATAJUD_MODE,
         requiresApiKey: true,
         envKeys: this.envKeys,
         baseUrl: env.DATAJUD_BASE_URL,
         rateLimitPerMinute: env.DATAJUD_RATE_LIMIT_PER_MINUTE,
-        detail: `Faltando: ${missing.join(", ")}`,
-        hint: "Solicite a chave em https://datajud-wiki.cnj.jus.br/api-publica/acesso e defina DATAJUD_API_KEY + DATAJUD_ALIAS.",
+        detail: `Pendente: ${missing.join(", ")}`,
+        hint: "Informe a chave do CNJ e selecione um tribunal padrão.",
       };
     }
     return {
       id: CorpusProvider.DATAJUD,
       label: this.label,
       status: "ok",
-      mode: env.DATAJUD_PROVIDER_MODE,
+      mode: env.DATAJUD_MODE,
       requiresApiKey: true,
       envKeys: this.envKeys,
       baseUrl: env.DATAJUD_BASE_URL,
@@ -280,17 +282,17 @@ const DATAJUD_ENTRY: CorpusProviderEntry = {
   },
   factory() {
     const env = getEnv();
-    if (!bool(env.ENABLE_DATAJUD) || env.DATAJUD_PROVIDER_MODE === "disabled") {
+    if (!bool(env.ENABLE_DATAJUD) || env.DATAJUD_MODE === "disabled") {
       throw new Error("DataJud provider está disabled");
     }
-    if (env.DATAJUD_PROVIDER_MODE === "fixture") return fixtureProvider();
-    if (!env.DATAJUD_API_KEY || !env.DATAJUD_ALIAS) {
+    if (env.DATAJUD_MODE === "fixture") return fixtureProvider();
+    if (!env.DATAJUD_API_KEY || !getAliasEntry(env.DATAJUD_DEFAULT_ALIAS)) {
       throw new Error(
-        "DATAJUD_API_KEY ou DATAJUD_ALIAS ausentes — provider not_configured.",
+        "DataJud sem chave do CNJ ou tribunal padrão valido.",
       );
     }
     return new DatajudCorpusProvider({
-      alias: env.DATAJUD_ALIAS,
+      alias: env.DATAJUD_DEFAULT_ALIAS,
       apiKey: env.DATAJUD_API_KEY,
       baseUrl: env.DATAJUD_BASE_URL,
     });

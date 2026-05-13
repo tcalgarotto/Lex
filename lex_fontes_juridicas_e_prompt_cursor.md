@@ -55,7 +55,8 @@ DATAJUD_BASE_URL=https://api-publica.datajud.cnj.jus.br
 DATAJUD_DEFAULT_PAGE_SIZE=100
 DATAJUD_MAX_PAGES_PER_SYNC=10
 DATAJUD_RATE_LIMIT_PER_MINUTE=30
-DATAJUD_PROVIDER_MODE=live
+DATAJUD_DEFAULT_ALIAS=api_publica_tjrs
+DATAJUD_MODE=live
 ```
 
 ### LexML
@@ -80,7 +81,7 @@ STF_RATE_LIMIT_PER_MINUTE=10
 
 ```env
 STJ_PROVIDER_MODE=live
-STJ_BASE_URL=https://scon.stj.jus.br
+STJ_BASE_URL=https://processo.stj.jus.br
 STJ_RATE_LIMIT_PER_MINUTE=10
 ```
 
@@ -130,7 +131,7 @@ api_publica_tjrs/_search
 api_publica_tjpr/_search
 api_publica_tjsp/_search
 api_publica_trt12/_search
-api_publica_tresc/_search
+api_publica_tre-sc/_search
 ```
 
 ### Uso esperado no Lex
@@ -527,12 +528,12 @@ Como ainda não temos DATAJUD_API_KEY:
    - api_publica_tjpr
    - api_publica_tjsp
    - api_publica_trt12
-   - api_publica_tresc
+   - api_publica_tre-sc
 
 5. Criar:
    npm run datajud:check
    npm run datajud:dry-run
-   npm run datajud:sync -- --alias=api_publica_tjsc --dry-run
+   DATAJUD_DEFAULT_ALIAS=api_publica_tjsc npm run datajud:dry-run
 
 6. Quando DATAJUD_API_KEY não existir:
    - não quebrar health

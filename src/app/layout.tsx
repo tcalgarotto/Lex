@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -25,7 +24,7 @@ export default function RootLayout({
  lang="pt-BR"
  data-theme="dark"
  suppressHydrationWarning
- className={`${GeistSans.variable} ${GeistMono.variable}`}
+ className={GeistMono.variable}
  >
  <body className="min-h-screen font-sans antialiased">
  <Script id="lex-theme-init" strategy="beforeInteractive">

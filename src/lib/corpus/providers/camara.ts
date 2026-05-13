@@ -41,6 +41,8 @@ type CamaraOpts = {
   fetchImpl?: typeof fetch;
   ratePerMinute?: number;
   timeoutMs?: number;
+  siglaTipo?: string;
+  ano?: number;
   /**
    * Limita itens por página da API. A Câmara aceita até 100. Default 50.
    */
@@ -80,6 +82,8 @@ export class CamaraCorpusProvider implements CorpusProviderClient {
   private readonly ratePerMinute: number;
   private readonly timeoutMs: number;
   private readonly itensPorPagina: number;
+  private readonly siglaTipo: string;
+  private readonly ano: number;
 
   constructor(opts: CamaraOpts = {}) {
     this.baseUrl = opts.baseUrl ?? DEFAULT_BASE;
@@ -87,6 +91,8 @@ export class CamaraCorpusProvider implements CorpusProviderClient {
     this.ratePerMinute = opts.ratePerMinute ?? 30;
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.itensPorPagina = Math.max(1, Math.min(100, opts.itensPorPagina ?? 50));
+    this.siglaTipo = opts.siglaTipo ?? "PL";
+    this.ano = opts.ano ?? new Date().getFullYear();
   }
 
   async list(filters: ListFilters): Promise<ListPage> {
@@ -96,6 +102,8 @@ export class CamaraCorpusProvider implements CorpusProviderClient {
     const url = new URL(`${this.baseUrl}/proposicoes`);
     url.searchParams.set("itens", String(this.itensPorPagina));
     url.searchParams.set("pagina", String(pagina));
+    url.searchParams.set("siglaTipo", this.siglaTipo);
+    url.searchParams.set("ano", String(this.ano));
     url.searchParams.set("ordem", "DESC");
     url.searchParams.set("ordenarPor", "id");
 

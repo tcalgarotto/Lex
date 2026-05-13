@@ -66,7 +66,7 @@ export async function draftWorkflow(args: {
     workspaceId: args.workspaceId,
     caseId: args.caseId,
     kind: CaseTimelineKind.RESEARCH_RUN,
-    message: "Geração de minuta assistida (DeepSeek) — sem retrieval vetorial",
+    message: "Geração de minuta assistida (Lex AI) — sem retrieval vetorial",
     payloadJson: { source: "draft", mode: "deepseek" },
     userId: args.userId,
   });
@@ -160,7 +160,7 @@ export async function reviewWorkflow(args: {
     status: i.severity === "critico" ? "fail" : i.severity === "alerta" ? "warning" : "pass",
     detail: i.hint ?? "",
     weight: 0.02,
-    rationale: "Revisão assistida (DeepSeek) — confirme como advogado responsável.",
+    rationale: "Revisão assistida (Lex AI) — confirme como advogado responsável.",
   }));
 
   const mergedItems = [...deterministic.items, ...llmAsItems];

@@ -243,7 +243,7 @@ npm run retrieval:smoke -- "direitos fundamentais constituição"
 **Cobertura de testes**:
 
 - 38 unit (`intent`, `rewrite`, `hybrid`, `scoring`, `cache`).
-- 12 integration contra Postgres real (`legal-retrieval-bm25` 6 tests + `legal-retrieval-orchestrator` 6 tests cobrindo intent/bm25/graph/grounding/cache/asOf).
+- Integração contra Postgres real inclui `legal-retrieval-bm25` (FTS/BM25 em `LegalChunk`). Não há neste repo ficheiro de integração automatizada para o pipeline completo `retrieveLegalContext` (intent + graph + grounding); use `npm run retrieval:smoke` para validação manual quando necessário.
 
 ## Cobertura nacional de tribunais
 

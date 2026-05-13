@@ -25,7 +25,7 @@ export function runDraftingGuard(input: DraftingGuardInput): { ok: true } | { ok
 
   if (!input.draftingStrategyExists) {
     reasons.push(
-      "Gere a estratégia assistida (DeepSeek) na aba Estratégia e Peças antes de redigir a minuta.",
+      "Gere a estratégia assistida (Lex AI) na aba Estratégia e Peças antes de redigir a minuta.",
     );
   } else if (!input.draftingStrategyApproved) {
     reasons.push("Aprove a estratégia assistida antes de redigir a minuta.");
@@ -85,7 +85,7 @@ export function previewDraftingGuardMessages(input: {
   const reasons: string[] = [];
   if (!input.draftingStrategyExists) {
     reasons.push(
-      "Gere a estratégia assistida (DeepSeek) na aba Estratégia e Peças antes de redigir a minuta.",
+      "Gere a estratégia assistida (Lex AI) na aba Estratégia e Peças antes de redigir a minuta.",
     );
   } else if (!input.draftingStrategyApproved) {
     reasons.push("Aprove a estratégia assistida antes de redigir a minuta.");

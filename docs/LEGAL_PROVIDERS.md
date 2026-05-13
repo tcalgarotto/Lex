@@ -36,7 +36,7 @@ Em **produção** o default é **tudo `live`**:
 LEXML_PROVIDER_MODE=live
 STF_PROVIDER_MODE=live
 STJ_PROVIDER_MODE=live
-DATAJUD_PROVIDER_MODE=live      # exige DATAJUD_API_KEY
+DATAJUD_MODE=live               # exige DATAJUD_API_KEY
 CAMARA_PROVIDER_MODE=live
 SENADO_PROVIDER_MODE=live
 ```
@@ -63,7 +63,7 @@ Em **preview** mantenha `fixture` para evitar martelar APIs públicas a cada PR.
 - Rate-limit recomendado: **10 req/min** (conservador).
 
 ### STJ
-- SCON: `https://scon.stj.jus.br`
+- SCON: `https://processo.stj.jus.br/SCON/`
 - Rate-limit recomendado: **10 req/min**.
 - Para acórdãos completos, plugue um `StjExtractor` customizado (interface `extractor` no construtor).
 
@@ -71,7 +71,7 @@ Em **preview** mantenha `fixture` para evitar martelar APIs públicas a cada PR.
 - Wiki oficial: <https://datajud-wiki.cnj.jus.br/api-publica/acesso>
 - Chave gratuita: preencha o formulário do CNJ → recebe key por email em poucos minutos.
 - Endpoints por alias: <https://datajud-wiki.cnj.jus.br/api-publica/endpoints>
-- Lista canônica dos **91 aliases** no Lex: `src/lib/corpus/providers/datajud-aliases.ts`.
+- Lista canônica dos **91 aliases** no Lex: `src/lib/datajud/datajud-aliases.ts`.
 
 ### Câmara dos Deputados
 - API pública REST/JSON: `https://dadosabertos.camara.leg.br/api/v2`
@@ -93,13 +93,13 @@ Em **preview** mantenha `fixture` para evitar martelar APIs públicas a cada PR.
 | TRFs | 6 | `api_publica_trf1` … `api_publica_trf6` |
 | TJs estaduais | 27 | `api_publica_tjsp`, `api_publica_tjrj`, `api_publica_tjmg`, `api_publica_tjdft`, … |
 | TRTs | 24 | `api_publica_trt1` … `api_publica_trt24` |
-| TREs | 27 | `api_publica_tresp`, `api_publica_trers`, `api_publica_trepr`, … |
+| TREs | 27 | `api_publica_tre-sp`, `api_publica_tre-rs`, `api_publica_tre-pr`, … |
 | TJMs estaduais | 3 | `api_publica_tjmmg`, `api_publica_tjmrs`, `api_publica_tjmsp` |
 
 > **STF NÃO está no DataJud** — tem portal próprio (coberto pelo provider `STF` do Lex).
 
 A lista completa, com `priority`, `category` e `label`, está em
-`src/lib/corpus/providers/datajud-aliases.ts`. Helpers exportados:
+`src/lib/datajud/datajud-aliases.ts`. Helpers exportados:
 
 ```ts
 import {
@@ -107,7 +107,9 @@ import {
   DATAJUD_ALIAS_TOTALS,
   listPriorityAliases,
   aliasesByCategory,
-} from "@/lib/corpus/providers/datajud-aliases";
+  resolveDataJudAliasFromTribunalAcronym,
+  resolveDataJudAliasFromCnj,
+} from "@/lib/datajud/datajud-aliases";
 ```
 
 ---

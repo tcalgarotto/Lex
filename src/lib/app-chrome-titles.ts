@@ -31,7 +31,7 @@ const PREFIX_TITLES: { prefix: string; title: string }[] = [
   { prefix: "/demo", title: "Modo demonstração" },
   { prefix: "/busca", title: "Busca" },
   { prefix: "/apresentacao", title: "Apresentação" },
-  { prefix: "/dashboard", title: "Briefing matinal" },
+  { prefix: "/dashboard", title: "Briefing" },
 ];
 
 export function matchPathTitle(pathname: string): string {

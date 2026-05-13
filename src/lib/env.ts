@@ -73,7 +73,7 @@ const envSchema = z
     STF_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
     STF_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(10),
 
-    STJ_BASE_URL: z.string().url().default("https://scon.stj.jus.br"),
+    STJ_BASE_URL: z.string().url().default("https://processo.stj.jus.br"),
     STJ_PROVIDER_MODE: z.enum(["live", "fixture", "disabled"]).default("live"),
     STJ_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(60).default(10),
 
@@ -82,13 +82,16 @@ const envSchema = z
       .url()
       .default("https://api-publica.datajud.cnj.jus.br"),
     DATAJUD_API_KEY: z.string().optional().default(""),
-    DATAJUD_ALIAS: z.string().optional().default("api_publica_tjsp"),
-    DATAJUD_PROVIDER_MODE: z
+    DATAJUD_DEFAULT_ALIAS: z.string().optional().default("api_publica_tjrs"),
+    DATAJUD_PROVIDER_MODE: z.enum(["live", "mock", "off"]).optional(),
+    DATAJUD_MODE: z
       .enum(["live", "fixture", "disabled"])
       .default("live"),
     DATAJUD_DEFAULT_PAGE_SIZE: z.coerce.number().int().min(1).max(500).default(100),
     DATAJUD_MAX_PAGES_PER_SYNC: z.coerce.number().int().min(1).max(100).default(10),
     DATAJUD_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(120).default(30),
+    DATAJUD_SYNC_DAILY_ENABLED: z.coerce.boolean().default(false),
+    DATAJUD_SYNC_DAILY_HOUR: z.coerce.number().int().min(0).max(23).default(6),
 
     CAMARA_BASE_URL: z
       .string()

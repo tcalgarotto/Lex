@@ -1,7 +1,7 @@
 /**
  * Provider STJ — fundação para Súmulas e Jurisprudência via portal.
  *
- * Status: **scaffold** estruturado, com endpoint apontado para `scon.stj.jus.br`.
+ * Status: **scaffold** estruturado, com endpoint apontado para `processo.stj.jus.br/SCON`.
  *  - O STJ não publica API JSON pública estável; a forma robusta é varrer o
  *    SCON com formulário web. Esta classe expõe a interface canônica e
  *    implementa fetching mínimo com headers identificáveis.
@@ -26,7 +26,7 @@ import type {
   ListPage,
 } from "./types";
 
-const STJ_BASE = "https://scon.stj.jus.br";
+const STJ_BASE = "https://processo.stj.jus.br";
 
 export class StjError extends Error {
   constructor(message: string, readonly status?: number) {

@@ -1,13 +1,12 @@
-import type { ComponentType } from "react";
-import Link from "next/link";
+import type { ComponentType, ReactNode } from "react";
 import { HoverPrefetchLink } from "@/components/navigation/hover-prefetch-link";
 import {
   Activity,
   AlertTriangle,
   ArrowRight,
   Briefcase,
+  Calendar,
   FileText,
-  FolderOpen,
   Library,
   Link2,
   Plus,
@@ -18,6 +17,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
+  BriefingActionDiscreteOrigin,
+  BriefingActionEisenhowerBucket,
   BriefingActionItem,
   MorningBriefingPayload,
   MorningBriefingShellProps,
@@ -26,9 +27,37 @@ import type {
   PulseLibraryDetail,
   PulsePiecesDetail,
   ResumeCaseRow,
+  ResumeNamedCase,
 } from "@/lib/dashboard/morning-briefing-data";
-import { lexGlassCtaClassName } from "@/lib/lex-ds";
 import { cn } from "@/lib/utils";
+
+/** Cópia estável da home — regressão de texto e ausência de jargão de métodos (vitest). */
+export const DASHBOARD_HOME_UI_COPY = {
+  planejamentoSemanaTitulo: "Planejamento da semana",
+  metaSecao: "Meta da semana",
+  metaEmptyHonesto:
+    "Defina uma meta semanal para acompanhar o avanço do escritório. Ainda não há indicadores gravados aqui — nada é estimado automaticamente.",
+  tarefasAvulsasSecao: "Tarefas avulsas",
+  tarefasAvulsasIntro: "Para lembretes que não vêm de caso, documento ou minuta — ligações, cobranças, reuniões internas.",
+  tarefasAvulsasEmpty: "Nenhuma tarefa avulsa guardada ainda.",
+  oQueFazerAgora: "O que fazer agora",
+  casosPorFluxo: "Casos por fluxo",
+  prioridadeMaxima: "Prioridade máxima",
+  importante: "Importante",
+  aguardandoTerceiros: "Aguardando terceiros",
+} as const;
+
+export const DASHBOARD_FORBIDDEN_METHOD_TERMS = [
+  "Scrumban",
+  "Scrum",
+  "Kanban",
+  "GTD",
+  "Eisenhower",
+  "OKR",
+  "sprint",
+  "backlog",
+  "WIP",
+] as const;
 
 function salutation(): string {
   const h = new Date().getHours();
@@ -69,39 +98,25 @@ function PulseBriefCard(props: {
         ? (detail as PulseDocumentsDetail).nextCtaLabel
         : (detail as PulseLibraryDetail).nextCtaLabel;
 
-  const casesDetail = variant === "cases" ? (detail as PulseCasesDetail) : null;
-  const showNext = casesDetail?.nextActionTitle && casesDetail?.nextHref;
-
   return (
-    <div className="lex-glass-card flex min-h-[220px] flex-col rounded-2xl px-4 py-3.5 md:px-5 md:py-4">
-      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
+    <div className="lex-glass-card flex h-full min-h-[168px] flex-col rounded-2xl px-4 py-3 md:px-5">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
         <Ico className="size-[13px] opacity-80" aria-hidden />
         {label}
       </div>
       <p className="text-[15px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)]">{detail.headline}</p>
-      <ul className="mt-2 flex flex-col gap-0.5 text-[11.5px] leading-snug text-[color:var(--text-secondary)]">
+      <ul className="mt-1.5 flex flex-col gap-0.5 text-[11.5px] leading-snug text-[color:var(--text-secondary)]">
         {detail.breakdownLines.map((line, i) => (
           <li key={`${i}-${line.slice(0, 24)}`}>· {line}</li>
         ))}
       </ul>
-      {showNext ? (
-        <div className="mt-3 rounded-[var(--r-md)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] px-3 py-2">
-          <p className="text-[9px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Próxima ação sugerida</p>
-          <p className="mt-0.5 text-[11.5px] text-[color:var(--text-primary)]">{casesDetail!.nextActionTitle}</p>
-          <Button size="sm" className="mt-2 h-7 w-full text-[11px]" asChild>
-            <HoverPrefetchLink href={casesDetail!.nextHref!}>{casesDetail!.nextCtaLabel}</HoverPrefetchLink>
-          </Button>
-        </div>
-      ) : null}
-      <div className="mt-auto pt-3">
-        <div className="h-0.5 overflow-hidden rounded-sm bg-[color:var(--surface-overlay-strong)]">
-          <div className="h-full rounded-sm" style={{ width: `${Math.min(100, detail.barPct)}%`, background: detail.barColor }} />
-        </div>
+      <div className="mt-auto pt-2">
+        <div className="h-px w-full shrink-0 bg-[color:var(--border-subtle)]" aria-hidden />
         <HoverPrefetchLink
           href={footerHref}
-          className="mt-2 inline-block text-[11px] font-medium text-violet-400 hover:text-violet-300"
+          className="mt-1.5 flex h-9 w-full items-center justify-center rounded-md border border-violet-500/15 bg-violet-500/[0.04] px-2 text-center text-[11px] font-medium text-violet-400 transition-colors hover:border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300"
         >
-          {footerLabel} →
+          {footerLabel}
         </HoverPrefetchLink>
       </div>
     </div>
@@ -110,29 +125,27 @@ function PulseBriefCard(props: {
 
 function PulsePiecesBriefCard({ detail }: { detail: PulsePiecesDetail }) {
   return (
-    <div className="lex-glass-card flex min-h-[220px] flex-col rounded-2xl px-4 py-3.5 md:px-5 md:py-4">
-      <div className="mb-2 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
+    <div className="lex-glass-card flex h-full min-h-[168px] flex-col rounded-2xl px-4 py-3 md:px-5">
+      <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
         <Scale className="size-[13px] opacity-80" aria-hidden />
-        Peças em elaboração
+        Peças e minutas
       </div>
       <p className="text-[15px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)]">{detail.headline}</p>
-      <ul className="mt-2 flex flex-col gap-0.5 text-[11.5px] leading-snug text-[color:var(--text-secondary)]">
+      <ul className="mt-1.5 flex flex-col gap-0.5 text-[11.5px] leading-snug text-[color:var(--text-secondary)]">
         {detail.breakdownLines.map((line, i) => (
           <li key={`${i}-${line.slice(0, 24)}`}>· {line}</li>
         ))}
       </ul>
       {detail.emptyHint ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-[color:var(--text-muted)]">{detail.emptyHint}</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-[color:var(--text-muted)]">{detail.emptyHint}</p>
       ) : null}
-      <div className="mt-auto pt-3">
-        <div className="h-0.5 overflow-hidden rounded-sm bg-[color:var(--surface-overlay-strong)]">
-          <div className="h-full rounded-sm" style={{ width: `${Math.min(100, detail.barPct)}%`, background: detail.barColor }} />
-        </div>
+      <div className="mt-auto pt-2">
+        <div className="h-px w-full shrink-0 bg-[color:var(--border-subtle)]" aria-hidden />
         <HoverPrefetchLink
           href={detail.nextHref}
-          className="mt-2 inline-block text-[11px] font-medium text-violet-400 hover:text-violet-300"
+          className="mt-1.5 flex h-9 w-full items-center justify-center rounded-md border border-violet-500/15 bg-violet-500/[0.04] px-2 text-center text-[11px] font-medium text-violet-400 transition-colors hover:border-violet-500/30 hover:bg-violet-500/10 hover:text-violet-300"
         >
-          {detail.nextCtaLabel} →
+          {detail.nextCtaLabel}
         </HoverPrefetchLink>
       </div>
     </div>
@@ -140,8 +153,10 @@ function PulsePiecesBriefCard({ detail }: { detail: PulsePiecesDetail }) {
 }
 
 /** Hero + CTAs + estado “sem casos” — renderização rápida sem dados pesados do briefing. */
-export function MorningBriefingHeaderShell(props: MorningBriefingShellProps & { hasNoCases: boolean }) {
-  const { displayName, hasNoCases, daySummaryLine, priorityContinueHref, oldestUnnamedCaseId } = props;
+export function MorningBriefingHeaderShell(
+  props: MorningBriefingShellProps & { headerTrailing?: ReactNode },
+) {
+  const { displayName, hasNoCases, honorific, headerTrailing } = props;
   const dateLine = new Date().toLocaleDateString("pt-BR", {
     weekday: "long",
     day: "numeric",
@@ -151,35 +166,20 @@ export function MorningBriefingHeaderShell(props: MorningBriefingShellProps & { 
 
   return (
     <>
-      <h1 className="sr-only">Briefing do dia — Lex</h1>
+      <h1 className="sr-only">Hoje no escritório — Lex</h1>
 
       <header className="space-y-3">
-        <div>
-          <p className="text-xl font-medium tracking-tight text-[color:var(--text-primary)]">
-            {salutation()}, <span className="text-[color:var(--brand-primary)]">{displayName}</span>
-          </p>
-          <p className="mt-1 text-sm capitalize text-[color:var(--text-secondary)]">{dateLine}</p>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[color:var(--text-secondary)]">{daySummaryLine}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <HoverPrefetchLink href={priorityContinueHref} className={lexGlassCtaClassName}>
-            Continuar prioridade
-          </HoverPrefetchLink>
-          {oldestUnnamedCaseId ? (
-            <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-              <HoverPrefetchLink href={`/cases/${oldestUnnamedCaseId}/entrevista`}>Nomear e continuar caso</HoverPrefetchLink>
-            </Button>
-          ) : (
-            <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-              <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
-            </Button>
-          )}
-          <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-            <HoverPrefetchLink href="/documentos">Enviar documento</HoverPrefetchLink>
-          </Button>
-          <Button variant="outline" className="h-11 min-h-[44px] text-[15px] font-medium" asChild>
-            <HoverPrefetchLink href="/pesquisa-juridica">Pesquisa jurídica</HoverPrefetchLink>
-          </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="mt-1 text-xl font-medium tracking-tight text-[color:var(--text-primary)]">
+              {salutation()}, {honorific}{" "}
+              <span className="text-[color:var(--brand-primary)]">{displayName}</span>
+            </p>
+            <p className="mt-1 text-sm capitalize text-[color:var(--text-secondary)]">{dateLine}</p>
+          </div>
+          {headerTrailing ? (
+            <div className="flex w-full shrink-0 flex-wrap justify-end gap-2 pt-1 sm:w-auto sm:pt-0.5">{headerTrailing}</div>
+          ) : null}
         </div>
       </header>
 
@@ -198,16 +198,160 @@ export function MorningBriefingHeaderShell(props: MorningBriefingShellProps & { 
   );
 }
 
+function discreteOriginLabel(origin: BriefingActionDiscreteOrigin | undefined): string {
+  if (origin === "aguardando_cliente") return "Aguardando cliente";
+  if (origin === "aguardando_responsavel") return "Aguardando responsável";
+  if (origin === "lex_sugerido") return "Sugerido pelo Lex";
+  return "Sugerido pelo Lex";
+}
+
+/** Referência: metodologias por trás da home estão descritas em docs (sem jargão na UI). */
+function WeeklyPlanningBlock({ className, id }: { className?: string; id?: string }) {
+  return (
+    <section
+      id={id}
+      className={cn("lex-glass-card overflow-hidden rounded-2xl", className)}
+    >
+      <div className="flex items-start gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
+        <div className="flex size-[26px] shrink-0 items-center justify-center rounded-[var(--r-md)] bg-violet-500/12 text-violet-200">
+          <Calendar className="size-3.5" aria-hidden />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[13.5px] font-medium text-[color:var(--text-primary)]">{DASHBOARD_HOME_UI_COPY.planejamentoSemanaTitulo}</h2>
+        </div>
+      </div>
+      <div className="space-y-5 px-[18px] py-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">{DASHBOARD_HOME_UI_COPY.metaSecao}</p>
+          <p className="mt-2 text-xs leading-relaxed text-[color:var(--text-secondary)]">{DASHBOARD_HOME_UI_COPY.metaEmptyHonesto}</p>
+          <Button size="sm" variant="outline" className="mt-3 w-full" asChild>
+            <HoverPrefetchLink href="/settings/readiness">Configurar meta</HoverPrefetchLink>
+          </Button>
+        </div>
+        <div className="border-t border-[color:var(--border-subtle)] pt-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+            {DASHBOARD_HOME_UI_COPY.tarefasAvulsasSecao}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-[color:var(--text-secondary)]">{DASHBOARD_HOME_UI_COPY.tarefasAvulsasIntro}</p>
+          <ul className="mt-3 rounded-[var(--r-md)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] px-3 py-3 text-center text-[11px] text-[color:var(--text-muted)]">
+            <li>{DASHBOARD_HOME_UI_COPY.tarefasAvulsasEmpty}</li>
+          </ul>
+          <Button type="button" variant="outline" size="sm" className="mt-3 w-full" disabled title="Função em preparação">
+            Adicionar tarefa
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function actionBucket(a: BriefingActionItem): BriefingActionEisenhowerBucket {
+  return a.eisenhowerBucket ?? "maximum";
+}
+
+function sortResumePhaseKey(label: string): number {
+  const order = [
+    "Coleta inicial",
+    "Aguardando documentos",
+    "Pesquisa Lex AI",
+    "Estratégia",
+    "Minuta",
+    "Revisão",
+    "Pronto para exportar",
+  ];
+  const i = order.indexOf(label);
+  return i === -1 ? 50 : i;
+}
+
+function ResumeCasesFlow({ rows }: { rows: ResumeCaseRow[] }) {
+  const unnamed = rows.filter((r) => r.kind !== "named");
+  const named = rows.filter((r): r is ResumeNamedCase => r.kind === "named");
+  const byPhase = new Map<string, ResumeNamedCase[]>();
+  for (const n of named) {
+    const arr = byPhase.get(n.badgeLabel) ?? [];
+    arr.push(n);
+    byPhase.set(n.badgeLabel, arr);
+  }
+  const phaseKeys = [...byPhase.keys()].sort((a, b) => sortResumePhaseKey(a) - sortResumePhaseKey(b));
+
+  if (rows.length === 0) {
+    return <p className="py-8 text-center text-sm text-[color:var(--text-muted)]">Sem casos para mostrar.</p>;
+  }
+
+  return (
+    <div className="space-y-5 px-[18px] py-3">
+      {unnamed.length > 0 ? (
+        <div>
+          <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">Coleta inicial</h3>
+          <ul className="divide-y divide-[color:var(--border-subtle)]">
+            {unnamed.map((row) => (
+              <ResumeCaseRowView
+                key={row.kind === "unnamed_single" ? row.id : `group-${row.oldestCaseId}`}
+                row={row}
+              />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {phaseKeys.map((phase) => (
+        <div key={phase}>
+          <h3 className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">{phase}</h3>
+          <ul className="divide-y divide-[color:var(--border-subtle)]">
+            {(byPhase.get(phase) ?? []).map((row) => (
+              <ResumeCaseRowView key={row.id} row={row} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BriefingActionRows({ items }: { items: BriefingActionItem[] }) {
+  return (
+    <ul className="divide-y divide-[color:var(--border-subtle)]">
+      {items.map((item) => (
+        <li key={item.id} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-1 gap-3">
+            <ActionIcon type={item.type} />
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-[color:var(--text-primary)]">{item.title}</p>
+              {item.discreteOrigin ? (
+                <p className="mt-0.5 text-[10px] text-[color:var(--text-muted)]">{discreteOriginLabel(item.discreteOrigin)}</p>
+              ) : null}
+              <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Motivo</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-[color:var(--text-secondary)]">{item.reason}</p>
+              {item.statusHint ? <p className="mt-1 text-[10.5px] text-[color:var(--text-muted)]">{item.statusHint}</p> : null}
+              {item.priority === "urgent" ? (
+                <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-medium ${priorityStyles("urgent")}`}>
+                  Atenção urgente
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            className="h-9 w-full max-w-[14rem] shrink-0 justify-center self-start sm:w-56 sm:self-center"
+            asChild
+          >
+            <HoverPrefetchLink href={item.href}>{item.cta}</HoverPrefetchLink>
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Corpo do briefing (pulso, prioridades, listas) — pode ir dentro de Suspense. */
 export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPayload }) {
   const {
     pulse,
     pulseCases,
-    pulseDocuments,
     pulsePieces,
     pulseLibrary,
     urgent,
     briefingActions,
+    briefingActionsOverflow,
     genuinelyAllClear,
     resumeCases,
     activities,
@@ -219,165 +363,165 @@ export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPay
 
   if (hasNoCases) return null;
 
-  return (
-        <div className="flex flex-col gap-5">
-          {urgent ? (
-            <div
-              className="lex-glass-card flex flex-wrap items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3"
-              role="status"
-            >
-              <AlertTriangle className="size-4 shrink-0 text-red-400" aria-hidden />
-              <div className="min-w-0 flex-1 text-sm text-[color:var(--text-primary)]">
-                <span className="font-medium text-red-300">{urgent.title}</span>
-                <span className="text-[color:var(--text-secondary)]"> — {urgent.message}</span>
-              </div>
-              <Button size="sm" variant="outline" className="shrink-0 border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/15" asChild>
-                <HoverPrefetchLink href={urgent.href}>{urgent.ctaLabel} →</HoverPrefetchLink>
-              </Button>
-            </div>
-          ) : null}
+  const maximum = briefingActions.filter((a) => actionBucket(a) === "maximum");
+  const important = briefingActions.filter((a) => actionBucket(a) === "important");
+  const waiting = briefingActions.filter((a) => actionBucket(a) === "waiting");
 
-          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-            <PulseBriefCard icon={Briefcase} label="Casos em andamento" variant="cases" detail={pulseCases} />
-            <PulseBriefCard icon={FolderOpen} label="Documentos para analisar" variant="documents" detail={pulseDocuments} />
-            <PulsePiecesBriefCard detail={pulsePieces} />
-            <PulseBriefCard icon={Library} label="Biblioteca" variant="library" detail={pulseLibrary} />
+  const cardsGrid = (
+    <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <PulseBriefCard icon={Briefcase} label="Casos" variant="cases" detail={pulseCases} />
+      <PulsePiecesBriefCard detail={pulsePieces} />
+      <PulseBriefCard icon={Library} label="Biblioteca do escritório" variant="library" detail={pulseLibrary} />
+    </div>
+  );
+
+  const mainColumn = (
+    <>
+      <section id="o-que-fazer-agora" className="lex-glass-card overflow-hidden rounded-2xl">
+        <div className="flex flex-col gap-1 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5 sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-center gap-2">
+            <Sparkles className="size-4 text-violet-400" aria-hidden />
+            <h2 className="text-[13.5px] font-medium text-[color:var(--text-primary)]">{DASHBOARD_HOME_UI_COPY.oQueFazerAgora}</h2>
           </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-            <div className="flex min-w-0 flex-col gap-4">
-              <section id="o-que-fazer-agora" className="lex-glass-card overflow-hidden rounded-2xl">
-                <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
-                  <Sparkles className="size-4 text-violet-400" aria-hidden />
-                  <h2 className="flex-1 text-[13.5px] font-medium text-[color:var(--text-primary)]">O que fazer agora</h2>
-                  {!genuinelyAllClear && briefingActions.length > 0 ? (
-                    <span className="text-[11.5px] text-[color:var(--text-secondary)]">Até 5 prioridades</span>
-                  ) : null}
+          {!genuinelyAllClear && briefingActions.length > 0 ? (
+            <span className="text-[11.5px] text-[color:var(--text-secondary)]">Até 5 ações · por urgência e impacto</span>
+          ) : null}
+        </div>
+        <div className="px-[18px] py-3">
+          {genuinelyAllClear && briefingActions.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <p className="text-sm font-medium text-[color:var(--text-primary)]">Tudo em dia por aqui.</p>
+              <p className="max-w-sm text-xs text-[color:var(--text-secondary)]">
+                Pode iniciar um novo caso, rever a biblioteca ou fazer uma pesquisa jurídica.
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button size="sm" asChild>
+                  <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <HoverPrefetchLink href="/biblioteca">Abrir biblioteca</HoverPrefetchLink>
+                </Button>
+              </div>
+            </div>
+          ) : briefingActions.length === 0 ? (
+            <div className="space-y-1 py-8 text-center text-sm text-[color:var(--text-muted)]">
+              <p>As prioridades podem estar no aviso acima ou na lista de casos.</p>
+              <p className="text-xs">Abra um caso ou consulte a biblioteca para continuar.</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {maximum.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-200/90">{DASHBOARD_HOME_UI_COPY.prioridadeMaxima}</p>
+                  <BriefingActionRows items={maximum} />
                 </div>
-                <div className="px-[18px] py-3">
-                  {genuinelyAllClear && briefingActions.length === 0 ? (
-                    <div className="flex flex-col items-center gap-3 py-10 text-center">
-                      <p className="text-sm font-medium text-[color:var(--text-primary)]">Tudo em dia por aqui.</p>
-                      <p className="max-w-sm text-xs text-[color:var(--text-secondary)]">
-                        Você pode criar um novo caso, revisar a biblioteca ou iniciar uma pesquisa jurídica.
-                      </p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        <Button size="sm" asChild>
-                          <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
-                        </Button>
-                        <Button size="sm" variant="outline" asChild>
-                          <HoverPrefetchLink href="/biblioteca">Abrir biblioteca</HoverPrefetchLink>
-                        </Button>
-                      </div>
-                    </div>
-                  ) : briefingActions.length === 0 ? (
-                    <div className="space-y-1 py-8 text-center text-sm text-[color:var(--text-muted)]">
-                      <p>As prioridades podem estar no aviso acima ou na lista de casos.</p>
-                      <p className="text-xs">Abra um caso ou consulte a biblioteca para continuar.</p>
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-[color:var(--border-subtle)]">
-                      {briefingActions.map((item) => (
-                        <li key={item.id} className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex min-w-0 flex-1 gap-3">
-                            <ActionIcon type={item.type} />
-                            <div className="min-w-0">
-                              <p className="text-[13px] font-medium text-[color:var(--text-primary)]">{item.title}</p>
-                              <p className="mt-0.5 text-xs leading-relaxed text-[color:var(--text-secondary)]">{item.reason}</p>
-                              {item.statusHint ? (
-                                <p className="mt-1 text-[10.5px] text-[color:var(--text-muted)]">{item.statusHint}</p>
-                              ) : null}
-                              {item.priority === "urgent" ? (
-                                <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-medium ${priorityStyles("urgent")}`}>
-                                  Atenção necessária
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-                          <Button size="sm" className="shrink-0 self-start sm:self-center" asChild>
-                            <HoverPrefetchLink href={item.href}>{item.cta} →</HoverPrefetchLink>
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+              ) : null}
+              {important.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">{DASHBOARD_HOME_UI_COPY.importante}</p>
+                  <BriefingActionRows items={important} />
                 </div>
-              </section>
-
-              <CopilotBlock message={copilotMessage} title={copilotTitle} className="lg:hidden" />
-
-              <section className="lex-glass-card overflow-hidden rounded-2xl">
-                <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
-                  <Briefcase className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
-                  <h2 className="flex-1 text-[13.5px] font-medium">Casos para retomar</h2>
-                  <HoverPrefetchLink
-                    href="/cases"
-                    className="flex items-center gap-0.5 text-xs font-medium text-violet-400 hover:text-violet-300"
-                  >
-                    Ver todos <ArrowRight className="size-3.5" aria-hidden />
+              ) : null}
+              {waiting.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">{DASHBOARD_HOME_UI_COPY.aguardandoTerceiros}</p>
+                  <BriefingActionRows items={waiting} />
+                </div>
+              ) : null}
+              {briefingActionsOverflow > 0 ? (
+                <div className="flex justify-end border-t border-[color:var(--border-subtle)] pt-3">
+                  <HoverPrefetchLink href="/cases" className="text-xs font-medium text-violet-400 hover:text-violet-300">
+                    Ver mais na lista de casos (+{briefingActionsOverflow} na fila completa)
                   </HoverPrefetchLink>
                 </div>
-                <div className="px-[18px] py-1">
-                  {resumeCases.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-[color:var(--text-muted)]">Sem casos para mostrar.</p>
-                  ) : (
-                    <ul className="divide-y divide-[color:var(--border-subtle)]">
-                      {resumeCases.map((row) => (
-                        <ResumeCaseRowView
-                          key={
-                            row.kind === "named"
-                              ? row.id
-                              : row.kind === "unnamed_single"
-                                ? row.id
-                                : `group-${row.oldestCaseId}`
-                          }
-                          row={row}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </section>
-
-              <section className="lex-glass-card overflow-hidden rounded-2xl">
-                <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
-                  <Activity className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
-                  <h2 className="flex-1 text-[13.5px] font-medium">Movimentação (24h)</h2>
-                </div>
-                <div className="px-[18px] py-3">
-                  {activities.length === 0 ? (
-                    <div className="py-6 text-center text-sm text-[color:var(--text-muted)]">
-                      <p>Nenhuma atividade recente nos seus casos.</p>
-                      <p className="mt-1 text-xs">Envie documentos ou continue a entrevista de um caso.</p>
-                    </div>
-                  ) : (
-                    <ul className="space-y-3">
-                      {activities.map((ev) => (
-                        <li key={ev.id} className="flex flex-col gap-0.5 border-b border-[color:var(--border-subtle)] pb-3 last:border-0 last:pb-0">
-                          <p className="text-xs text-[color:var(--text-primary)]">{ev.line}</p>
-                          <p className="text-[10.5px] text-[color:var(--text-muted)]">{ev.timeLabel}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </section>
+              ) : null}
             </div>
-
-            <aside className="hidden min-w-0 flex-col gap-4 lg:flex">
-              <CopilotBlock message={copilotMessage} title={copilotTitle} />
-              <QuickActionsBlock />
-              <DocPhasesBlock docPhases={docPhases} failedCount={pulse.failedProcessingCount} piecesThisMonth={data.piecesThisMonth} risks={pulse.openHighRisks} />
-              <ConsultLinksBlock />
-            </aside>
-          </div>
-
-          <div className="flex flex-col gap-4 lg:hidden">
-            <QuickActionsBlock />
-            <DocPhasesBlock docPhases={docPhases} failedCount={pulse.failedProcessingCount} piecesThisMonth={data.piecesThisMonth} risks={pulse.openHighRisks} />
-            <ConsultLinksBlock />
-          </div>
+          )}
         </div>
+      </section>
+
+      <section className="lex-glass-card overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
+          <Briefcase className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
+          <h2 className="flex-1 text-[13.5px] font-medium">{DASHBOARD_HOME_UI_COPY.casosPorFluxo}</h2>
+          <HoverPrefetchLink
+            href="/cases"
+            className="flex items-center gap-0.5 text-xs font-medium text-violet-400 hover:text-violet-300"
+          >
+            Ver todos <ArrowRight className="size-3.5" aria-hidden />
+          </HoverPrefetchLink>
+        </div>
+        <ResumeCasesFlow rows={resumeCases} />
+      </section>
+
+      <section className="lex-glass-card overflow-hidden rounded-2xl">
+        <div className="flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-[18px] py-3.5">
+          <Activity className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
+          <h2 className="flex-1 text-[13.5px] font-medium">Atividade recente</h2>
+        </div>
+        <div className="px-[18px] py-3">
+          {activities.length === 0 ? (
+            <div className="py-4 text-center text-sm text-[color:var(--text-muted)]">
+              <p>Nenhuma movimentação nas últimas horas.</p>
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {activities.map((ev) => (
+                <li key={ev.id} className="flex flex-col gap-0.5 border-b border-[color:var(--border-subtle)] pb-3 last:border-0 last:pb-0">
+                  <p className="text-xs text-[color:var(--text-primary)]">{ev.line}</p>
+                  <p className="text-[10.5px] text-[color:var(--text-muted)]">{ev.timeLabel}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+    </>
+  );
+
+  const rightRailRest = (
+    <>
+      <QuickActionsBlock />
+      <ConsultLinksBlock />
+      <DocPhasesBlock docPhases={docPhases} failedCount={pulse.failedProcessingCount} piecesThisMonth={data.piecesThisMonth} risks={pulse.openHighRisks} />
+      <WeeklyPlanningBlock id="planejamento-semana" />
+    </>
+  );
+
+  return (
+    <div className="flex flex-col gap-5">
+      {urgent ? (
+        <div
+          className="lex-glass-card flex flex-wrap items-center gap-3 rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3"
+          role="status"
+        >
+          <AlertTriangle className="size-4 shrink-0 text-red-400" aria-hidden />
+          <div className="min-w-0 flex-1 text-sm text-[color:var(--text-primary)]">
+            <span className="font-medium text-red-300">{urgent.title}</span>
+            <span className="text-[color:var(--text-secondary)]"> — {urgent.message}</span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 w-56 shrink-0 justify-center border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/15"
+            asChild
+          >
+            <HoverPrefetchLink href={urgent.href}>{urgent.ctaLabel}</HoverPrefetchLink>
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-stretch lg:gap-5">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">{cardsGrid}</div>
+        <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2 lg:min-h-0">{mainColumn}</div>
+        <CopilotBlock
+          message={copilotMessage}
+          title={copilotTitle}
+          className="h-full min-w-0 lg:col-start-2 lg:row-start-1 lg:min-h-0"
+        />
+        <aside className="flex min-w-0 flex-col gap-5 lg:col-start-2 lg:row-start-2 lg:min-h-0">{rightRailRest}</aside>
+      </div>
+    </div>
   );
 }
 
@@ -387,9 +531,7 @@ export function MorningBriefing({ data }: { data: MorningBriefingPayload }) {
       <MorningBriefingHeaderShell
         displayName={data.displayName}
         hasNoCases={data.hasNoCases}
-        daySummaryLine={data.daySummaryLine}
-        priorityContinueHref={data.priorityContinueHref}
-        oldestUnnamedCaseId={data.oldestUnnamedCaseId}
+        honorific={data.honorific}
       />
       <MorningBriefingMainWithData data={data} />
     </>
@@ -400,31 +542,19 @@ function CopilotBlock({ message, title, className }: { message: string; title: s
   return (
     <div
       className={cn(
-        "lex-glass-card overflow-hidden rounded-2xl border border-violet-500/20 bg-[rgba(124,58,237,0.05)]",
+        "lex-glass-card flex h-full min-h-[168px] flex-col overflow-hidden rounded-2xl border border-violet-500/20 bg-[rgba(124,58,237,0.05)]",
         className,
       )}
     >
-      <div className="flex items-center gap-2 border-b border-violet-500/10 px-4 py-3">
+      <div className="flex shrink-0 items-center gap-2 border-b border-violet-500/10 px-4 py-2.5 md:px-5">
         <div className="flex size-[26px] items-center justify-center rounded-[var(--r-md)] bg-[rgba(124,58,237,0.15)]">
           <Sparkles className="size-3.5 text-violet-300" aria-hidden />
         </div>
         <span className="flex-1 text-[13px] font-medium text-[color:var(--text-primary)]">{title}</span>
       </div>
-      <div className="space-y-3 px-4 py-3">
-        <p className="text-[12.5px] leading-relaxed text-[color:var(--text-secondary)]">{message}</p>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" className="border-violet-500/25 bg-violet-500/10 text-violet-100 hover:bg-violet-500/15" asChild>
-            <Link prefetch={false} href="#o-que-fazer-agora">
-              Ver prioridades
-            </Link>
-          </Button>
-          <Button size="sm" variant="outline" className="border-violet-500/25 bg-violet-500/10 text-violet-100 hover:bg-violet-500/15" asChild>
-            <HoverPrefetchLink href="/pesquisa-juridica">Pesquisa jurídica</HoverPrefetchLink>
-          </Button>
-          <Button size="sm" variant="outline" className="border-violet-500/25 bg-violet-500/10 text-violet-100 hover:bg-violet-500/15" asChild>
-            <HoverPrefetchLink href="/cases/new">Novo caso</HoverPrefetchLink>
-          </Button>
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col px-[18px] py-2.5">
+        <p className="text-[12px] leading-snug text-[color:var(--text-secondary)] line-clamp-4">{message}</p>
+        <div className="min-h-0 flex-1" aria-hidden />
       </div>
     </div>
   );
@@ -434,13 +564,13 @@ function QuickActionsBlock() {
   return (
     <section className="lex-glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-[color:var(--border-subtle)] px-[18px] py-3">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Ações</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Ações rápidas</p>
       </div>
       <div className="grid grid-cols-2 gap-2 p-[18px]">
         <QuickLink href="/cases/new" icon={Plus} iconClass="bg-violet-500/15 text-violet-300" label="Novo caso" />
-        <QuickLink href="/documentos" icon={Upload} iconClass="bg-amber-500/12 text-amber-400" label="Enviar documento" />
-        <QuickLink href="/pesquisa-juridica" icon={Search} iconClass="bg-emerald-500/10 text-emerald-400" label="Pesquisa jurídica" />
-        <QuickLink href="/editor" icon={FileText} iconClass="bg-blue-500/10 text-blue-400" label="Criar peça" />
+        <QuickLink href="/documentos" icon={Upload} iconClass="bg-amber-500/15 text-amber-300" label="Upload" />
+        <QuickLink href="/pesquisa-juridica" icon={Search} iconClass="bg-emerald-500/15 text-emerald-300" label="Pesquisa Lex" />
+        <QuickLink href="/editor" icon={FileText} iconClass="bg-blue-500/15 text-blue-300" label="Criar peça" />
       </div>
     </section>
   );
@@ -453,10 +583,10 @@ function ConsultLinksBlock() {
         <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Consultar</p>
       </div>
       <div className="grid grid-cols-2 gap-2 p-[18px]">
-        <QuickLink href="/cases" icon={Briefcase} iconClass="bg-violet-500/12 text-violet-300" label="Todos os casos" />
-        <QuickLink href="/processos" icon={Scale} iconClass="bg-amber-500/10 text-amber-300" label="Processos" />
-        <QuickLink href="/biblioteca" icon={Library} iconClass="bg-emerald-500/10 text-emerald-300" label="Biblioteca" />
-        <QuickLink href="/busca" icon={Search} iconClass="bg-blue-500/10 text-blue-300" label="Busca global" />
+        <QuickLink href="/cases" icon={Briefcase} iconClass="bg-violet-500/15 text-violet-300" label="Casos" />
+        <QuickLink href="/processos" icon={Scale} iconClass="bg-amber-500/15 text-amber-300" label="Processos" />
+        <QuickLink href="/biblioteca" icon={Library} iconClass="bg-emerald-500/15 text-emerald-300" label="Biblioteca" />
+        <QuickLink href="/busca" icon={Search} iconClass="bg-blue-500/15 text-blue-300" label="Busca global" />
       </div>
     </section>
   );
@@ -471,12 +601,12 @@ function DocPhasesBlock(props: {
   return (
     <section className="lex-glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-[color:var(--border-subtle)] px-[18px] py-3">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Documentos do escritório</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Fluxo de documentos</p>
       </div>
-      <div className="space-y-3 px-[18px] py-3">
+      <div className="space-y-5 px-[18px] py-3">
         {props.failedCount > 0 ? (
           <div className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            {props.failedCount} documento{props.failedCount > 1 ? "s" : ""} precisam de atenção.
+            Atenção: {props.failedCount} documento{props.failedCount > 1 ? "s" : ""} precisam de ser reprocessados ou corrigidos.
             <Button variant="link" className="h-auto p-0 pl-1 text-amber-200" asChild>
               <HoverPrefetchLink href="/documentos">Ver documentos</HoverPrefetchLink>
             </Button>
@@ -486,12 +616,10 @@ function DocPhasesBlock(props: {
           <div className="rounded-[var(--r-md)] bg-[color:var(--surface-overlay)] px-3 py-2.5">
             <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Peças (mês)</p>
             <p className="text-lg font-medium text-[color:var(--text-primary)]">{props.piecesThisMonth}</p>
-            <p className="text-[11px] text-[color:var(--text-secondary)]">novas no escritório</p>
           </div>
           <div className="rounded-[var(--r-md)] bg-[color:var(--surface-overlay)] px-3 py-2.5">
             <p className="text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">Riscos elevados</p>
             <p className="text-lg font-medium text-[color:var(--text-primary)]">{props.risks}</p>
-            <p className="text-[11px] text-[color:var(--text-secondary)]">em aberto nos casos</p>
           </div>
         </div>
         <ul className="flex flex-col gap-1.5">
@@ -520,18 +648,20 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
         >
           <div className="flex min-w-0 items-start gap-3">
             <div className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-overlay-strong)] text-[11px] font-medium text-[color:var(--text-secondary)]">
-              +{row.count}
+              {row.count}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-medium text-[color:var(--text-primary)]">
-                Mais {row.count} caso{row.count > 1 ? "s" : ""} sem título
+                {row.count} caso{row.count > 1 ? "s" : ""} sem título precisam de ser organizados
               </p>
               <p className="text-[11.5px] text-[color:var(--text-secondary)]">
-                Coleta inicial · organize e nomeie na entrevista guiada para não perder o rasto.
+                Coleta inicial · conclua a entrevista guiada e o nome para destravar o fluxo.
               </p>
             </div>
           </div>
-          <span className="shrink-0 text-xs font-medium text-violet-400 group-hover:text-violet-300">Organizar →</span>
+          <span className="inline-flex h-8 w-44 shrink-0 items-center justify-center rounded-md border border-violet-500/20 bg-violet-500/10 text-xs font-medium text-violet-300 group-hover:border-violet-500/35 group-hover:bg-violet-500/15">
+            Organizar agora
+          </span>
         </HoverPrefetchLink>
       </li>
     );
@@ -556,7 +686,9 @@ function ResumeCaseRowView({ row }: { row: ResumeCaseRow }) {
               <p className="mt-1 text-[11px] text-[color:var(--text-muted)]">Próxima ação: {row.nextActionLabel}</p>
             </div>
           </div>
-          <span className="shrink-0 text-xs font-medium text-violet-400 group-hover:text-violet-300">Continuar →</span>
+          <span className="inline-flex h-8 w-44 shrink-0 items-center justify-center rounded-md border border-violet-500/20 bg-violet-500/10 text-xs font-medium text-violet-300 group-hover:border-violet-500/35 group-hover:bg-violet-500/15">
+            Continuar
+          </span>
         </HoverPrefetchLink>
       </li>
     );
@@ -613,7 +745,7 @@ function QuickLink(props: {
       className="flex items-center gap-2 rounded-[var(--r-md)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)] px-3 py-2.5 text-left transition-colors hover:border-violet-500/20 hover:bg-[rgba(124,58,237,0.06)]"
     >
       <div className={`flex size-[26px] shrink-0 items-center justify-center rounded-md ${props.iconClass}`}>
-        <Ico className="size-3.5" aria-hidden />
+        <Ico className="size-3.5 text-current" aria-hidden />
       </div>
       <span className="text-xs font-medium text-[color:var(--text-primary)]">{props.label}</span>
     </HoverPrefetchLink>

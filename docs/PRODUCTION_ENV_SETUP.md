@@ -248,7 +248,7 @@ Alternativas: SES (`AWS_*`), SMTP genérico, ou Supabase Auth SMTP nativo.
 | Var | Status | Onde pegar / o que faz |
 |---|---|---|
 | `DATAJUD_API_KEY`   | R (apenas se for usar DataJud) | https://datajud-wiki.cnj.jus.br/api-publica/acesso → preencha o formulário do CNJ → key gratuita por email em poucos minutos |
-| `DATAJUD_ALIAS`     | R (acompanha `DATAJUD_API_KEY`) | sigla do índice ES no DataJud — ex.: `api_publica_tjsp`, `api_publica_stj`, `api_publica_trf3`. Lista oficial: https://datajud-wiki.cnj.jus.br/api-publica/endpoints |
+| `DATAJUD_DEFAULT_ALIAS` | R (fallback técnico) | alias oficial usado quando o CNJ/processo não identifica o tribunal — ex.: `api_publica_tjrs`. Lista oficial: https://datajud-wiki.cnj.jus.br/api-publica/endpoints |
 | `STF_PROVIDER_MODE` | R | `live` em prod (provider real do portal STF), `fixture` em dev |
 | `STJ_PROVIDER_MODE` | R | `live` em prod (provider real STJ), `fixture` em dev |
 
@@ -261,8 +261,8 @@ Alternativas: SES (`AWS_*`), SMTP genérico, ou Supabase Auth SMTP nativo.
 | `FIXTURE` | não — embutido em `src/lib/corpus/providers/fixture.ts` | CDC, CC, CPC, CF/88 (preâmbulo + arts), 1 súmula demo | depende do `kind` de cada item |
 | `LEXML`   | não — `https://www.lexml.gov.br/busca/SRU` | **toda** legislação federal/estadual/municipal oficial brasileira (vade mecum completo) | `lex_corpus_norms` |
 | `STF`     | não — scraping público | súmulas + súmulas vinculantes do STF | `lex_corpus_jurisprudence` |
-| `STJ`     | não — `https://scon.stj.jus.br` | acórdãos e súmulas STJ | `lex_corpus_jurisprudence` |
-| `DATAJUD` | **sim — `DATAJUD_API_KEY` (CNJ)** | movimentações processuais de TJs, TRFs, TRTs, TST, TSE, STJ, STF | `lex_corpus_jurisprudence` |
+| `STJ`     | não — `https://processo.stj.jus.br/SCON/` | acórdãos e súmulas STJ | `lex_corpus_jurisprudence` |
+| `DATAJUD` | **sim — `DATAJUD_API_KEY` (CNJ)** | movimentações processuais de TJs, TRFs, TRTs, TREs, TJMs, STJ, TST, TSE e STM (STF fica em fonte própria) | `lex_corpus_jurisprudence` |
 
 ### J.3 Roteamento collection ↔ provider é automático
 
@@ -320,7 +320,7 @@ Cada página = 50 normas. Watermark incremental — sync subsequente só pega no
 ```bash
 npm run corpus:sync -- --provider=STF --inline                    # súmulas STF
 npm run corpus:sync -- --provider=STJ --max-pages=5 --inline      # acórdãos STJ
-DATAJUD_API_KEY=<sua> DATAJUD_ALIAS=api_publica_tjsp \
+DATAJUD_API_KEY=<sua> DATAJUD_DEFAULT_ALIAS=api_publica_tjrs \
   npm run corpus:sync -- --provider=DATAJUD --max-pages=10 --inline
 ```
 

@@ -49,7 +49,7 @@ const disabledResponse = (meta: Record<string, unknown>): LegalResearchResponse 
   jurisprudenceCandidates: [],
   strategyNotes: [],
   draftingSuggestions: [],
-  riskFlags: ["Modo DeepSeek desativado (DEEPSEEK_LEGAL_RESEARCH_ENABLED)."],
+  riskFlags: ["Assistência Lex AI desativada (configuração do ambiente)."],
   missingInformation: [],
   providerMetadata: { ...meta, promptVersion, disabled: true },
 });

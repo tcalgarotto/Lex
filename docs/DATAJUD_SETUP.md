@@ -37,9 +37,9 @@ não pode ser invocado.
 
 ```env
 DATAJUD_API_KEY=<key-do-CNJ>
-DATAJUD_ALIAS=api_publica_tjsp
+DATAJUD_DEFAULT_ALIAS=api_publica_tjrs
 DATAJUD_BASE_URL=https://api-publica.datajud.cnj.jus.br
-DATAJUD_PROVIDER_MODE=live
+DATAJUD_MODE=live
 ENABLE_DATAJUD=true
 DATAJUD_DEFAULT_PAGE_SIZE=100
 DATAJUD_MAX_PAGES_PER_SYNC=10
@@ -60,9 +60,9 @@ npm run datajud:check
 # {
 #   "status": "ok",
 #   "mode": "live",
-#   "envKeysSet": { "DATAJUD_API_KEY": true, "DATAJUD_ALIAS": true, ... },
-#   "alias": "api_publica_tjsp",
-#   "aliasEntry": { "tribunal": "TJSP", ... },
+#   "envKeysSet": { "DATAJUD_API_KEY": true, "DATAJUD_DEFAULT_ALIAS": true, ... },
+#   "alias": "api_publica_tjrs",
+#   "aliasEntry": { "tribunal": "TJRS", ... },
 #   "probe": { "ok": true, "httpStatus": 200, "tookMs": 743, "sampleHits": 1 }
 # }
 
@@ -102,7 +102,7 @@ A query gerada segue o formato Elasticsearch documentado em
 
 ## Aliases já mapeados (91 tribunais — 100% do DataJud)
 
-A lista canônica está em `src/lib/corpus/providers/datajud-aliases.ts`,
+A lista canônica está em `src/lib/datajud/datajud-aliases.ts`,
 com totais expostos por `DATAJUD_ALIAS_TOTALS`:
 
 | Categoria | Quantidade |
@@ -111,21 +111,22 @@ com totais expostos por `DATAJUD_ALIAS_TOTALS`:
 | TRFs (`api_publica_trf1` … `trf6`) | 6 |
 | TJs (todos os 26 estados + DF) | 27 |
 | TRTs (`api_publica_trt1` … `trt24`) | 24 |
-| TREs (todos os 26 estados + DF) | 27 |
+| TREs (`api_publica_tre-ac` … `api_publica_tre-to`, com hífen oficial) | 27 |
 | TJMs estaduais (MG, RS, SP) | 3 |
 | **Total** | **91** |
 
 > O **STF não consta** no DataJud (tem portal próprio — coberto pelo
 > provider `STF` do Lex). Esse é um fato do CNJ, não uma omissão do Lex.
 
-Sugestão de varredura por prioridade (ordem decrescente):
+Sugestão de varredura por prioridade (ordem decrescente), alterando o fallback
+técnico por execução e sem criar múltiplas variáveis no ambiente:
 
 ```bash
 # Top 10 por volume/relevância
 for alias in api_publica_stj api_publica_tjsp api_publica_tjmg api_publica_tjrj \
              api_publica_tjpr api_publica_tjrs api_publica_tjsc api_publica_tjba \
              api_publica_tjpe api_publica_trf3; do
-  npm run corpus:sync -- --provider=DATAJUD --alias="$alias" --max-pages=2
+  DATAJUD_DEFAULT_ALIAS="$alias" npm run corpus:sync -- --provider=DATAJUD --max-pages=2
 done
 ```
 
@@ -136,7 +137,9 @@ import {
   listPriorityAliases,        // ordenado por priority desc
   aliasesByCategory,          // agrupado por superior/trf/estadual/...
   getAliasEntry,              // lookup por alias
-} from "@/lib/corpus/providers/datajud-aliases";
+  resolveDataJudAliasFromTribunalAcronym,
+  resolveDataJudAliasFromCnj,
+} from "@/lib/datajud/datajud-aliases";
 ```
 
 ---

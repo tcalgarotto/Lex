@@ -110,18 +110,18 @@ STF_BASE_URL=https://portal.stf.jus.br
 STF_PROVIDER_MODE=live
 STF_RATE_LIMIT_PER_MINUTE=10
 
-STJ_BASE_URL=https://scon.stj.jus.br
+STJ_BASE_URL=https://processo.stj.jus.br
 STJ_PROVIDER_MODE=live
 STJ_RATE_LIMIT_PER_MINUTE=10
 
 # DataJud — REQUIRED: DATAJUD_API_KEY. Solicite a chave em
 # https://datajud-wiki.cnj.jus.br/api-publica/acesso
-# 91 aliases disponíveis em src/lib/corpus/providers/datajud-aliases.ts
+# 91 aliases disponíveis em src/lib/datajud/datajud-aliases.ts
 # (4 superiores + 27 TJs + 6 TRFs + 24 TRTs + 27 TREs + 3 TJMs).
 DATAJUD_BASE_URL=https://api-publica.datajud.cnj.jus.br
 DATAJUD_API_KEY=                # ← preencher
-DATAJUD_ALIAS=api_publica_tjsp  # alias inicial (use scripts para multi-alias)
-DATAJUD_PROVIDER_MODE=live
+DATAJUD_DEFAULT_ALIAS=api_publica_tjrs
+DATAJUD_MODE=live
 DATAJUD_RATE_LIMIT_PER_MINUTE=30
 DATAJUD_DEFAULT_PAGE_SIZE=100
 DATAJUD_MAX_PAGES_PER_SYNC=10

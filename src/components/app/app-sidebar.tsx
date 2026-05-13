@@ -74,7 +74,7 @@ const NavLink = memo(function NavLink({
     <Link href={item.href} prefetch={false} onMouseEnter={warm} onFocus={warm}>
       <span
         className={cn(
-          "relative flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-lg font-medium leading-snug transition-colors hover:bg-[var(--bg-hover)]",
+          "relative flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-base font-semibold leading-snug transition-colors hover:bg-[var(--bg-hover)]",
           muted && !active && "text-[color:var(--text-muted)]",
           !muted && !active && "text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]",
           active &&
@@ -117,7 +117,7 @@ const SidebarMainNav = memo(function SidebarMainNav({
             type="button"
             onClick={() => setWorkspaceOpen((v) => !v)}
             className={cn(
-              "mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-widest text-[color:var(--text-muted)] hover:bg-[var(--bg-hover)]",
+              "mt-3 flex min-h-[40px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--text-secondary)] hover:bg-[var(--bg-hover)]",
               collapsed && "justify-center px-0",
             )}
             aria-expanded={workspaceOpen}

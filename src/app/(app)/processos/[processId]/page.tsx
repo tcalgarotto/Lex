@@ -20,7 +20,10 @@ import {
  createLegalPieceAndRedirect,
  createMemoryEntryAction,
  addTimelineEventAction,
+syncLegalProcessAction,
 } from "@/app/(app)/processos/actions";
+import { computeProcessHealth } from "@/lib/legal-processes/process-health";
+import { buildProcessCopilotBrief } from "@/lib/legal-processes/process-copilot";
 
 export default async function ProcessDetailPage({
  params,
@@ -46,6 +49,22 @@ export default async function ProcessDetailPage({
 
  const thread = proc.threads[0];
  if (!thread) notFound();
+
+ const legalProcess = await prisma.legalProcess.findFirst({
+ where: { workspaceId, processId: proc.id },
+ include: {
+ movements: { orderBy: [{ dataHora: "desc" }, { createdAt: "desc" }], take: 20 },
+ alerts: { orderBy: { createdAt: "desc" }, take: 10 },
+ syncLogs: { orderBy: { startedAt: "desc" }, take: 5 },
+ },
+ });
+
+ const [dataJudHealth, copilotBrief] = legalProcess
+ ? await Promise.all([
+ computeProcessHealth({ workspaceId, legalProcessId: legalProcess.id }),
+ buildProcessCopilotBrief({ workspaceId, legalProcessId: legalProcess.id }),
+ ])
+ : [null, null];
 
  const initialMessages = await prisma.chatMessage.findMany({
  where: { threadId: thread.id },
@@ -155,6 +174,10 @@ export default async function ProcessDetailPage({
  <span className="text-muted-foreground">Última peça gerada:</span>{" "}
  {lastPiece ? formatDistanceToNow(lastPiece.createdAt, { addSuffix: true, locale: ptBR }) : "—"}
  </p>
+ <p>
+ <span className="text-muted-foreground">DataJud:</span>{" "}
+ {legalProcess ? `${legalProcess.tribunalAcronym} · ${legalProcess.movements.length} movs.` : "Não importado"}
+ </p>
  </div>
  </div>
  <div className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-4">
@@ -174,6 +197,7 @@ export default async function ProcessDetailPage({
  <TabsList>
  <TabsTrigger value="chat">Chat IA</TabsTrigger>
  <TabsTrigger value="docs">Documentos</TabsTrigger>
+ <TabsTrigger value="datajud">DataJud</TabsTrigger>
  <TabsTrigger value="timeline">Linha do tempo</TabsTrigger>
  <TabsTrigger value="memory">Memória</TabsTrigger>
  <TabsTrigger value="pecas">Peças</TabsTrigger>
@@ -201,6 +225,143 @@ export default async function ProcessDetailPage({
 
  <TabsContent value="docs" className="space-y-4">
  <ProcessDocuments processId={proc.id} />
+ </TabsContent>
+
+ <TabsContent value="datajud" className="space-y-4">
+ {legalProcess ? (
+ <>
+ <Card>
+ <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+ <div>
+ <CardTitle className="text-base">Capa DataJud</CardTitle>
+ <p className="mt-1 text-sm text-muted-foreground">
+ {legalProcess.tribunalAcronym} · {legalProcess.branch} · {legalProcess.dataJudStatus}
+ </p>
+ </div>
+ <form action={syncLegalProcessAction}>
+ <input type="hidden" name="processId" value={proc.id} />
+ <input type="hidden" name="legalProcessId" value={legalProcess.id} />
+ <Button type="submit" variant="outline" size="sm">Sincronizar agora</Button>
+ </form>
+ </CardHeader>
+ <CardContent className="grid gap-4 md:grid-cols-3">
+ <div>
+ <p className="text-xs uppercase text-muted-foreground">Classe</p>
+ <p className="mt-1 text-sm">{legalProcess.classeNome ?? "Não informada"}</p>
+ </div>
+ <div>
+ <p className="text-xs uppercase text-muted-foreground">Órgão julgador</p>
+ <p className="mt-1 text-sm">{legalProcess.orgaoJulgadorNome ?? "Não informado"}</p>
+ </div>
+ <div>
+ <p className="text-xs uppercase text-muted-foreground">Último sync</p>
+ <p className="mt-1 text-sm">
+ {legalProcess.lastDataJudSyncAt
+ ? formatDistanceToNow(legalProcess.lastDataJudSyncAt, { addSuffix: true, locale: ptBR })
+ : "Ainda não sincronizado"}
+ </p>
+ </div>
+ </CardContent>
+ </Card>
+
+ <div className="grid gap-4 md:grid-cols-3">
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-base">Saúde processual</CardTitle>
+ </CardHeader>
+ <CardContent>
+ <p className="text-3xl font-semibold">{dataJudHealth?.score ?? 0}</p>
+ <p className="mt-1 text-sm text-muted-foreground">{dataJudHealth?.status ?? "pendente"}</p>
+ <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+ {(dataJudHealth?.reasons ?? []).map((reason) => (
+ <li key={reason}>{reason}</li>
+ ))}
+ </ul>
+ </CardContent>
+ </Card>
+ <Card className="md:col-span-2">
+ <CardHeader>
+ <CardTitle className="text-base">Copiloto Processual</CardTitle>
+ </CardHeader>
+ <CardContent className="space-y-3 text-sm">
+ <p className="text-muted-foreground">
+ Resumo operacional baseado apenas na capa, movimentações e alertas persistidos.
+ </p>
+ <div className="space-y-2">
+ {(copilotBrief?.recommendations ?? []).map((item) => (
+ <div key={item} className="rounded-lg border border-[color:var(--border-default)] p-3">
+ {item}
+ </div>
+ ))}
+ </div>
+ <p className="text-xs text-muted-foreground">
+ Não substitui conferência humana de prazo, intimação oficial ou autos completos.
+ </p>
+ </CardContent>
+ </Card>
+ </div>
+
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-base">Timeline DataJud</CardTitle>
+ </CardHeader>
+ <CardContent className="space-y-3">
+ {legalProcess.movements.length === 0 ? (
+ <p className="text-sm text-muted-foreground">Sem movimentações importadas.</p>
+ ) : (
+ legalProcess.movements.map((movement) => (
+ <div key={movement.id} className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay)] p-3 text-sm">
+ <div className="flex flex-wrap items-center justify-between gap-2">
+ <div className="flex flex-wrap items-center gap-2">
+ <Badge variant="outline" className="text-[10px]">{movement.category}</Badge>
+ <p className="font-medium">{movement.nome}</p>
+ </div>
+ <p className="text-xs text-muted-foreground">
+ {movement.dataHora ? formatDistanceToNow(movement.dataHora, { addSuffix: true, locale: ptBR }) : "Sem data"}
+ </p>
+ </div>
+ </div>
+ ))
+ )}
+ </CardContent>
+ </Card>
+
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-base">Alertas e sync</CardTitle>
+ </CardHeader>
+ <CardContent className="grid gap-4 md:grid-cols-2">
+ <div className="space-y-2">
+ <p className="text-xs font-medium uppercase text-muted-foreground">Alertas</p>
+ {legalProcess.alerts.length === 0 ? <p className="text-sm text-muted-foreground">Sem alertas.</p> : null}
+ {legalProcess.alerts.map((alert) => (
+ <div key={alert.id} className="rounded-lg border border-[color:var(--border-default)] p-3 text-sm">
+ <p className="font-medium">{alert.title}</p>
+ <p className="text-xs text-muted-foreground">{alert.description}</p>
+ </div>
+ ))}
+ </div>
+ <div className="space-y-2">
+ <p className="text-xs font-medium uppercase text-muted-foreground">Últimos syncs</p>
+ {legalProcess.syncLogs.map((log) => (
+ <div key={log.id} className="rounded-lg border border-[color:var(--border-default)] p-3 text-sm">
+ <p className="font-medium">{log.status}</p>
+ <p className="text-xs text-muted-foreground">
+ {formatDistanceToNow(log.startedAt, { addSuffix: true, locale: ptBR })} · {log.source}
+ </p>
+ </div>
+ ))}
+ </div>
+ </CardContent>
+ </Card>
+ </>
+ ) : (
+ <Card>
+ <CardContent className="p-6 text-sm text-muted-foreground">
+ Este processo ainda não foi importado do DataJud. Use a tela de processos para importar pelo CNJ e habilitar capa, movimentações, saúde e alertas.
+ </CardContent>
+ </Card>
+ )}
  </TabsContent>
 
  <TabsContent value="timeline" className="space-y-4">

@@ -26,7 +26,7 @@ export type FieldRequirement = "required" | "optional" | "lacuna";
 export function LegalValidationMessage({ children, id }: { children: React.ReactNode; id?: string }) {
   if (children == null || children === false) return null;
   return (
-    <p id={id} role="alert" className="mt-1.5 text-xs text-rose-300">
+    <p id={id} role="alert" className="mt-1.5 text-sm font-medium leading-snug text-rose-300">
       {children}
     </p>
   );
@@ -35,7 +35,7 @@ export function LegalValidationMessage({ children, id }: { children: React.React
 export function LegalFieldHint({ children }: { children: React.ReactNode }) {
   if (!children) return null;
   return (
-    <p className="mt-1 text-[11px] leading-snug text-[color:var(--text-secondary)]">{children}</p>
+    <p className="mt-1 text-sm leading-relaxed text-[color:var(--text-secondary)]">{children}</p>
   );
 }
 
@@ -84,21 +84,21 @@ export function LegalSectionCard({
       <header className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-[color:var(--border-default)]/80 pb-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="shrink-0 font-mono text-[10px]">
+            <Badge variant="outline" className="shrink-0 font-mono text-[13px] font-semibold">
               {step}
             </Badge>
-            <h2 className="text-base font-semibold tracking-tight text-[color:var(--text-primary)] md:text-[17px]">
+            <h2 className="text-lg font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-xl">
               {title}
             </h2>
           </div>
           {subtitle ? (
-            <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{subtitle}</p>
+            <p className="text-base leading-relaxed text-[color:var(--text-secondary)]">{subtitle}</p>
           ) : null}
           {requirementNote ? (
-            <p className="text-[11px] leading-relaxed text-[color:var(--text-muted)]">{requirementNote}</p>
+            <p className="text-sm leading-relaxed text-[color:var(--text-muted)]">{requirementNote}</p>
           ) : null}
         </div>
-        <span className="flex shrink-0 items-center gap-1 rounded-md border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] px-2 py-1 text-[10px] uppercase tracking-wide text-[color:var(--text-muted)]">
+        <span className="flex shrink-0 items-center gap-1 rounded-md border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
           {statusIcon[status]}
           {status === "complete" ? "Completo" : status === "lacuna" ? "Lacunas" : "Incompleto"}
         </span>
@@ -109,8 +109,18 @@ export function LegalSectionCard({
   );
 }
 
-const labelClass =
-  "text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]";
+const labelClass = "text-sm font-semibold leading-snug text-[color:var(--text-secondary)]";
+
+/** Asterisco no fim do rótulo só para `required`; opcional/lacuna sem sufixo. */
+function LegalLabelRequirementMark({ requirement }: { requirement: FieldRequirement }) {
+  if (requirement !== "required") return null;
+  return (
+    <span className="font-semibold text-rose-400/95" aria-hidden>
+      {" "}
+      *
+    </span>
+  );
+}
 
 export function LegalTextInput({
   id,
@@ -139,13 +149,11 @@ export function LegalTextInput({
   type?: React.HTMLInputTypeAttribute;
   autoComplete?: string;
 }) {
-  const reqLabel =
-    requirement === "required" ? "Obrigatório" : requirement === "lacuna" ? "Opcional / lacuna permitida" : "Opcional";
   return (
     <LegalFieldGroup>
-      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-2")}>
+      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-x-1 gap-y-0")}>
         {label}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">({reqLabel})</span>
+        <LegalLabelRequirementMark requirement={requirement} />
       </Label>
       <Input
         id={id}
@@ -155,12 +163,13 @@ export function LegalTextInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
+        aria-required={requirement === "required"}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-err` : hint ? `${id}-hint` : undefined}
         className={cn(error && "border-rose-500/50 focus-visible:ring-rose-500/40", className)}
       />
       {hint ? (
-        <p id={`${id}-hint`} className="text-[11px] text-[color:var(--text-secondary)]">
+        <p id={`${id}-hint`} className="text-sm leading-relaxed text-[color:var(--text-secondary)]">
           {hint}
         </p>
       ) : null}
@@ -213,14 +222,11 @@ export function LegalMaskedInput({
     }
   };
 
-  const reqLabel =
-    requirement === "required" ? "Obrigatório" : requirement === "lacuna" ? "Opcional / lacuna permitida" : "Opcional";
-
   return (
     <LegalFieldGroup>
-      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-2")}>
+      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-x-1 gap-y-0")}>
         {label}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">({reqLabel})</span>
+        <LegalLabelRequirementMark requirement={requirement} />
       </Label>
       <Input
         id={id}
@@ -229,15 +235,16 @@ export function LegalMaskedInput({
         value={value}
         placeholder={placeholder}
         disabled={disabled}
+        aria-required={requirement === "required"}
         aria-invalid={error ? true : undefined}
         onChange={(e) => onChange(apply(e.target.value))}
         className={cn(
-          "font-mono text-[13px]",
+          "font-mono text-[0.9375rem] leading-snug tabular-nums",
           error && "border-rose-500/50 focus-visible:ring-rose-500/40",
           className,
         )}
       />
-      {hint ? <p className="text-[11px] text-[color:var(--text-secondary)]">{hint}</p> : null}
+      {hint ? <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{hint}</p> : null}
       <LegalValidationMessage>{error}</LegalValidationMessage>
     </LegalFieldGroup>
   );
@@ -268,13 +275,11 @@ export function LegalTextarea({
   disabled?: boolean;
   className?: string;
 }) {
-  const reqLabel =
-    requirement === "required" ? "Obrigatório" : requirement === "lacuna" ? "Opcional / lacuna permitida" : "Opcional";
   return (
     <LegalFieldGroup>
-      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-2")}>
+      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-x-1 gap-y-0")}>
         {label}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">({reqLabel})</span>
+        <LegalLabelRequirementMark requirement={requirement} />
       </Label>
       <Textarea
         id={id}
@@ -282,22 +287,23 @@ export function LegalTextarea({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         disabled={disabled}
+        aria-required={requirement === "required"}
         aria-invalid={error ? true : undefined}
         style={{ minHeight: minHeightPx }}
         className={cn(
-          "resize-y text-sm leading-relaxed",
+          "resize-y text-base leading-relaxed",
           error && "border-rose-500/50 focus-visible:ring-rose-500/40",
           className,
         )}
       />
-      {hint ? <p className="text-[11px] text-[color:var(--text-secondary)]">{hint}</p> : null}
+      {hint ? <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{hint}</p> : null}
       <LegalValidationMessage>{error}</LegalValidationMessage>
     </LegalFieldGroup>
   );
 }
 
 const selectClass = cn(
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors",
+  "flex min-h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base leading-snug shadow-sm transition-colors",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
 );
 
@@ -322,19 +328,19 @@ export function LegalSelect<T extends string>({
   requirement?: FieldRequirement;
   disabled?: boolean;
 }) {
-  const reqLabel =
-    requirement === "required" ? "Obrigatório" : requirement === "lacuna" ? "Opcional / lacuna permitida" : "Opcional";
   return (
     <LegalFieldGroup>
-      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-2")}>
+      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-x-1 gap-y-0")}>
         {label}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">({reqLabel})</span>
+        <LegalLabelRequirementMark requirement={requirement} />
       </Label>
       <select
         id={id}
         className={selectClass}
         value={value}
         disabled={disabled}
+        aria-required={requirement === "required"}
+        aria-invalid={error ? true : undefined}
         onChange={(e) => onChange(e.target.value as T)}
       >
         {options.map((o) => (
@@ -343,7 +349,7 @@ export function LegalSelect<T extends string>({
           </option>
         ))}
       </select>
-      {hint ? <p className="text-[11px] text-[color:var(--text-secondary)]">{hint}</p> : null}
+      {hint ? <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{hint}</p> : null}
       <LegalValidationMessage>{error}</LegalValidationMessage>
     </LegalFieldGroup>
   );
@@ -374,14 +380,11 @@ export function LegalDateInput({
     setBr(isoValue ? formatIsoToBrDate(isoValue) : "");
   }, [isoValue]);
 
-  const reqLabel =
-    requirement === "required" ? "Obrigatório" : requirement === "lacuna" ? "Opcional / lacuna permitida" : "Opcional";
-
   return (
     <LegalFieldGroup>
-      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-2")}>
+      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-x-1 gap-y-0")}>
         {label}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">({reqLabel})</span>
+        <LegalLabelRequirementMark requirement={requirement} />
       </Label>
       <Input
         id={id}
@@ -389,6 +392,8 @@ export function LegalDateInput({
         placeholder="dd/mm/aaaa"
         autoComplete="off"
         disabled={disabled}
+        aria-required={requirement === "required"}
+        aria-invalid={error ? true : undefined}
         value={br}
         onChange={(e) => {
           const m = maskDateBrInput(e.target.value);
@@ -405,9 +410,9 @@ export function LegalDateInput({
             onIsoChange("");
           }
         }}
-        className={cn("w-full max-w-[11rem] font-mono text-[13px]", error && "border-rose-500/50")}
+        className={cn("w-full max-w-[11rem] font-mono text-[0.9375rem] leading-snug tabular-nums", error && "border-rose-500/50")}
       />
-      {hint ? <p className="text-[11px] text-[color:var(--text-secondary)]">{hint}</p> : null}
+      {hint ? <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{hint}</p> : null}
       <LegalValidationMessage>{error}</LegalValidationMessage>
     </LegalFieldGroup>
   );
@@ -432,13 +437,11 @@ export function LegalCurrencyInput({
   requirement?: FieldRequirement;
   disabled?: boolean;
 }) {
-  const reqLabel =
-    requirement === "required" ? "Obrigatório" : requirement === "lacuna" ? "Opcional / lacuna permitida" : "Opcional";
   return (
     <LegalFieldGroup>
-      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-2")}>
+      <Label htmlFor={id} className={cn(labelClass, "flex flex-wrap items-center gap-x-1 gap-y-0")}>
         {label}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">({reqLabel})</span>
+        <LegalLabelRequirementMark requirement={requirement} />
       </Label>
       <Input
         id={id}
@@ -446,10 +449,12 @@ export function LegalCurrencyInput({
         placeholder="R$ 0,00"
         disabled={disabled}
         value={value}
+        aria-required={requirement === "required"}
+        aria-invalid={error ? true : undefined}
         onChange={(e) => onChange(maskCurrencyBrlInput(e.target.value))}
-        className={cn("font-mono text-[13px]", error && "border-rose-500/50")}
+        className={cn("font-mono text-[0.9375rem] leading-snug tabular-nums", error && "border-rose-500/50")}
       />
-      {hint ? <p className="text-[11px] text-[color:var(--text-secondary)]">{hint}</p> : null}
+      {hint ? <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{hint}</p> : null}
       <LegalValidationMessage>{error}</LegalValidationMessage>
     </LegalFieldGroup>
   );

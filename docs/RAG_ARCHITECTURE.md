@@ -40,8 +40,7 @@ Usar **sempre** que a fonte da verdade for **lei, código, súmula, jurisprudên
   `tenantScope="global"`). Workspaces nunca contaminam o corpus.
 - Filtros disponíveis: `kind`, `jurisdiction`, `tribunal`, `articleRef`,
   `asOf` (versão temporal), `tags`.
-- Idempotente: mesma query → mesmos chunks (testado em
-  `tests/integration/legal-retrieval-orchestrator.test.ts`).
+- Idempotente: mesma query deve produzir os mesmos chunks quando o corpus e índices estão estáveis (validar com `npm run retrieval:smoke` ou testes unitários dos estágios isolados).
 
 **Quem chama**:
 - `/api/strategy/analyze`

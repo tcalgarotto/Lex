@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useUiStore } from "@/stores/ui-store";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
@@ -19,6 +20,7 @@ import {
   IntakeMobileActionBar,
   IntakeSidebarPanel,
   IntakeStepper,
+  IntakeStepperVertical,
   scrollToIntakeSection,
 } from "@/components/cases/fundamental-intake-chrome";
 import {
@@ -161,7 +163,7 @@ function sectionReviewFooter(
       />
       <span>
         <span className="font-medium text-[color:var(--text-primary)]">Dados revisados pelo advogado</span>
-        <span className="mt-0.5 block text-[11px] leading-snug text-[color:var(--text-muted)]">
+        <span className="mt-0.5 block text-sm leading-relaxed text-[color:var(--text-secondary)]">
           Marcado, o Lex evita sobrescrever estes dados automaticamente em versões futuras da IA.
         </span>
       </span>
@@ -259,7 +261,7 @@ export default function FundamentalIntakeFormContent() {
       if (action === "draft") {
         toast.success(caseId ? "Rascunho atualizado." : "Rascunho salvo. Você já pode anexar documentos.");
       } else {
-        toast.success("Caso estruturado com DeepSeek.");
+        toast.success("Caso estruturado com Lex AI.");
         if (id) router.push(`/cases/${id}`);
       }
     } catch (e) {
@@ -271,25 +273,60 @@ export default function FundamentalIntakeFormContent() {
 
   const stepperActive = activeScrollSection;
 
+  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
+  /** Alinha com `ml-[268px]` / `ml-[80px]` do AppChrome. */
+  const appMainInset = sidebarCollapsed ? "80px" : "268px";
+
   return (
-    <div className="w-full min-w-0 pb-28 md:pb-6 lg:pb-10">
-      <div className="flex flex-col gap-6 md:gap-8">
-        <div className="sticky top-[var(--app-header-h)] z-30 shrink-0 border-b border-[color:var(--border-default)]/30 bg-[color:var(--surface-base)]/95 pb-2 pt-0.5 backdrop-blur-md supports-[backdrop-filter]:bg-[color:var(--surface-base)]/85 md:border-0 md:bg-[color:var(--surface-base)]/90 md:pb-2 md:pt-0">
-          <IntakeStepper
+    <div
+      className="w-full min-w-0 pb-28 md:pb-6 lg:pb-10"
+      style={
+        {
+          "--app-main-inset": appMainInset,
+          "--intake-sidebar-w": "320px",
+          "--intake-gap": "24px",
+          "--intake-shell-w": `min(100%, max(0px, calc((100vw - ${appMainInset}) * 0.7)))`,
+        } as React.CSSProperties
+      }
+    >
+      {/* Mobile: stepper horizontal sob o topbar (em md+ o menu vai para o card na coluna direita). */}
+      <div className="sticky top-[calc(var(--app-header-h)+0.25rem)] z-40 -mx-4 mb-4 w-full shrink-0 border-b border-[color:var(--border-default)]/30 bg-[color:var(--surface-base)]/95 px-4 pb-2 pt-1 backdrop-blur-md supports-[backdrop-filter]:bg-[color:var(--surface-base)]/85 md:hidden">
+        <IntakeStepper
+          activeId={stepperActive}
+          statuses={statuses}
+          onNavigate={(id) => scrollToIntakeSection(id)}
+        />
+      </div>
+
+      {/* Mobile: coluna 2 (navegação + resumo) logo abaixo do stepper horizontal, sticky — não no fim da página. */}
+      <div className="mb-4 space-y-3 md:hidden">
+        <div className="sticky top-[calc(var(--app-header-h)+4.25rem)] z-30 max-h-[min(70svh,calc(100svh-var(--app-header-h)-5.5rem))] space-y-3 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
+          <IntakeStepperVertical
             activeId={stepperActive}
             statuses={statuses}
             onNavigate={(id) => scrollToIntakeSection(id)}
           />
+          <IntakeSidebarPanel
+            hideActions
+            progress={progress}
+            pending={pending}
+            lacunas={lacunas}
+            nextLabel={nextLabel}
+            onDraft={() => {}}
+            onStructure={() => {}}
+            loading={loading}
+            caseId={caseId}
+          />
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-[minmax(0,2.2fr)_minmax(240px,1fr)] md:items-start md:gap-5 lg:gap-6 xl:gap-8">
-          <div className="min-w-0 space-y-6 overflow-x-hidden pb-2 md:pr-1 md:pb-4">
+      <div className="flex flex-col gap-6 md:block">
+          <div className="min-w-0 flex-1 space-y-6 overflow-x-hidden pb-2 md:mx-auto md:w-[var(--intake-shell-w)] md:min-w-0 md:max-w-[var(--intake-shell-w)] md:pr-[calc(var(--intake-sidebar-w)+var(--intake-gap))] md:pb-4">
           <LegalSectionCard
             id={SECTION_ANCHOR.attend}
             step={1}
             title="Atendimento"
             subtitle="Contexto inicial do caso e dados processuais, se houver."
-            requirementNote="Obrigatório: título sugerido, cidade e UF do caso."
             status={statuses.attend}
             footer={sectionReviewFooter("attend", form.userConfirmedPaths, (on) =>
               patchForm((p) => ({ ...p, userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "attend", on) })),
@@ -342,7 +379,6 @@ export default function FundamentalIntakeFormContent() {
                 isoValue={form.attend.intakeDate ?? ""}
                 onIsoChange={(iso) => patchForm((p) => ({ ...p, attend: { ...p.attend, intakeDate: iso } }))}
                 requirement="optional"
-                hint="Padrão brasileiro na tela; armazenamento em formato ISO."
               />
               <LegalMaskedInput
                 id="attend-cnj"
@@ -353,7 +389,6 @@ export default function FundamentalIntakeFormContent() {
                 placeholder="0000000-00.0000.0.00.0000"
                 requirement="optional"
                 error={cnjErr ?? err("attend.cnj")}
-                hint="Somente números; a máscara aplica o padrão CNJ."
               />
               <LegalTextInput
                 id="attend-tribunalVara"
@@ -398,7 +433,6 @@ export default function FundamentalIntakeFormContent() {
             step={2}
             title="Cliente / parte autora"
             subtitle="Identifique quem procura o escritório ou quem será representado."
-            requirementNote="Obrigatório: nome completo ou razão social."
             status={statuses.client}
             footer={sectionReviewFooter("client", form.userConfirmedPaths, (on) =>
               patchForm((p) => ({ ...p, userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "client", on) })),
@@ -816,8 +850,7 @@ export default function FundamentalIntakeFormContent() {
             id={SECTION_ANCHOR.narrative}
             step={5}
             title="Relato"
-            subtitle="Organize a história em blocos; o DeepSeek consolidará fatos e riscos."
-            requirementNote="Obrigatório: relato principal, relato livre ou linha do tempo (salvo modo só relato livre)."
+            subtitle="Organize a história em blocos; a Lex AI consolidará fatos e riscos."
             status={statuses.narrative}
             footer={sectionReviewFooter("narrative", form.userConfirmedPaths, (on) =>
               patchForm((p) => ({
@@ -834,8 +867,8 @@ export default function FundamentalIntakeFormContent() {
                 onChange={(e) => patchForm((p) => ({ ...p, freeNarrativeOnly: e.target.checked }))}
               />
               <span>
-                Tenho só um relato livre — o DeepSeek organiza depois
-                <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                Tenho só um relato livre — a Lex AI organiza depois
+                <span className="mt-0.5 block text-sm leading-relaxed text-[color:var(--text-secondary)]">
                   Ative para priorizar o campo de relato livre; os demais blocos ficam opcionais neste envio.
                 </span>
               </span>
@@ -849,7 +882,7 @@ export default function FundamentalIntakeFormContent() {
               onChange={(v) => patchForm((p) => ({ ...p, narrative: { ...p.narrative, whatHappened: v } }))}
               requirement={form.freeNarrativeOnly ? "optional" : "required"}
               error={err("narrative.whatHappened")}
-              hint="Descreva o problema com as palavras do cliente. Depois o DeepSeek organizará fatos, partes, pedidos e riscos."
+              hint="Descreva o problema com as palavras do cliente. Depois a Lex AI organizará fatos, partes, pedidos e riscos."
             />
             <div className="grid gap-4 md:grid-cols-2">
               <LegalTextarea
@@ -1068,7 +1101,7 @@ export default function FundamentalIntakeFormContent() {
             <div className="space-y-5">
               {DOC_GROUPS.map((g) => (
                 <div key={g.title}>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{g.title}</p>
+                  <p className="mb-2 text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">{g.title}</p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {g.items.map(({ key, label }) => (
                       <label
@@ -1322,35 +1355,27 @@ export default function FundamentalIntakeFormContent() {
           </LegalSectionCard>
         </div>
 
-        <aside className="mt-2 hidden min-w-0 md:mt-0 md:block">
-          <div className="md:sticky md:top-[calc(var(--app-header-h,5.5rem)+5.25rem)] md:max-h-[calc(100svh-var(--app-header-h,5.5rem)-6rem)] md:overflow-y-auto md:overscroll-y-contain md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
-            <IntakeSidebarPanel
-              progress={progress}
-              pending={pending}
-              lacunas={lacunas}
-              nextLabel={nextLabel}
-              onDraft={() => submit("draft")}
-              onStructure={() => submit("structure")}
-              loading={loading}
-              caseId={caseId}
-            />
+        <div className="pointer-events-none hidden md:fixed md:left-[var(--app-main-inset)] md:right-0 md:top-[calc(var(--app-header-h,5.5rem)+1.25rem)] md:bottom-4 md:z-30 md:block">
+          <div className="pointer-events-none mx-auto flex h-full w-[var(--intake-shell-w)] justify-end">
+            <aside className="ml-auto flex h-full min-h-0 w-[var(--intake-sidebar-w)] max-w-full flex-col gap-3 overflow-y-auto overscroll-y-contain pointer-events-auto md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
+              <IntakeStepperVertical
+                activeId={stepperActive}
+                statuses={statuses}
+                onNavigate={(id) => scrollToIntakeSection(id)}
+              />
+              <IntakeSidebarPanel
+                progress={progress}
+                pending={pending}
+                lacunas={lacunas}
+                nextLabel={nextLabel}
+                onDraft={() => submit("draft")}
+                onStructure={() => submit("structure")}
+                loading={loading}
+                caseId={caseId}
+              />
+            </aside>
           </div>
-        </aside>
-      </div>
-      </div>
-
-      <div className="mt-6 md:hidden">
-        <IntakeSidebarPanel
-          hideActions
-          progress={progress}
-          pending={pending}
-          lacunas={lacunas}
-          nextLabel={nextLabel}
-          onDraft={() => {}}
-          onStructure={() => {}}
-          loading={loading}
-          caseId={caseId}
-        />
+        </div>
       </div>
 
       <IntakeMobileActionBar onDraft={() => submit("draft")} onStructure={() => submit("structure")} loading={loading} />
@@ -1373,20 +1398,19 @@ function LegalFieldMaskedCustom({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
-        {label}{" "}
-        <span className="font-normal normal-case text-[10px] text-[color:var(--text-muted)]">(Opcional)</span>
+      <label htmlFor={id} className="text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">
+        {label}
       </label>
       <input
         id={id}
-        className="flex h-9 w-full rounded-md border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] px-3 py-1 font-mono text-[13px] text-[color:var(--text-primary)] shadow-sm outline-none transition-colors placeholder:text-[color:var(--text-muted)] focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-base)]"
+        className="flex min-h-10 w-full rounded-md border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] px-3 py-2 font-mono text-[0.9375rem] leading-snug text-[color:var(--text-primary)] shadow-sm outline-none transition-colors placeholder:text-[color:var(--placeholder-foreground)] focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-base)]"
         inputMode="numeric"
         autoComplete="off"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
       />
-      {error ? <p className="text-xs text-rose-300">{error}</p> : null}
+      {error ? <p className="text-sm font-medium leading-snug text-rose-300">{error}</p> : null}
     </div>
   );
 }

@@ -328,7 +328,7 @@ export async function persistFundamentalDraft(args: {
       data: {
         caseId: c.id,
         kind: CaseTimelineKind.NOTE,
-        message: "Rascunho salvo — use «Salvar e estruturar com DeepSeek» quando estiver pronto.",
+        message: "Rascunho salvo — use «Salvar e estruturar com Lex AI» quando estiver pronto.",
         userId: args.userId,
         payloadJson: { source: "intake_form" },
       },

@@ -110,7 +110,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       data: {
         caseId: c.id,
         kind: CaseTimelineKind.DRAFT_GENERATED,
-        message: `Minuta v${version} gerada (DeepSeek, guardas P0).`,
+        message: `Minuta v${version} gerada (Lex AI, guardas P0).`,
         userId: user.id,
         retrievalChunkIds: groundingChunkIds,
         payloadJson: {

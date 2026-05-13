@@ -48,6 +48,11 @@ export type DatajudOpts = {
 
 const DEFAULT_BASE = "https://api-publica.datajud.cnj.jus.br";
 
+export function buildDatajudAuthorizationHeader(apiKey: string): string {
+  const trimmed = apiKey.trim();
+  return /^APIKey\s+/i.test(trimmed) ? trimmed : `APIKey ${trimmed}`;
+}
+
 export class DatajudCorpusProvider implements CorpusProviderClient {
   readonly id = CorpusProvider.DATAJUD;
   private readonly alias: string;
@@ -78,7 +83,7 @@ export class DatajudCorpusProvider implements CorpusProviderClient {
       .map((h) => mapDatajudHitToCandidate(h, this.alias))
       .filter((c): c is CorpusCandidate => c !== null);
 
-    // PIT/scroll com search_after: usa último valor de _score+_id.
+    // DataJud bloqueia sort por `_id`; use apenas campo público aceito.
     const last = res.hits?.hits?.[res.hits.hits.length - 1];
     const nextCursor =
       last?.sort && Array.isArray(last.sort) ? JSON.stringify(last.sort) : null;
@@ -117,7 +122,7 @@ export class DatajudCorpusProvider implements CorpusProviderClient {
       const res = await this.fetchImpl(url, {
         method: "POST",
         headers: {
-          Authorization: `APIKey ${this.apiKey}`,
+          Authorization: buildDatajudAuthorizationHeader(this.apiKey),
           "Content-Type": "application/json",
           "User-Agent": "lex-corpus-sync/1.0 (+https://lex-navy.vercel.app)",
         },
@@ -202,7 +207,7 @@ export function buildDatajudListQuery(args: DatajudFilters): Record<string, unkn
 
   const base: Record<string, unknown> = {
     size: args.size,
-    sort: [{ "@timestamp": { order: "asc" } }, { _id: "asc" }],
+    sort: [{ "@timestamp": { order: "asc" } }],
     query: must.length === 0 ? { match_all: {} } : { bool: { must } },
   };
   if (args.cursor) {

@@ -151,3 +151,8 @@ export type DocumentThumbnailEvent = {
   name: "lex/document.thumbnail";
   data: { documentId: string };
 };
+
+export type DataJudDailySyncEvent = {
+  name: "lex/datajud.sync-daily";
+  data: { workspaceId?: string; take?: number };
+};

@@ -19,11 +19,12 @@ import { lexmlProvider } from "@/lib/corpus/providers/lexml";
 import { StfCorpusProvider } from "@/lib/corpus/providers/stf";
 import { StjCorpusProvider } from "@/lib/corpus/providers/stj";
 import { DatajudCorpusProvider } from "@/lib/corpus/providers/datajud";
+import { resolveDataJudAliasFromTribunalAcronym } from "@/lib/datajud/datajud-aliases";
 import { getTribunal, type TribunalEntry } from "./registry";
 
 export type RequestProviderOpts = {
   datajudApiKey?: string;
-  /** Override do alias Datajud (default = "api_publica_<sigla minúscula>"). */
+  /** Override do alias DataJud (default = registry oficial CNJ por sigla). */
   datajudAlias?: string;
 };
 
@@ -60,5 +61,7 @@ export function providerForTribunal(
 }
 
 export function defaultDatajudAlias(t: TribunalEntry): string {
-  return `api_publica_${t.code.toLowerCase()}`;
+  const alias = resolveDataJudAliasFromTribunalAcronym(t.code);
+  if (!alias) throw new Error(`Tribunal sem alias DataJud oficial: ${t.code}`);
+  return alias;
 }

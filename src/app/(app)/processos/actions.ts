@@ -6,6 +6,7 @@ import { MemoryKind } from "@prisma/client";
 import { getWorkspaceContext, requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
+import { syncProcessMovements } from "@/lib/legal-processes/sync-process-movements";
 
 export async function createProcessAction(formData: FormData) {
   const { workspaceId } = await getWorkspaceContext();
@@ -160,4 +161,20 @@ export async function addTimelineEventAction(formData: FormData) {
     data: { processId, title, description },
   });
   revalidatePath(`/processos/${processId}`);
+}
+
+export async function syncLegalProcessAction(formData: FormData) {
+  const { workspaceId } = await getWorkspaceContext();
+  const processId = String(formData.get("processId") ?? "");
+  const legalProcessId = String(formData.get("legalProcessId") ?? "");
+  if (!processId || !legalProcessId) throw new Error("Dados incompletos");
+  const legalProcess = await prisma.legalProcess.findFirst({
+    where: { id: legalProcessId, workspaceId, processId },
+    select: { id: true },
+  });
+  if (!legalProcess) throw new Error("Processo DataJud não encontrado");
+  await syncProcessMovements({ workspaceId, legalProcessId });
+  revalidatePath(`/processos/${processId}`);
+  revalidatePath("/processos");
+  revalidatePath("/dashboard");
 }

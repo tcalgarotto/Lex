@@ -23,6 +23,64 @@ const STEP_ITEMS: Array<{ id: IntakeStepperSectionId; label: string }> = [
   { id: "communication", label: "Comunicação" },
 ];
 
+function intakeSectionStatusPhrase(s: SectionUiStatus): string {
+  if (s === "complete") return "completo";
+  if (s === "lacuna") return "com lacunas permitidas";
+  return "incompleto";
+}
+
+/** Navegação em coluna (card na sidebar desktop). */
+export function IntakeStepperVertical({
+  activeId,
+  statuses,
+  onNavigate,
+}: {
+  activeId: IntakeStepperSectionId;
+  statuses: Record<IntakeStepperSectionId, SectionUiStatus>;
+  onNavigate: (id: IntakeStepperSectionId) => void;
+}) {
+  return (
+    <Card className="shadow-none">
+      <div className="border-b border-[color:var(--border-default)]/50 px-4 py-3 md:px-5">
+        <p className="text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">Navegação</p>
+      </div>
+      <nav aria-label="Navegação do formulário" className="flex flex-col gap-0.5 p-2 md:p-2.5">
+        {STEP_ITEMS.map(({ id, label }) => {
+          const st = statuses[id] ?? "incomplete";
+          const active = activeId === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onNavigate(id)}
+              aria-current={active ? "step" : undefined}
+              aria-label={`${label}, ${intakeSectionStatusPhrase(st)}`}
+              className={cn(
+                "flex w-full min-w-0 items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors md:py-2.5",
+                active
+                  ? "bg-violet-500/15 text-violet-100 ring-1 ring-inset ring-violet-500/40"
+                  : "text-[color:var(--text-secondary)] hover:bg-white/[0.04] hover:text-[color:var(--text-primary)]",
+              )}
+            >
+              <span className="min-w-0 flex-1">{label}</span>
+              <span
+                className={cn(
+                  "size-2 shrink-0 rounded-full",
+                  st === "complete" && "bg-emerald-400/90",
+                  st === "lacuna" && "bg-amber-400/90",
+                  st === "incomplete" && "bg-[color:var(--text-disabled)]/80",
+                )}
+                title={intakeSectionStatusPhrase(st)}
+                aria-hidden
+              />
+            </button>
+          );
+        })}
+      </nav>
+    </Card>
+  );
+}
+
 export function IntakeStepper({
   activeId,
   statuses,
@@ -32,12 +90,6 @@ export function IntakeStepper({
   statuses: Record<IntakeStepperSectionId, SectionUiStatus>;
   onNavigate: (id: IntakeStepperSectionId) => void;
 }) {
-  function statusPhrase(s: SectionUiStatus): string {
-    if (s === "complete") return "completo";
-    if (s === "lacuna") return "com lacunas permitidas";
-    return "incompleto";
-  }
-
   return (
     <nav aria-label="Seções do formulário" className="lex-glass-card !overflow-visible w-full shrink-0 rounded-2xl px-2.5 py-2.5 sm:px-3 md:px-3.5 md:py-3">
       <div className="grid w-full min-w-0 grid-cols-9 gap-1 sm:gap-1.5 md:gap-2">
@@ -51,9 +103,9 @@ export function IntakeStepper({
               title={label}
               onClick={() => onNavigate(id)}
               aria-current={active ? "step" : undefined}
-              aria-label={`${label}, ${statusPhrase(st)}`}
+              aria-label={`${label}, ${intakeSectionStatusPhrase(st)}`}
               className={cn(
-                "flex min-h-[2.75rem] min-w-0 w-full items-center justify-center rounded-lg px-0.5 py-2 text-center text-[10px] font-semibold leading-tight transition-colors sm:rounded-xl sm:px-1.5 sm:py-2.5 sm:text-xs md:min-h-[2.875rem] md:px-2 md:text-[13px] lg:text-sm",
+                "flex min-h-[2.75rem] min-w-0 w-full items-center justify-center rounded-lg px-0.5 py-2 text-center text-xs font-semibold leading-snug transition-colors sm:rounded-xl sm:px-1.5 sm:py-2.5 sm:text-sm md:min-h-[2.875rem] md:px-2 md:text-sm",
                 active
                   ? "bg-violet-500/15 text-violet-100 ring-1 ring-inset ring-violet-500/40"
                   : "text-[color:var(--text-secondary)] hover:bg-white/[0.04] hover:text-[color:var(--text-primary)]",
@@ -98,17 +150,17 @@ export function IntakeSidebarPanel({
   return (
     <Card className="space-y-4 p-4 shadow-none md:p-5">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+        <p className="text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">
           Resumo do atendimento
         </p>
         <div className="mt-2 flex items-center justify-between gap-2">
           <span className="text-2xl font-semibold tabular-nums text-[color:var(--text-primary)]">{progress}%</span>
-          <span className="text-xs text-[color:var(--text-secondary)]">Progresso</span>
+          <span className="text-sm font-medium text-[color:var(--text-secondary)]">Progresso</span>
         </div>
         <Progress value={progress} className="mt-2 h-2" />
       </div>
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+        <p className="text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">
           Obrigatórios pendentes
         </p>
         {pending.length === 0 ? (
@@ -122,7 +174,7 @@ export function IntakeSidebarPanel({
         )}
       </div>
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+        <p className="text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">
           Lacunas permitidas
         </p>
         {lacunas.length === 0 ? (
@@ -136,17 +188,17 @@ export function IntakeSidebarPanel({
         )}
       </div>
       <div className="rounded-lg border border-[color:var(--border-default)]/60 bg-white/[0.02] p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
+        <p className="text-sm font-semibold leading-snug text-[color:var(--text-secondary)]">
           Próxima etapa sugerida
         </p>
-        <p className="mt-1 text-sm font-medium text-[color:var(--text-primary)]">{nextLabel}</p>
+        <p className="mt-1 text-base font-medium leading-relaxed text-[color:var(--text-primary)]">{nextLabel}</p>
       </div>
       {!hideActions ? (
         <div className="flex flex-col gap-2 pt-1">
           <Button
             type="button"
             variant="secondary"
-            className="w-full"
+            className="h-auto min-h-[44px] w-full py-2.5 text-[15px] font-semibold"
             disabled={loading !== null}
             onClick={onDraft}
             data-testid="save-draft-sidebar"
@@ -156,16 +208,16 @@ export function IntakeSidebarPanel({
           </Button>
           <Button
             type="button"
-            className="w-full bg-violet-600 text-white hover:bg-violet-500"
+            className="h-auto min-h-[44px] w-full bg-violet-600 py-2.5 text-[15px] font-semibold text-white hover:bg-violet-500"
             disabled={loading !== null}
             onClick={onStructure}
             data-testid="save-structure-sidebar"
           >
             {loading === "structure" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
-            Salvar e estruturar com DeepSeek
+            Salvar e estruturar com Lex AI
           </Button>
           {!caseId ? (
-            <p className="text-center text-[11px] leading-snug text-[color:var(--text-muted)]">
+            <p className="text-center text-sm leading-relaxed text-[color:var(--text-muted)]">
               Salve o rascunho uma vez para receber o ID do caso e anexar documentos.
             </p>
           ) : null}

@@ -288,7 +288,7 @@ export function createDefaultFundamentalIntakeForm(): FundamentalIntakeForm {
     },
     narrative: {
       whatHappened:
-        "Descreva o problema com as palavras do cliente. Depois o DeepSeek organizará fatos, partes, pedidos e riscos.",
+        "Descreva o problema com as palavras do cliente. Depois a Lex AI organizará fatos, partes, pedidos e riscos.",
     },
     timeline: [],
   });

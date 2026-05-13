@@ -44,13 +44,27 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",
         },
       },
+      fontSize: {
+        xs: ["var(--text-xs)", { lineHeight: "1.5" }],
+        sm: ["var(--text-sm)", { lineHeight: "1.5" }],
+        base: ["var(--text-base)", { lineHeight: "1.5" }],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        sans: [
+          '"Atkinson Hyperlegible"',
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "sans-serif",
+        ],
         mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
         serif: ["var(--font-serif)", "Georgia", "serif"],
       },

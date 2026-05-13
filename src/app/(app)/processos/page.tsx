@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProcessVirtualList } from "@/components/processes/process-virtual-list";
 import { createProcessAndRedirect } from "@/app/(app)/processos/actions";
 import { CnjInput } from "@/components/processes/cnj-input";
+import { DataJudImportCard } from "@/components/processes/datajud-import-card";
+import { getProcessAnalytics } from "@/lib/legal-processes/process-analytics";
 
 export default async function ProcessosPage({
  searchParams,
@@ -22,10 +24,29 @@ export default async function ProcessosPage({
  ? sp.returnCase.trim()
  : null;
 
- const processes = await prisma.process.findMany({
+ const [processes, analytics, latestLegalProcesses] = await Promise.all([
+ prisma.process.findMany({
  where: { workspaceId },
  orderBy: { updatedAt: "desc" },
- });
+ }),
+ getProcessAnalytics(workspaceId),
+ prisma.legalProcess.findMany({
+ where: { workspaceId },
+ orderBy: { updatedAt: "desc" },
+ take: 6,
+ select: {
+ id: true,
+ processId: true,
+ cnjFormatted: true,
+ tribunalAcronym: true,
+ classeNome: true,
+ orgaoJulgadorNome: true,
+ lastDataJudSyncAt: true,
+ dataJudStatus: true,
+ _count: { select: { movements: true, alerts: true } },
+ },
+ }),
+ ]);
 
  return (
  <>
@@ -40,10 +61,39 @@ export default async function ProcessosPage({
  </Button>
  </div>
  ) : null}
+ <div className="mb-6 grid gap-3 md:grid-cols-4">
+ <Card>
+ <CardContent className="p-4">
+ <p className="text-xs uppercase text-muted-foreground">Processos DataJud</p>
+ <p className="mt-1 text-2xl font-semibold">{analytics.total}</p>
+ </CardContent>
+ </Card>
+ <Card>
+ <CardContent className="p-4">
+ <p className="text-xs uppercase text-muted-foreground">Alertas abertos</p>
+ <p className="mt-1 text-2xl font-semibold">{analytics.openAlerts}</p>
+ </CardContent>
+ </Card>
+ <Card>
+ <CardContent className="p-4">
+ <p className="text-xs uppercase text-muted-foreground">Movs. 7 dias</p>
+ <p className="mt-1 text-2xl font-semibold">{analytics.recentMovements}</p>
+ </CardContent>
+ </Card>
+ <Card>
+ <CardContent className="p-4">
+ <p className="text-xs uppercase text-muted-foreground">Falhas sync</p>
+ <p className="mt-1 text-2xl font-semibold">{analytics.syncErrors}</p>
+ </CardContent>
+ </Card>
+ </div>
+
  <div className="grid gap-8 lg:grid-cols-2">
+ <DataJudImportCard returnCaseId={returnCaseId} />
+
  <Card>
  <CardHeader>
- <CardTitle className="text-base">Novo processo judicial</CardTitle>
+ <CardTitle className="text-base">Cadastro manual</CardTitle>
  </CardHeader>
  <CardContent>
  <form action={createProcessAndRedirect} className="space-y-3">
@@ -79,12 +129,43 @@ export default async function ProcessosPage({
  <Label htmlFor="tags">Tags (vírgula)</Label>
  <Input id="tags" name="tags" placeholder="cível, consumidor" />
  </div>
- <Button type="submit">Criar processo</Button>
+ <Button type="submit" variant="outline">Criar processo manual</Button>
  </form>
  </CardContent>
  </Card>
 
+ <div className="lg:col-span-2">
+ <div className="mb-6">
+ <h2 className="mb-3 text-sm font-medium text-muted-foreground">Últimos processos DataJud</h2>
+ {latestLegalProcesses.length === 0 ? (
+ <p className="text-sm text-muted-foreground">Nenhum processo importado do DataJud ainda.</p>
+ ) : (
+ <div className="grid gap-3 md:grid-cols-2">
+ {latestLegalProcesses.map((p) => (
+ <Link
+ key={p.id}
+ href={`/processos/${p.processId ?? p.id}`}
+ className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-4 hover:border-violet-400/40"
+ >
+ <div className="flex flex-wrap items-start justify-between gap-2">
  <div>
+ <p className="font-medium">{p.cnjFormatted}</p>
+ <p className="mt-1 text-xs text-muted-foreground">
+ {p.tribunalAcronym} · {p.classeNome ?? "Classe não informada"}
+ </p>
+ </div>
+ <span className="rounded-md border border-white/15 px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+ {p.dataJudStatus}
+ </span>
+ </div>
+ <p className="mt-2 text-xs text-muted-foreground">
+ {p.orgaoJulgadorNome ?? "Órgão julgador não informado"} · {p._count.movements} movimento(s) · {p._count.alerts} alerta(s)
+ </p>
+ </Link>
+ ))}
+ </div>
+ )}
+ </div>
  <h2 className="mb-3 text-sm font-medium text-muted-foreground">Todos os processos</h2>
  {processes.length === 0 ? (
  <p className="text-sm text-muted-foreground">Lista vazia.</p>

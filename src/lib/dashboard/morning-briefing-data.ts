@@ -36,7 +36,6 @@ export type MorningBriefingPulse = {
   draftsOpen: number;
   reviewsWaiting: number;
   storageHuman: string;
-  storageBarPct: number;
   openHighRisks: number;
   failedProcessingCount: number;
   openDeadlines: number;
@@ -49,42 +48,42 @@ export type PulseCasesDetail = {
   nextActionTitle: string | null;
   nextHref: string | null;
   nextCtaLabel: string;
-  barPct: number;
-  barColor: string;
 };
 
 /** Cartão “Documentos” — evita contradição número grande vs subtítulo */
 export type PulseDocumentsDetail = {
   headline: string;
   breakdownLines: string[];
+  nextActionTitle: string | null;
   nextHref: string;
   nextCtaLabel: string;
-  barPct: number;
-  barColor: string;
 };
 
 /** Cartão “Peças / minutas” */
 export type PulsePiecesDetail = {
   headline: string;
   breakdownLines: string[];
+  nextActionTitle: string | null;
   emptyHint: string | null;
   nextHref: string;
   nextCtaLabel: string;
-  barPct: number;
-  barColor: string;
 };
 
 /** Cartão “Biblioteca” */
 export type PulseLibraryDetail = {
   headline: string;
   breakdownLines: string[];
+  nextActionTitle: string | null;
   nextHref: string;
   nextCtaLabel: string;
-  barPct: number;
-  barColor: string;
 };
 
 export type BriefingActionType = "caso" | "documento" | "peça" | "pesquisa" | "processo";
+
+export type BriefingActionEisenhowerBucket = "maximum" | "important" | "waiting";
+
+/** Origem discreta na UI (sem jargão de método de trabalho). */
+export type BriefingActionDiscreteOrigin = "lex_sugerido" | "aguardando_cliente" | "aguardando_responsavel";
 
 export type BriefingActionItem = {
   id: string;
@@ -94,6 +93,10 @@ export type BriefingActionItem = {
   cta: string;
   href: string;
   priority: "urgent" | "normal" | "low";
+  /** Prioridade jurídica (Eisenhower) — ausente trata-se como “máxima” na UI. */
+  eisenhowerBucket?: BriefingActionEisenhowerBucket;
+  /** Indicação curta na UI: sugestão automática vs dependência de cliente/equipa. */
+  discreteOrigin?: BriefingActionDiscreteOrigin;
   /** Linha opcional de contexto (ex.: fase do caso) */
   statusHint?: string;
 };
@@ -144,10 +147,7 @@ export interface MorningBriefingPayload {
   displayName: string;
   /** Zero casos ativos — mostrar onboarding amigável */
   hasNoCases: boolean;
-  /** Uma frase sobre o dia (dados reais) */
-  daySummaryLine: string;
-  /** Primeira prioridade para “Continuar prioridade” (sempre uma rota válida) */
-  priorityContinueHref: string;
+  honorific: LawyerHonorific;
   pulse: MorningBriefingPulse;
   pulseCases: PulseCasesDetail;
   pulseDocuments: PulseDocumentsDetail;
@@ -156,6 +156,8 @@ export interface MorningBriefingPayload {
   urgent: MorningBriefingUrgent;
   /** Ações reais (máx. 5) */
   briefingActions: BriefingActionItem[];
+  /** Quantas ações adicionais existiriam além das 5 mostradas */
+  briefingActionsOverflow: number;
   /** True só se não houver ações nem urgências operacionais relevantes */
   genuinelyAllClear: boolean;
   resumeCases: ResumeCaseRow[];
@@ -164,8 +166,6 @@ export interface MorningBriefingPayload {
   piecesThisMonth: number;
   copilotMessage: string;
   copilotTitle: string;
-  /** Primeiro caso sem nome (mais antigo) para CTA do hero */
-  oldestUnnamedCaseId: string | null;
 }
 
 function bytesToHuman(bytes: number): string {
@@ -242,21 +242,6 @@ function caseInPiecePhase(c: CaseBriefRow): boolean {
   );
 }
 
-function buildDaySummaryLine(args: { coletaCount: number; docsAwaiting: number; activeCases: number }): string {
-  const parts: string[] = [];
-  if (args.coletaCount > 0) {
-    parts.push(`${args.coletaCount} caso${args.coletaCount > 1 ? "s" : ""} em coleta inicial`);
-  }
-  if (args.docsAwaiting > 0) {
-    parts.push(`${args.docsAwaiting} documento${args.docsAwaiting > 1 ? "s" : ""} aguardando leitura`);
-  }
-  if (parts.length === 0) {
-    if (args.activeCases === 0) return "Comece criando um caso ou enviando um documento.";
-    return "Nada urgente na fila — pode revisar casos ou avançar uma peça.";
-  }
-  return `Hoje há ${parts.join(" e ")}.`;
-}
-
 function buildCopilotNarrative(args: {
   reviewsWaiting: number;
   stalledCount: number;
@@ -267,15 +252,15 @@ function buildCopilotNarrative(args: {
   topPriorityTitle: string | null;
 }): string {
   const parts: string[] = [];
-  if (args.coletaCount > 0) {
-    parts.push(`Tem ${args.coletaCount} caso${args.coletaCount > 1 ? "s" : ""} em coleta inicial.`);
-  }
-
   let bottleneck: string | null = null;
   if (args.reviewsWaiting > 0) bottleneck = "revisão de minuta pendente";
   else if (args.stalledCount > 0) bottleneck = "documentos que demoram mais que o habitual na leitura";
   else if (args.unnamedCount > 0 || args.noDocNamedCount > 0) bottleneck = "entrevista incompleta ou documentos em falta";
   else if (args.strategyGapCount > 0) bottleneck = "estratégia a consolidar nos casos que já têm fatos";
+
+  if (args.coletaCount > 0) {
+    parts.push(`Tem ${args.coletaCount} caso${args.coletaCount > 1 ? "s" : ""} em coleta inicial.`);
+  }
 
   if (bottleneck) {
     parts.push(`O maior foco agora é ${bottleneck}.`);
@@ -317,11 +302,15 @@ function statusLabelUser(status: CaseStatus): string {
   return CASE_STATUS_LABEL[status] ?? "Em andamento";
 }
 
-function badgeForCase(status: CaseStatus, hasStrategy: boolean): string {
+/** Fase resumida para “Casos por fluxo” — linguagem jurídica (sem termos de gestão na UI). */
+function badgeForCase(status: CaseStatus, hasStrategy: boolean, docCount: number): string {
   if (status === CaseStatus.INTAKE) return "Coleta inicial";
-  if (status === CaseStatus.RESEARCH && !hasStrategy) return "Pesquisa";
-  if (status === CaseStatus.DRAFTING || status === CaseStatus.REVIEW) return "Elaboração";
-  if (status === CaseStatus.READY) return "Revisão final";
+  if (docCount === 0) return "Aguardando documentos";
+  if (status === CaseStatus.RESEARCH && !hasStrategy) return "Pesquisa Lex AI";
+  if (status === CaseStatus.RESEARCH && hasStrategy) return "Estratégia";
+  if (status === CaseStatus.DRAFTING) return "Minuta";
+  if (status === CaseStatus.REVIEW) return "Revisão";
+  if (status === CaseStatus.READY) return "Pronto para exportar";
   return statusLabelUser(status);
 }
 
@@ -443,12 +432,47 @@ function activityPublicLine(kind: string, title: string): string | null {
   return null;
 }
 
+export type LawyerHonorific = "Dr." | "Dra.";
+
+/** Primeiro token do nome com inicial maiúscula (ex.: «thales» → «Thales»). */
+export function formatLawyerGreetingFirstName(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "Colega";
+  const lower = t.toLocaleLowerCase("pt-BR");
+  return lower.charAt(0).toLocaleUpperCase("pt-BR") + lower.slice(1);
+}
+
+/** «Dra.» quando o perfil indica género feminino; caso contrário «Dr.». */
+export function lawyerHonorificFromMetadata(meta: unknown): LawyerHonorific {
+  if (!meta || typeof meta !== "object") return "Dr.";
+  const m = meta as Record<string, unknown>;
+  const raw = m["gender"] ?? m["sex"] ?? m["genero"];
+  if (typeof raw !== "string") return "Dr.";
+  const t = raw.trim().toLowerCase();
+  if (
+    t === "female" ||
+    t === "feminino" ||
+    t === "feminina" ||
+    t === "f" ||
+    t === "woman" ||
+    t === "mulher" ||
+    t === "mujer" ||
+    t === "fem" ||
+    t === "2"
+  ) {
+    return "Dra.";
+  }
+  return "Dr.";
+}
+
 export type MorningBriefingRequestArgs = {
   workspaceId: string;
   userId: string;
   userEmail: string;
   isAdmin: boolean;
   displayNameHint?: string | null;
+  /** Tratamento no hero: Dr. ou Dra. */
+  honorific: LawyerHonorific;
 };
 
 export function activeCaseWhereFor(workspaceId: string): Prisma.CaseWhereInput {
@@ -492,6 +516,7 @@ export async function fetchMorningBriefingAggRows(
     libraryStats,
     coletaApproxCount,
     oldestUnnamedBare,
+    namedActiveCasesWithoutDocs,
   ] = await Promise.all([
     displayNameHint?.trim()
       ? Promise.resolve(null)
@@ -582,6 +607,13 @@ export async function fetchMorningBriefingAggRows(
       orderBy: { createdAt: "asc" },
       select: { id: true },
     }),
+    prisma.case.count({
+      where: {
+        ...activeCaseWhere,
+        NOT: { OR: unnamedTitleOr },
+        documents: { none: { deletedAt: null } },
+      },
+    }),
   ]);
 
   return {
@@ -600,6 +632,7 @@ export async function fetchMorningBriefingAggRows(
     libraryStats,
     coletaApproxCount,
     oldestUnnamedBare,
+    namedActiveCasesWithoutDocs,
   };
 }
 
@@ -641,9 +674,7 @@ export async function fetchMorningBriefingHeavyRows(activeCaseWhere: Prisma.Case
 export type MorningBriefingShellProps = {
   displayName: string;
   hasNoCases: boolean;
-  daySummaryLine: string;
-  priorityContinueHref: string;
-  oldestUnnamedCaseId: string | null;
+  honorific: LawyerHonorific;
 };
 
 /** Props do hero/CTA a partir só dos agregados (rápido). */
@@ -651,41 +682,22 @@ export function mapMorningBriefingAggToShellProps(
   args: MorningBriefingRequestArgs,
   agg: Awaited<ReturnType<typeof fetchMorningBriefingAggRows>>,
 ): MorningBriefingShellProps {
-  const { userEmail, displayNameHint } = args;
-  const { dbUser, activeCases, docByStatus, coletaApproxCount, oldestUnnamedBare } = agg;
-  const statusMap = new Map(docByStatus.map((g) => [g.status, g._count._all]));
-  const n = (s: DocumentStatus) => statusMap.get(s) ?? 0;
-  const received = n(DocumentStatus.UPLOADED);
-  const inAnalysis = n(DocumentStatus.PARSING) + n(DocumentStatus.CHUNKING) + n(DocumentStatus.EMBEDDING);
-  const pendingReadingCount = received + inAnalysis;
+  const { userEmail, displayNameHint, honorific } = args;
+  const { dbUser, activeCases } = agg;
 
-  const displayName =
+  const rawFirst =
     displayNameHint?.trim()?.split(/\s+/)[0] ??
     dbUser?.name?.trim()?.split(/\s+/)[0] ??
     dbUser?.email?.split("@")[0] ??
     userEmail.split("@")[0] ??
-    "Dr.";
+    "Colega";
 
-  const daySummaryLine = buildDaySummaryLine({
-    coletaCount: coletaApproxCount,
-    docsAwaiting: pendingReadingCount,
-    activeCases,
-  });
-
-  const oldestUnnamedCaseId = oldestUnnamedBare?.id ?? null;
-  const priorityContinueHref =
-    oldestUnnamedCaseId != null
-      ? `/cases/${oldestUnnamedCaseId}/entrevista`
-      : activeCases > 0
-        ? "/cases"
-        : "/cases/new";
+  const displayName = formatLawyerGreetingFirstName(rawFirst);
 
   return {
     displayName,
     hasNoCases: activeCases === 0,
-    daySummaryLine,
-    priorityContinueHref,
-    oldestUnnamedCaseId,
+    honorific,
   };
 }
 
@@ -694,7 +706,7 @@ function buildMorningBriefingPayloadFromParts(
   agg: Awaited<ReturnType<typeof fetchMorningBriefingAggRows>>,
   heavy: Awaited<ReturnType<typeof fetchMorningBriefingHeavyRows>>,
 ): MorningBriefingPayload {
-  const { workspaceId, userEmail, isAdmin, displayNameHint } = args;
+  const { workspaceId, userEmail, isAdmin, displayNameHint, honorific } = args;
   const {
     dbUser,
     activeCases,
@@ -724,7 +736,6 @@ function buildMorningBriefingPayloadFromParts(
 
   const storageBytes = storageAgg._sum.sizeBytes ?? 0;
   const storageHuman = bytesToHuman(storageBytes);
-  const storageBarPct = Math.min(100, Math.round((storageBytes / (1024 * 1024 * 500)) * 100));
 
   const unnamedCases = caseList.filter((c) => isCaseUnnamed(c.title));
   const namedCases = caseList.filter((c) => !isCaseUnnamed(c.title));
@@ -743,6 +754,11 @@ function buildMorningBriefingPayloadFromParts(
       c.status !== CaseStatus.INTAKE &&
       !isCaseUnnamed(c.title),
   );
+
+  const coletaCount = new Set(
+    caseList.filter((c) => c.status === CaseStatus.INTAKE || isCaseUnnamed(c.title)).map((c) => c.id),
+  ).size;
+  const readyPieceTrackCount = caseList.filter(caseInPiecePhase).length;
 
   const countSet = new Set<string>();
   for (const c of caseList) {
@@ -770,7 +786,6 @@ function buildMorningBriefingPayloadFromParts(
     draftsOpen,
     reviewsWaiting: pendingApprovals,
     storageHuman,
-    storageBarPct: storageBarPct,
     openHighRisks,
     failedProcessingCount: failed,
     openDeadlines,
@@ -806,10 +821,9 @@ function buildMorningBriefingPayloadFromParts(
     };
   }
 
-  const briefingActions: BriefingActionItem[] = [];
-  const push = (a: BriefingActionItem) => {
-    if (briefingActions.length >= 5) return;
-    briefingActions.push(a);
+  const briefingActionsAll: BriefingActionItem[] = [];
+  const pushAll = (a: BriefingActionItem) => {
+    briefingActionsAll.push(a);
   };
 
   if (pendingApprovals > 0) {
@@ -817,7 +831,7 @@ function buildMorningBriefingPayloadFromParts(
       (approvalCaseLink?.caseId ? caseList.find((x) => x.id === approvalCaseLink.caseId) : null) ??
       caseList.find((x) => x._count.drafts > 0) ??
       caseList[0];
-    push({
+    pushAll({
       id: `approval-${workspaceId}`,
       type: "peça",
       title: c ? `Revisar minuta — ${isCaseUnnamed(c.title) ? "caso em coleta" : c.title}` : "Revisar minuta",
@@ -825,12 +839,14 @@ function buildMorningBriefingPayloadFromParts(
       cta: "Revisar minuta",
       href: c ? `/cases/${c.id}/estrategia` : "/cases",
       priority: "urgent",
-      statusHint: c ? `Peça · ${statusLabelUser(c.status)}` : undefined,
+      eisenhowerBucket: "maximum",
+      discreteOrigin: "lex_sugerido",
+      statusHint: c ? `Minuta · ${statusLabelUser(c.status)}` : undefined,
     });
   }
 
   for (const d of stalledDocs) {
-    push({
+    pushAll({
       id: `stalled-${d.id}`,
       type: "documento",
       title: `Documento em espera — ${d.originalName}`,
@@ -838,42 +854,46 @@ function buildMorningBriefingPayloadFromParts(
       cta: "Ver documento",
       href: "/documentos",
       priority: "urgent",
+      eisenhowerBucket: "maximum",
+      discreteOrigin: "lex_sugerido",
     });
   }
 
   if (unnamedCases.length > 0) {
     const oldest = [...unnamedCases].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]!;
-    push({
+    pushAll({
       id: `unnamed-group`,
       type: "caso",
       title:
         unnamedCases.length > 1
           ? `${unnamedCases.length} casos aguardam nome e entrevista`
           : "Caso aguarda nome e entrevista",
-      reason: "Sem nome confirmado fica difícil priorizar e partilhar o caso com a equipa.",
+      reason: "Sem entrevista completa, o Lex não consegue organizar fatos, partes e pedidos.",
       cta: "Continuar entrevista",
       href: `/cases/${oldest.id}/entrevista`,
       priority: unnamedCases.length === 1 ? "urgent" : "normal",
-      statusHint: "Coleta inicial",
+      eisenhowerBucket: "maximum",
     });
   }
 
   for (const c of noDocCases) {
     if (isCaseUnnamed(c.title)) continue;
-    push({
+    pushAll({
       id: `nodoc-${c.id}`,
       type: "caso",
       title: `Enviar documentos — ${c.title}`,
-      reason: "Sem documentos não é possível extrair fatos nem preparar peças com segurança.",
+      reason: "Sem documentos não é possível preparar estratégia nem peças com segurança.",
       cta: "Enviar documento",
       href: `/cases/${c.id}/documentos`,
       priority: "normal",
+      eisenhowerBucket: "maximum",
+      discreteOrigin: "aguardando_cliente",
       statusHint: `${statusLabelUser(c.status)} · sem documentos vinculados`,
     });
   }
 
   for (const c of casesNeedingStrategy) {
-    push({
+    pushAll({
       id: `strat-${c.id}`,
       type: "caso",
       title: `Gerar estratégia — ${c.title}`,
@@ -881,11 +901,13 @@ function buildMorningBriefingPayloadFromParts(
       cta: "Gerar estratégia",
       href: `/cases/${c.id}/estrategia`,
       priority: "normal",
+      eisenhowerBucket: "important",
+      discreteOrigin: "lex_sugerido",
     });
   }
 
   for (const c of casesMissingCnj) {
-    push({
+    pushAll({
       id: `cnj-${c.id}`,
       type: "processo",
       title: `Associar processo — ${c.title}`,
@@ -893,11 +915,16 @@ function buildMorningBriefingPayloadFromParts(
       cta: "Abrir caso",
       href: `/cases/${c.id}`,
       priority: "low",
+      eisenhowerBucket: "waiting",
+      discreteOrigin: "aguardando_cliente",
     });
   }
 
+  const briefingActionsOverflow = Math.max(0, briefingActionsAll.length - 5);
+  const briefingActions = briefingActionsAll.slice(0, 5);
+
   const genuinelyAllClear =
-    briefingActions.length === 0 &&
+    briefingActionsAll.length === 0 &&
     !urgent &&
     stalledDocs.length === 0 &&
     unnamedCases.length === 0 &&
@@ -908,33 +935,23 @@ function buildMorningBriefingPayloadFromParts(
     openDeadlines === 0;
 
   const pendingReadingCount = received + inAnalysis;
-  const docReadyPct = totalDocuments > 0 ? Math.round((ready / totalDocuments) * 100) : 0;
-  const casesBarPctDetail =
-    activeCases > 0 ? Math.min(100, Math.round((casesNeedingNextStep / activeCases) * 100)) : 0;
-
-  const coletaCount = new Set(
-    caseList.filter((c) => c.status === CaseStatus.INTAKE || isCaseUnnamed(c.title)).map((c) => c.id),
-  ).size;
-  const namedNoDocsCount = namedCases.filter((c) => c._count.documents === 0).length;
-  const needInterviewCount = unnamedCases.length;
-  const readyPieceTrackCount = caseList.filter(caseInPiecePhase).length;
 
   const oldestUnnamedFirst =
     unnamedCases.length > 0
       ? [...unnamedCases].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]!
       : null;
 
-  const topPriorityTitle = briefingActions[0] ? extractPriorityCaseTitle(briefingActions[0].title) : null;
+  const topPriorityTitle = briefingActionsAll[0] ? extractPriorityCaseTitle(briefingActionsAll[0].title) : null;
 
   const pulseCases: PulseCasesDetail = {
     headline: `${activeCases} casos em andamento`,
     breakdownLines: [
-      `${needInterviewCount} precisam de entrevista ou nome`,
-      `${namedNoDocsCount} sem documento`,
-      `${readyPieceTrackCount} em fase de elaboração de peça`,
+      `${agg.coletaApproxCount} em coleta inicial`,
+      `${agg.namedActiveCasesWithoutDocs} sem documento vinculado`,
+      `${readyPieceTrackCount} em fase de minuta ou revisão`,
     ],
     nextActionTitle:
-      briefingActions[0]?.title ??
+      briefingActionsAll[0]?.title ??
       (oldestUnnamedFirst
         ? `Continuar entrevista — criado em ${oldestUnnamedFirst.createdAt.toLocaleDateString("pt-BR", {
             day: "numeric",
@@ -942,52 +959,65 @@ function buildMorningBriefingPayloadFromParts(
           })}`
         : null),
     nextHref:
-      briefingActions[0]?.href ??
+      briefingActionsAll[0]?.href ??
       (oldestUnnamedFirst ? `/cases/${oldestUnnamedFirst.id}/entrevista` : activeCases > 0 ? "/cases" : "/cases/new"),
     nextCtaLabel:
-      briefingActions[0]?.cta ??
+      briefingActionsAll[0]?.cta ??
       (oldestUnnamedFirst ? "Continuar entrevista" : activeCases > 0 ? "Ver casos" : "Novo caso"),
-    barPct: casesBarPctDetail,
-    barColor: casesNeedingNextStep > 0 ? "var(--brand-primary)" : "var(--success-text)",
   };
 
   const pulseDocuments: PulseDocumentsDetail = {
     headline:
       totalDocuments === 0
         ? "Nenhum documento no escritório"
-        : `${totalDocuments} documento${totalDocuments === 1 ? "" : "s"} no escritório`,
+        : pendingReadingCount + failed > 0
+          ? `${pendingReadingCount + failed} pendência${pendingReadingCount + failed === 1 ? "" : "s"} de documentos`
+          : `${totalDocuments} documento${totalDocuments === 1 ? "" : "s"} no escritório`,
     breakdownLines: [
+      `${received} recebidos`,
+      `${inAnalysis} em análise`,
       `${ready} prontos para leitura`,
-      `${pendingReadingCount} aguardam leitura`,
       `${failed} com problema`,
     ],
+    nextActionTitle:
+      failed > 0
+        ? "Resolver documentos com problema antes de seguir."
+        : pendingReadingCount > 0
+          ? "Acompanhar documentos recebidos ou em análise."
+          : ready > 0
+            ? "Rever documentos já prontos para leitura."
+            : totalDocuments === 0
+              ? "Enviar o primeiro documento ao escritório."
+              : null,
     nextHref: "/documentos",
     nextCtaLabel:
       failed > 0 ? "Ver documentos com problema" : pendingReadingCount > 0 ? "Analisar documentos" : "Ver documentos",
-    barPct: docReadyPct,
-    barColor: pendingReadingCount > 0 ? "var(--warning-text)" : "var(--success-text)",
   };
 
   const pulsePieces: PulsePiecesDetail = {
     headline:
       draftsOpen === 0 && pendingApprovals === 0
-        ? "Nenhuma minuta em elaboração"
-        : `${draftsOpen} minuta${draftsOpen === 1 ? "" : "s"} em elaboração`,
+        ? "Nenhuma minuta aberta"
+        : `${draftsOpen + pendingApprovals} minuta${draftsOpen + pendingApprovals === 1 ? "" : "s"} ativa${draftsOpen + pendingApprovals === 1 ? "" : "s"}`,
     breakdownLines: [
-      `${pendingApprovals} aguardam revisão`,
-      `${draftsApprovedCount} prontas para rever ou exportar`,
+      `${draftsOpen} em elaboração`,
+      `${pendingApprovals} em revisão`,
+      `${draftsApprovedCount} prontas para exportar`,
     ],
-    emptyHint:
-      draftsOpen === 0 && pendingApprovals === 0 && draftsApprovedCount === 0
-        ? "Para gerar uma minuta, entre num caso, fixe fundamentos na pesquisa jurídica e use Gerar peça na estratégia."
-        : null,
+    nextActionTitle:
+      pendingApprovals > 0
+        ? "Decidir sobre o pedido de revisão de minuta."
+        : draftsOpen > 0
+          ? "Continuar uma minuta em curso."
+          : draftsApprovedCount > 0
+            ? "Rever ou exportar minuta aprovada."
+            : null,
+    emptyHint: null,
     nextHref:
       pendingApprovals > 0 && approvalCaseLink?.caseId
         ? `/cases/${approvalCaseLink.caseId}/estrategia`
         : "/editor",
     nextCtaLabel: pendingApprovals > 0 ? "Revisar minuta" : "Criar peça",
-    barPct: Math.min(100, draftsOpen * 14 + pendingApprovals * 20 + 8),
-    barColor: pendingApprovals > 0 ? "var(--warning-text)" : "var(--text-muted)",
   };
 
   const pulseLibrary: PulseLibraryDetail = {
@@ -995,44 +1025,33 @@ function buildMorningBriefingPayloadFromParts(
     breakdownLines: [
       `${storageHuman} armazenados`,
       `${totalDocuments} documento${totalDocuments === 1 ? "" : "s"} carregados`,
-      `${libraryModelsCount} modelo${libraryModelsCount === 1 ? "" : "s"} próprio${libraryModelsCount === 1 ? "" : "s"}`,
       `${libraryFoundationTotal} fundamento${libraryFoundationTotal === 1 ? "" : "s"} na biblioteca`,
     ],
+    nextActionTitle:
+      libraryFoundationTotal + libraryModelsCount === 0
+        ? "Começar por fundamentos na biblioteca."
+        : "Rever fundamentos e modelos guardados.",
     nextHref: "/biblioteca",
     nextCtaLabel: "Abrir biblioteca",
-    barPct: storageBarPct,
-    barColor: "var(--text-muted)",
   };
-
-  const daySummaryLine = buildDaySummaryLine({
-    coletaCount,
-    docsAwaiting: pendingReadingCount,
-    activeCases,
-  });
-
-  const priorityContinueHref =
-    briefingActions[0]?.href ??
-    (oldestUnnamedFirst ? `/cases/${oldestUnnamedFirst.id}/entrevista` : activeCases > 0 ? "/cases" : "/cases/new");
 
   const resumeCases: ResumeCaseRow[] = [];
   const unnamedSorted = [...unnamedCases].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-  const maxUnnamedRows = 3;
-  for (let i = 0; i < Math.min(maxUnnamedRows, unnamedSorted.length); i++) {
-    const u = unnamedSorted[i]!;
+  if (unnamedSorted.length >= 2) {
+    const oldest = unnamedSorted[0]!;
+    resumeCases.push({
+      kind: "unnamed_group",
+      count: unnamedSorted.length,
+      oldestCaseId: oldest.id,
+      createdLabel: "",
+    });
+  } else if (unnamedSorted.length === 1) {
+    const u = unnamedSorted[0]!;
     resumeCases.push({
       kind: "unnamed_single",
       id: u.id,
       createdLabel: u.createdAt.toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" }),
       nextActionLabel: "Responder entrevista guiada e definir nome",
-    });
-  }
-  if (unnamedSorted.length > maxUnnamedRows) {
-    const rest = unnamedSorted.slice(maxUnnamedRows);
-    resumeCases.push({
-      kind: "unnamed_group",
-      count: rest.length,
-      oldestCaseId: rest[0]!.id,
-      createdLabel: "",
     });
   }
 
@@ -1055,7 +1074,7 @@ function buildMorningBriefingPayloadFromParts(
         Date.now() - c.updatedAt.getTime() < 48 * 3600 * 1000
           ? "Atualizado recentemente"
           : `Atualizado há ${Math.max(1, Math.round((Date.now() - c.updatedAt.getTime()) / 86400000))} dia(s)`,
-      badgeLabel: badgeForCase(c.status, hasStrategy),
+      badgeLabel: badgeForCase(c.status, hasStrategy, c._count.documents),
       nextActionLabel: ns.label,
       continueHref: ns.href,
     });
@@ -1083,20 +1102,18 @@ function buildMorningBriefingPayloadFromParts(
     topPriorityTitle,
   });
 
-  const displayName =
+  const displayName = formatLawyerGreetingFirstName(
     displayNameHint?.trim()?.split(/\s+/)[0] ??
-    dbUser?.name?.trim()?.split(/\s+/)[0] ??
-    dbUser?.email?.split("@")[0] ??
-    userEmail.split("@")[0] ??
-    "Dr.";
-
-  const oldestUnnamedCaseId = oldestUnnamedFirst?.id ?? null;
+      dbUser?.name?.trim()?.split(/\s+/)[0] ??
+      dbUser?.email?.split("@")[0] ??
+      userEmail.split("@")[0] ??
+      "Colega",
+  );
 
   return {
     displayName,
     hasNoCases: activeCases === 0,
-    daySummaryLine,
-    priorityContinueHref,
+    honorific,
     pulse,
     pulseCases,
     pulseDocuments,
@@ -1104,14 +1121,14 @@ function buildMorningBriefingPayloadFromParts(
     pulseLibrary,
     urgent,
     briefingActions,
+    briefingActionsOverflow,
     genuinelyAllClear,
     resumeCases,
     activities: activityRows,
     docPhases,
     piecesThisMonth: piecesMonth,
     copilotMessage,
-    copilotTitle: "Resumo do dia",
-    oldestUnnamedCaseId,
+    copilotTitle: "Copiloto Lex",
   };
 }
 

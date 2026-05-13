@@ -39,6 +39,7 @@ type SenadoOpts = {
   fetchImpl?: typeof fetch;
   ratePerMinute?: number;
   timeoutMs?: number;
+  sigla?: string;
   /**
    * Quantos itens varrer por página. O Senado pagina por intervalo de número
    * (lista por sigla/ano) — usamos cursor numérico (ano).
@@ -48,12 +49,19 @@ type SenadoOpts = {
 
 type SenadoMateria = {
   CodigoMateria?: string;
+  Codigo?: string;
   SiglaSubtipoMateria?: string;
+  Sigla?: string;
   NumeroMateria?: string;
+  Numero?: string;
   AnoMateria?: string;
+  Ano?: string;
   EmentaMateria?: string;
+  Ementa?: string;
   DescricaoIdentificacaoMateria?: string;
+  DescricaoIdentificacao?: string;
   DataApresentacao?: string;
+  Data?: string;
 };
 
 type SenadoListResponse = {
@@ -81,6 +89,7 @@ export class SenadoCorpusProvider implements CorpusProviderClient {
   private readonly ratePerMinute: number;
   private readonly timeoutMs: number;
   private readonly yearsPerPage: number;
+  private readonly sigla: string;
 
   constructor(opts: SenadoOpts = {}) {
     this.baseUrl = opts.baseUrl ?? DEFAULT_BASE;
@@ -88,6 +97,7 @@ export class SenadoCorpusProvider implements CorpusProviderClient {
     this.ratePerMinute = opts.ratePerMinute ?? 30;
     this.timeoutMs = opts.timeoutMs ?? 30_000;
     this.yearsPerPage = Math.max(1, Math.min(5, opts.yearsPerPage ?? 1));
+    this.sigla = opts.sigla ?? "PL";
   }
 
   /**
@@ -102,7 +112,7 @@ export class SenadoCorpusProvider implements CorpusProviderClient {
 
     const url = new URL(`${this.baseUrl}/materia/pesquisa/lista`);
     url.searchParams.set("ano", String(startYear));
-    // Sem sigla → todos tipos. Sem outros filtros para máximo recall inicial.
+    url.searchParams.set("sigla", this.sigla);
 
     const json = await this.getJson<SenadoListResponse>(url.toString());
     const root = json.PesquisaBasicaMateria?.Materias?.Materia;
@@ -152,30 +162,35 @@ export class SenadoCorpusProvider implements CorpusProviderClient {
   }
 
   private toCandidate(m: SenadoMateria): CorpusCandidate | null {
-    if (!m.CodigoMateria || !m.NumeroMateria || !m.AnoMateria) return null;
-    const sigla = (m.SiglaSubtipoMateria ?? "MAT").toLowerCase();
-    const isoDate = (m.DataApresentacao ?? `${m.AnoMateria}-01-01`).slice(0, 10);
+    const codigo = m.CodigoMateria ?? m.Codigo;
+    const numero = m.NumeroMateria ?? m.Numero;
+    const ano = m.AnoMateria ?? m.Ano;
+    if (!codigo || !numero || !ano) return null;
+    const siglaRaw = m.SiglaSubtipoMateria ?? m.Sigla ?? "MAT";
+    const sigla = siglaRaw.toLowerCase();
+    const isoDate = (m.DataApresentacao ?? m.Data ?? `${ano}-01-01`).slice(0, 10);
     const date = new Date(isoDate);
     const urn = buildCanonicalUrn({
       country: "br",
       authority: "senado.federal",
       documentType: `materia.${sigla}`,
       date: isoDate,
-      number: String(m.NumeroMateria),
+      number: String(numero),
     });
     const title =
-      m.DescricaoIdentificacaoMateria ?? `${m.SiglaSubtipoMateria ?? ""} ${m.NumeroMateria}/${m.AnoMateria}`;
+      m.DescricaoIdentificacaoMateria ?? m.DescricaoIdentificacao ?? `${siglaRaw} ${numero}/${ano}`;
     const c: CorpusCandidate = {
       urn,
       kind: NormKind.OTHER,
       title,
-      identifier: `${m.SiglaSubtipoMateria ?? "MAT"} ${m.NumeroMateria}/${m.AnoMateria}`,
+      identifier: `${siglaRaw} ${numero}/${ano}`,
       authority: "Senado Federal",
       tribunal: "SENADO",
-      sourceExternalId: `senado-${m.CodigoMateria}`,
-      sourceUrl: `https://www25.senado.leg.br/web/atividade/materias/-/materia/${m.CodigoMateria}`,
+      sourceExternalId: `senado-${codigo}`,
+      sourceUrl: `https://www25.senado.leg.br/web/atividade/materias/-/materia/${codigo}`,
     };
-    if (m.EmentaMateria) c.ementa = m.EmentaMateria;
+    const ementa = m.EmentaMateria ?? m.Ementa;
+    if (ementa) c.ementa = ementa;
     if (!isNaN(date.getTime())) c.publishedAt = date;
     return c;
   }

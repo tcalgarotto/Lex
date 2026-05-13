@@ -2,18 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import { NormKind } from "@prisma/client";
 import {
   DatajudCorpusProvider,
+  buildDatajudAuthorizationHeader,
   buildDatajudListQuery,
   extractRawTextFromDatajudHit,
   mapDatajudHitToCandidate,
 } from "./datajud";
 
 describe("buildDatajudListQuery", () => {
-  it("inclui sort por @timestamp asc e _id (sync incremental com search_after)", () => {
+  it("inclui sort por @timestamp asc aceito pela API publica DataJud", () => {
     const q = buildDatajudListQuery({ size: 10 }) as Record<string, unknown>;
     expect(q["size"]).toBe(10);
     // ASC porque o sync incremental avança no tempo. Cursor `search_after`
     // depois mantém posição estável.
-    expect(q["sort"]).toEqual([{ "@timestamp": { order: "asc" } }, { _id: "asc" }]);
+    expect(q["sort"]).toEqual([{ "@timestamp": { order: "asc" } }]);
     expect(q["query"]).toEqual({ match_all: {} });
   });
 
@@ -71,6 +72,11 @@ describe("extractRawTextFromDatajudHit", () => {
 });
 
 describe("DatajudCorpusProvider", () => {
+  it("aceita chave DataJud crua ou ja prefixada com APIKey", () => {
+    expect(buildDatajudAuthorizationHeader("abc123")).toBe("APIKey abc123");
+    expect(buildDatajudAuthorizationHeader("APIKey abc123")).toBe("APIKey abc123");
+  });
+
   it("lança erro quando API key ausente", async () => {
     const p = new DatajudCorpusProvider({ alias: "api_publica_tjsp" });
     await expect(p.list({ pageSize: 1 })).rejects.toThrow(/API_KEY/);
