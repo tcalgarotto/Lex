@@ -88,7 +88,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     },
   });
 
-  await prisma.case.delete({ where: { id: caseId } });
+  await prisma.case.deleteMany({ where: { id: caseId, workspaceId } });
 
   return NextResponse.json({ ok: true });
 }

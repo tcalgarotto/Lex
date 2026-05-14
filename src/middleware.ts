@@ -43,6 +43,9 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest): voi
   const supabaseUrl = process.env["NEXT_PUBLIC_SUPABASE_URL"] ?? "";
   const supabaseHost = supabaseUrl ? new URL(supabaseUrl).host : "";
 
+  // Nonce para CSP
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+
   const connectSrc = [
     "'self'",
     "https://*.supabase.co",
@@ -63,7 +66,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest): voi
   const csp = [
     "default-src 'self'",
     `connect-src ${connectSrc}`,
-    `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProd ? "" : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
@@ -74,6 +77,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest): voi
   ].join("; ");
 
   response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("x-nonce", nonce);
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -162,6 +166,16 @@ export async function middleware(request: NextRequest) {
   } catch (err) {
     console.warn("[middleware] supabase.auth.getUser falhou:", (err as Error).message);
   }
+  // Fallback: alguns browsers/estados devolvem user null em getUser() mas sessão válida em cookie
+  // (ex.: refresh pendente). Evita 401 falso em POST /api/* para utilizador com sessão ativa na UI.
+  if (!user) {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      user = sessionData.session?.user ?? null;
+    } catch (err) {
+      console.warn("[middleware] supabase.auth.getSession falhou:", (err as Error).message);
+    }
+  }
 
   const pathname = request.nextUrl.pathname;
 
@@ -173,7 +187,18 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/api/ready") ||
       pathname.startsWith("/api/stripe/webhook");
     if (!isPublicApi && !user) {
-      const res = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      const res = NextResponse.json(
+        {
+          error: "Sessão não encontrada ou expirou. Entre novamente para continuar.",
+          code: "SESSION_REQUIRED",
+        },
+        { status: 401 },
+      );
+      // Supabase pode ter atualizado cookies em `response` durante getUser();
+      // devolver 401 sem estes Set-Cookie deixa o browser com sessão stale e 401 em loop.
+      for (const c of response.cookies.getAll()) {
+        res.cookies.set(c.name, c.value);
+      }
       applySecurityHeaders(res, request);
       return res;
     }

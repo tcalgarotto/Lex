@@ -217,7 +217,7 @@ export async function POST(req: Request) {
         });
         if (body.documentId) {
           await tx.document.update({
-            where: { id: body.documentId },
+            where: { id: body.documentId, workspaceId },
             data: { caseId: created.id },
           });
         }

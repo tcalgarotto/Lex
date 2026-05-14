@@ -11,7 +11,7 @@
     "build": "npm run clean && npx prisma generate && unset npm_lifecycle_event npm_lifecycle_script && NODE_ENV=production ./node_modules/.bin/next build",
     "build:clean": "npm run clean && npx prisma generate && unset npm_lifecycle_event npm_lifecycle_script && NODE_ENV=production ./node_modules/.bin/next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "format": "prettier --write .",
     "db:generate": "prisma generate",
@@ -128,7 +128,7 @@
     "@types/react": "^19.1.4",
     "@types/react-dom": "^19.1.5",
     "@vercel/analytics": "^2.0.1",
-    "ai": "^4.3.16",
+    "ai": "^6.0.182",
     "autoprefixer": "^10.4.21",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
@@ -142,13 +142,13 @@
     "geist": "^1.7.0",
     "inngest": "^3.35.0",
     "ioredis": "^5.10.1",
+    "jsondiffpatch": "^0.7.3",
     "langfuse": "^3.38.20",
     "lucide-react": "^0.511.0",
     "mammoth": "^1.9.0",
     "nanoid": "^5.1.5",
-    "next": "^15.3.2",
+    "next": "^16.2.6",
     "pdf-lib": "^1.17.1",
-    "postcss": "^8.5.3",
     "prisma": "^6.8.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -169,6 +169,9 @@
     "unpdf": "^1.6.2",
     "zod": "^3.24.4",
     "zustand": "^5.0.5"
+  },
+  "overrides": {
+    "postcss": "8.5.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

@@ -76,7 +76,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     ...(typeof body.archived === "boolean" ? { archivedAt: body.archived ? new Date() : null } : {}),
   };
 
-  await prisma.officeMemory.update({ where: { id }, data });
+  await prisma.officeMemory.update({ where: { id, workspaceId }, data });
   return NextResponse.json({ ok: true });
 }
 
@@ -92,7 +92,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!existing) return NextResponse.json({ error: "Memória não encontrada" }, { status: 404 });
 
   await prisma.officeMemory.update({
-    where: { id },
+    where: { id, workspaceId },
     data: { deletedAt: new Date(), updatedBy: { connect: { id: user.id } } },
   });
   return NextResponse.json({ ok: true });

@@ -14,13 +14,12 @@ export function userCanReadDocument(viewerUserId: string, doc: DocumentAccessFie
   ) {
     return true;
   }
-  if (!doc.uploadedByUserId || doc.uploadedByUserId === viewerUserId) {
-    return true;
-  }
+  // Se estiver vinculado a caso ou processo, visível para o time (filtrado por workspaceId no DB).
   if (doc.caseId != null || doc.processId != null) {
     return true;
   }
-  return false;
+  // Se for standalone, apenas o dono pode ver.
+  return doc.uploadedByUserId === viewerUserId;
 }
 
 /** Exclusão: catálogo partilhado — advogado+; standalone privado — remetente ou admin; com caso/processo — advogado+. */

@@ -19,7 +19,7 @@ export async function PATCH(
   }
 
   await prisma.legalPiece.update({
-    where: { id },
+    where: { id, workspaceId },
     data: { contentJson: body.contentJson as object },
   });
 
