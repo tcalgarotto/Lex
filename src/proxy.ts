@@ -109,7 +109,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest): voi
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Origin validation cedo: bloquear mutações cross-origin que não vêm do próprio host.
   if (request.method !== "GET" && request.method !== "HEAD") {
     const origin = request.headers.get("origin");

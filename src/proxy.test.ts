@@ -6,7 +6,7 @@ import path from "node:path";
  * Teste estrutural: garante que as defesas de segurança críticas
  * permanecem no middleware. Se alguém remover sem querer, o teste falha.
  */
-const SRC = fs.readFileSync(path.resolve(__dirname, "middleware.ts"), "utf-8");
+const SRC = fs.readFileSync(path.resolve(__dirname, "proxy.ts"), "utf-8");
 
 describe("middleware security guards", () => {
   it("bloqueia mutações cross-origin (CSRF guard)", () => {
@@ -31,7 +31,9 @@ describe("middleware security guards", () => {
   });
 
   it("exige auth em /api/* (exceto webhooks/health)", () => {
-    expect(SRC).toMatch(/Unauthorized/);
+    expect(SRC).toMatch(/SESSION_REQUIRED/);
+    expect(SRC).toMatch(/getSession/);
     expect(SRC).toMatch(/isPublicApi/);
+    expect(SRC).toMatch(/response\.cookies\.getAll/);
   });
 });

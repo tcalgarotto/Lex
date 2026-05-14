@@ -23,7 +23,7 @@ describe("Anti-IDOR: Documents", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    vi.mocked(getWorkspaceContext).mockResolvedValue({ user: mockUser as User, workspaceId: "w1" });
+    vi.mocked(getWorkspaceContext).mockResolvedValue({ user: mockUser, workspaceId: "w1" } as unknown as Awaited<ReturnType<typeof getWorkspaceContext>>);
     vi.mocked(prisma.document.findFirst).mockResolvedValue(null);
     const req = new Request("http://localhost/api/documents/doc_2");
     const res = await getDocument(req, { params: Promise.resolve({ documentId: "doc_2" }) });

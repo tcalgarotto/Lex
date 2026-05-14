@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Upload Security", () => {
-  it("should block malicious upload extensions", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should block malicious upload extensions (pendente: implementar simulação real)", () => {});
 });

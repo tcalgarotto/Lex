@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Mass Assignment", () => {
-  it("should ignore extra fields in POST payload", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should ignore extra fields in POST payload (pendente: implementar simulação real)", () => {});
 });

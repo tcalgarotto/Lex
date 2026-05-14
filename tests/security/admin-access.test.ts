@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Admin Access", () => {
-  it("should require admin role to access observability stats", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should require admin role to access observability stats (pendente: implementar simulação real)", () => {});
 });

@@ -1,59 +1,43 @@
 # Security Review P0 — Lex (LGPD + Multi-tenant)
 
-> Documento final de auditoria rigorosa de segurança (OWASP, LGPD, Multi-tenant).
+> Documento final de auditoria de reconciliação de segurança (OWASP, LGPD, Multi-tenant).
 > Última atualização: 14 de Maio de 2026.
 
 ## 1. Sumário Executivo
-Esta auditoria P0 verificou a fundo o isolamento multi-tenant (Anti-IDOR), dependências, vazamento de PII/segredos, e proteções de endpoints. Foram sanadas vulnerabilidades em pacotes, aplicadas travas definitivas (defense-in-depth) no banco de dados e criados testes simulados para provar empiricamente o isolamento.
+Esta auditoria P0 verificou a fundo o isolamento multi-tenant (Anti-IDOR), dependências, vazamento de PII/segredos, e proteções de endpoints. Foram mitigadas vulnerabilidades críticas em pacotes, aplicadas travas em profundidade no banco de dados e introduzidos testes simulados iniciais. A camada de Proxy Edge foi reconciliada e o documento reflete o estado empírico, sem otimismo.
 
 ## 2. Status Final
-**Status**: **READY**. O sistema atingiu um nível de maturidade seguro para o manuseio de dados reais e sensíveis.
+**Status**: **READY para beta controlado com dados reais de teste/usuários piloto, condicionado a revisão contínua de novas rotas.**
+*Nota: Não afirmamos estar "100% livre de falhas", o risco foi mitigado nas rotas cobertas, mas novos fluxos exigem os mesmos controles.*
 
 ## 3. NPM Audit (Antes vs Depois)
 - **Antes**: 19 vulnerabilidades (16 High, 3 Moderate), incluindo falhas críticas no Next.js (Middleware Bypass) e `postcss` (XSS).
-- **Depois**: **0 vulnerabilidades**.
+- **Depois**: **0 vulnerabilidades**. 
+*(Next foi atualizado para >= 16.2.6, corrigindo vulnerabilidades conhecidas)*
 
-## 4. Vulnerabilidades Corrigidas
-- **CVEs Mitigados**: Atualização manual forçada (`overrides`) do `postcss@8.5.10`, `ai@6.0.182`, e `next@16.2.6`.
-- **IDOR Defense-in-Depth**: Várias operações de deleção/atualização (`/api/cases/[id]/delete`, `/api/office-memory/[id]`, `/api/pieces/[id]`) que antes validavam a posse no `findFirst`, agora exigem `workspaceId` diretamente no `update`/`deleteMany`.
-- **Prevenção de XSS**: Implementado o header CSP dinâmico com `nonce` e `strict-dynamic` no `middleware.ts`.
-- **Vazamento de Documentos Órfãos**: Corrigido `userCanReadDocument` para impedir leitura global de arquivos soltos sem dono explicíto.
+## 4. Mitigações Estruturais e Proxies
+- **Proxy Boundary**: A camada de segurança de borda (origin guard, session guard) foi corretamente migrada de `middleware.ts` para `proxy.ts`, adotando o padrão atualizado do Next.js. O matcher está preservado, impedindo duplicação de regras.
+- **Prevenção de XSS**: Header CSP com `nonce` dinâmico (buffer base64) está ativo por requisição na borda via `proxy.ts`. O nível restritivo requer teste E2E futuro para assegurar ausência de quebras no client (Turbo/Webpack hydration).
+- **IDOR Defense-in-Depth**: Várias operações de deleção/atualização (`/api/cases/[id]/delete`, `/api/office-memory/[id]`, `/api/pieces/[id]`) que antes validavam a posse apenas na etapa inicial (`findFirst`), agora forçam a restrição de `workspaceId` ativamente nas chamadas de `update`/`deleteMany`.
+- **Vazamento de Documentos Órfãos**: Lógica `userCanReadDocument` bloqueada para impedir vazamento horizontal (cross-tenant) global.
 
-## 5. Vulnerabilidades Remanescentes
-- **Nenhuma vulnerabilidade crítica ou alta remanescente.**
-- Aceito-com-justificativa: uso de inngest sem `workspaceId` no root payload em certas funções internas assíncronas (como ingest-norm), dado que a assinatura criptográfica (`INNGEST_SIGNING_KEY`) blinda completamente a invocação contra atacantes externos.
+## 5. Testes Simulado e Falsos Positivos Removidos
+A cobertura de segurança tem sido iterada. Foram preservados e testados com prova empírica de falhas os cenários de:
+- **`simulated-idor.test.ts`**: (Simulação Real) Oposto a placeholder, intercepta e simula acesso para BOLA/IDOR para Cases GET, Cases DELETE e Memberships PATCH.
+- **`anti-idor-documents.test.ts` & `anti-idor-drafts.test.ts`**: (Simulação Real) Comprova que `document.findFirst` nulo resulta em HTTP 404 e rejeita invasor.
+- Vários testes que atuavam como "placeholders" puros (ex: testavam `expect(true).toBe(true)`) foram marcados como `.skip()` com menções claras `(pendente: implementar simulação real)`. Isso abrange mass-assignment, armazenamento e admin-access, os quais **ainda requerem provas** de automação, muito embora a infra implementada possua regras explícitas nos Handlers.
 
-## 6. Rotas e APIs Auditadas
-- **Casos**: `/api/cases`, `/api/cases/[id]/*` (delete, draft, etc)
-- **Documentos**: `/api/documents/[documentId]/file`, `/api/documents/upload`
-- **Memória**: `/api/office-memory/[id]`
-- **Membros**: `/api/memberships/[id]`
-- **Integração Judicial**: `/api/datajud/status`
-- **Autenticação**: `/auth/callback`
-- **Ferramentas Admin**: `/settings/admin`, `/settings/jobs` (todas gateadas server-side)
+## 6. Rotas e APIs Auditadas (Check Server-Side)
+Todas as rotas sob:
+- **Casos**: `/api/cases`
+- **Documentos**: `/api/documents`
+- **Memória**: `/api/office-memory`
+- **Membros**: `/api/memberships`
 
-## 7. Achados da Auditoria
-- **Críticos Encontrados**: Falha potencial de bypass de middleware via Next.js < 16.2.6.
-- **Críticos Corrigidos**: Upgrade do Next.js e adição de verificação `where: { workspaceId }` em todos os writes/deletes.
-- **Médios/Baixos**: Falta de CSP restritivo e lógica permissiva para documentos não anexados; ausência de testes unitários para vetores de BOLA/IDOR; dependências com falha (XSS no PostCSS). Tudo corrigido.
+Tais endpoints utilizam os provedores de autenticação server-side: `getWorkspaceContext()`, `requirePermission()`. Essa defesa no Handler existe *em adição* à do proxy, atuando sob defesa em múltiplas camadas. Webhooks como o `/api/inngest` ignoram verificação de usuário mas validam assinaturas criptográficas (`INNGEST_SIGNING_KEY`).
 
-## 8. Ataques Simulados e Testes Criados
-Foram criados testes obrigatórios sob `tests/security/*`:
-- `simulated-idor.test.ts`: prova falha de requisição cross-workspace para GET de casos, DELETE de casos e PATCH de roles (Membership).
-- `anti-idor-documents.test.ts`, `anti-idor-drafts.test.ts`, `anti-idor-processes.test.ts`, `anti-idor-storage.test.ts`
-- `admin-access.test.ts`, `upload-security.test.ts`, `log-redaction.test.ts`, `mass-assignment.test.ts`
-
-## 9. Evidências de Validação
-- **Comandos Rodados**: `npm run lint`, `npm run typecheck`, `npm test`, `npx prisma migrate status`, `npm run build:clean`
-- **Build**: Compilação sem falhas (`Compiled successfully`).
-- **Anti-IDOR**: Testes unitários passando (`tests/security/*`).
-- **Logs sem PII**: Módulo `logger` já implementava scrub seguro (validação feita).
-- **Upload/Download**: Válidados contra acesso não autorizado (validação feita no GET `/api/documents/.../file`).
-- **Pagamentos**: (Sistema não expõe rotas de billing públicas ativas neste momento, check irrelevante para a branch atual).
-
-## 10. Riscos Remanescentes e Plano de Correção
-- Não foram encontrados riscos P0. O principal cuidado contínuo (P2) é manter a exigência explícita do filtro de `workspaceId` em todas as novas rotas. Isso deve ser exigido em code review automatizado.
-
-## 11. Decisão Final
-- **Pode lidar com dados reais?** **SIM**. O isolamento lógico entre os inquilinos (tenants) está provado.
-- **Pode lidar com pagamentos reais?** (N/A - não avaliado pois rotas estão inativas).
+## 7. Decisão Final e Pendências Reais
+- **Pode lidar com dados reais?** **SIM (reduz o risco drásticamente)**. A blindagem multi-tenant atinge a camada de banco de dados por validação atrelada (`id` + `workspaceId`).
+- **Pode lidar com pagamentos reais?** **NÃO VALIDADO**. Nenhuma rota oficial de pagamentos foi avaliada por não estar acoplada e exposta neste ciclo.
+- **E2E Autenticado**: Não Validado em CI contínua contra banco persistente multi-user na rodada atual. Cobertura se foca em Unit/Integration.
+- **Plano de Correção Contínuo**: Desenvolver os testes `.skip()` de mass assignment, access-levels puros e file properties upload para materializar todas as matrizes da OWASP API.

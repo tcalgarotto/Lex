@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Log Redaction", () => {
-  it("should not log PII in observability logs", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should not log PII in observability logs (pendente: implementar simulação real)", () => {});
 });

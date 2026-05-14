@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Anti-IDOR: Processes", () => {
-  it("should prevent access to cross-workspace processes", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should prevent access to cross-workspace processes (pendente: implementar simulação real)", () => {});
 });

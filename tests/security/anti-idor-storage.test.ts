@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Anti-IDOR: Storage", () => {
-  it("should block cross-tenant storage access", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should block cross-tenant storage access (pendente: implementar simulação real)", () => {});
 });

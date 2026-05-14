@@ -1,6 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it } from "vitest";
 describe("Auth Required", () => {
-  it("should block unauthenticated requests to API", () => {
-    expect(true).toBe(true);
-  });
+  it.skip("should block unauthenticated requests to API (pendente: implementar simulação real)", () => {});
 });
