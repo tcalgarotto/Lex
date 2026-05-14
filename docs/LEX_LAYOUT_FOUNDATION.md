@@ -103,4 +103,4 @@ Rotas não listadas na tabela caem no **default** de `matchRouteLayout` (standar
 
 Com sidebar aberta/fechada: verificar `/dashboard`, `/agenda`, `/cases/[id]`, `/processos`, `/processos/[id]`, `/documentos`, `/publicacoes`, `/settings/integracoes` — centro estável, sem overflow horizontal, topbar alinhada.
 
-**Build de produção:** com `next dev` a correr no mesmo projeto, `npm run build:clean` pode falhar (`.next` partilhado; erros como `Cannot find module '../chunks/ssr/[turbopack]_runtime.js'`). Parar o servidor de desenvolvimento, remover `.next` se necessário, e voltar a executar o build uma vez.
+**Build de produção:** com `next dev` a correr no mesmo projeto, `npm run build:clean` pode falhar (`.next` partilhado; erros como `Cannot find module '../chunks/ssr/[turbopack]_runtime.js'`). Parar o servidor de desenvolvimento (`pkill -f "next dev"`), remover `.next` se necessário, e voltar a executar o build. **Verificado:** com dev parado e `.next` limpo, `npm run build:clean` concluiu com sucesso (2026-05-14).
