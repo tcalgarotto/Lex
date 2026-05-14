@@ -70,7 +70,7 @@ export default async function PublicacoesPage() {
           <form action={createPublicationAction} className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="source">Fonte</Label>
-              <select id="source" name="source" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <select id="source" name="source" className="h-10 rounded-md border border-input bg-background px-3 text-base">
                 <option value="DJEN">DJEN / Comunicações Processuais</option>
                 <option value="OFFICIAL_GAZETTE">Diário oficial público</option>
                 <option value="TRIBUNAL_PUBLIC_QUERY">Portal do tribunal</option>
@@ -79,7 +79,7 @@ export default async function PublicacoesPage() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="communicationType">Tipo</Label>
-              <select id="communicationType" name="communicationType" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <select id="communicationType" name="communicationType" className="h-10 rounded-md border border-input bg-background px-3 text-base">
                 <option value="PUBLICACAO">Publicação</option>
                 <option value="INTIMACAO">Intimação</option>
                 <option value="CITACAO">Citação</option>

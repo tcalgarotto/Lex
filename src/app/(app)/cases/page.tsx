@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { devLogLexTiming } from "@/lib/dev/server-timing";
-import { lexGlassCtaClassName, lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
+import { lexGlassCtaClassName, lexPageLeadClassName, lexPageTitleClassName, lexTypeCardTitleClassName } from "@/lib/lex-ds";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 import { CaseCardActions } from "@/components/cases/case-card-actions";
@@ -35,14 +35,17 @@ export default async function CasesListPage({
  const casesColLeft = cases.filter((_, i) => i % 2 === 0);
  const casesColRight = cases.filter((_, i) => i % 2 === 1);
 
+ const pageTitleClassName = lexPageTitleClassName;
+ const pageLeadClassName = lexPageLeadClassName;
+
  return (
  <>
  <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
  <div className="min-w-0 space-y-2">
- <h1 className={lexPageTitleClassName}>
+ <h1 className={pageTitleClassName}>
  Casos
  </h1>
- <p className={lexPageLeadClassName}>
+ <p className={pageLeadClassName}>
  Organize atendimentos, documentos, fundamentos e peças num só lugar — com histórico e rastreabilidade.
  </p>
  </div>
@@ -63,7 +66,7 @@ export default async function CasesListPage({
  <Button
  type="submit"
  variant="secondary"
- className="h-11 min-w-[100px] text-[15px] font-medium"
+ className="h-11 min-w-[100px] text-control font-medium"
  >
  Buscar
  </Button>
@@ -71,7 +74,7 @@ export default async function CasesListPage({
  asChild
  type="button"
  variant={archived ? "secondary" : "outline"}
- className="h-11 text-[15px] font-medium"
+ className="h-11 text-control font-medium"
  >
  <Link href={archived ? "/cases" : "/cases?archived=1"}>
  {archived ? "Mostrando arquivados" : "Ver arquivados"}
@@ -152,19 +155,19 @@ function CaseCard({ c }: { c: CaseRow }) {
  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
  <Badge
  variant="secondary"
- className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
+ className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-caption font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
  >
  {caseStatusLabel(c.status)}
  </Badge>
  {venue ? (
- <span className="text-[13px] text-[color:var(--text-muted)]">{venue}</span>
+ <span className="text-caption text-[color:var(--text-muted)]">{venue}</span>
  ) : null}
  </div>
- <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-lg">
+ <h2 className={`line-clamp-2 ${lexTypeCardTitleClassName}`}>
  {c.title}
  </h2>
  {c.summary ? (
- <p className="line-clamp-2 text-[14px] leading-relaxed text-[color:var(--text-secondary)]">
+ <p className="line-clamp-2 text-sm leading-relaxed text-[color:var(--text-secondary)]">
  {c.summary}
  </p>
  ) : null}
@@ -180,14 +183,14 @@ function CaseCard({ c }: { c: CaseRow }) {
  <CaseCardActions caseId={c.id} caseTitle={c.title} archived={Boolean(c.archivedAt)} />
  </div>
  </div>
- <div className="mt-3 flex flex-col gap-1 border-t border-[color:var(--border-subtle)] pt-3 text-[13px] text-[color:var(--text-muted)]">
+ <div className="mt-3 flex flex-col gap-1 border-t border-[color:var(--border-subtle)] pt-3 text-caption text-[color:var(--text-muted)]">
  <p className="leading-snug">
  {metaLine ? <span className="text-[color:var(--text-secondary)]">{metaLine}</span> : null}
  {metaLine ? <span className="mx-1.5 text-[color:var(--border-default)]">·</span> : null}
  <span>Atualizado {updated}</span>
  </p>
  {riskNote ? (
- <p className="text-[13px] font-medium text-[color:var(--warning-text)]">{riskNote}</p>
+ <p className="text-caption font-medium text-[color:var(--warning-text)]">{riskNote}</p>
  ) : null}
  </div>
  </article>

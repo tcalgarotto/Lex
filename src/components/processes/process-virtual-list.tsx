@@ -37,7 +37,7 @@ export function ProcessVirtualList(props: {
  <span className="text-xs text-muted-foreground">{p.number}</span>
  <div className="flex flex-wrap gap-1">
  {p.tags.map((t) => (
- <Badge key={t} variant="outline" className="text-[10px]">
+ <Badge key={t} variant="outline" className="text-caption">
  {t}
  </Badge>
  ))}

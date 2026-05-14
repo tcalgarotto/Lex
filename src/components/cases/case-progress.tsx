@@ -214,17 +214,17 @@ export function CaseProgressBar({ caseData }: { caseData: CaseProgressInput }) {
  return (
  <div className="lex-glass lex-transition rounded-[14px] p-4 md:p-5">
  <div className="mb-2.5 flex items-center justify-between">
- <span className="text-[10px] font-medium uppercase tracking-widest text-[color:var(--text-muted)]">
+ <span className="text-micro font-semibold uppercase tracking-widest text-[color:var(--text-secondary)]">
  Progresso do caso
  </span>
  <div className="flex items-center gap-1.5">
  <span
- className="rounded-full border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 font-mono text-[11px] text-[color:var(--text-secondary)]"
+ className="rounded-full border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 font-mono text-caption text-[color:var(--text-secondary)]"
  style={{ background: "var(--surface-elevated)" }}
  >
  {doneCount} / {total}
  </span>
- <span className="font-mono text-[11px] text-[color:var(--text-muted)]">{pct}%</span>
+ <span className="font-mono text-caption text-[color:var(--text-muted)]">{pct}%</span>
  </div>
  </div>
 
@@ -258,7 +258,7 @@ export function CaseProgressBar({ caseData }: { caseData: CaseProgressInput }) {
  {selectedStep && (
  <div className="mt-2.5 flex items-center gap-2 rounded-lg border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-card)] px-3 py-1.5">
  <span
- className={cn("flex size-4 shrink-0 items-center justify-center rounded-full border-[0.5px] text-[8px]",
+ className={cn("flex size-4 shrink-0 items-center justify-center rounded-full border-[0.5px] text-micro leading-none",
  selectedStep.status === "done" &&
  "border-[color:var(--success-border)] bg-[color:var(--success-bg)] text-[color:var(--success-text)]",
  selectedStep.status === "pending" &&
@@ -269,9 +269,9 @@ export function CaseProgressBar({ caseData }: { caseData: CaseProgressInput }) {
  >
  {ICON[selectedStep.status]}
  </span>
- <span className="text-[11.5px] text-[color:var(--text-secondary)]">{selectedStep.label}</span>
+ <span className="text-sm text-[color:var(--text-secondary)]">{selectedStep.label}</span>
  <span
- className={cn("ml-auto rounded-full border-[0.5px] px-2 py-0.5 text-[10px]",
+ className={cn("ml-auto rounded-full border-[0.5px] px-2 py-0.5 text-caption",
  selectedStep.status === "done" &&
  "border-[color:var(--success-border)] bg-[color:var(--success-bg)] text-[color:var(--success-text)]",
  selectedStep.status === "pending" &&
@@ -286,8 +286,8 @@ export function CaseProgressBar({ caseData }: { caseData: CaseProgressInput }) {
  )}
 
  <div className="mt-2 flex flex-wrap items-center gap-1">
- <span className="text-[10px] text-[color:var(--text-disabled)]">Próximo passo:</span>
- <span className="text-[10px] text-[color:var(--text-secondary)]">
+ <span className="text-sm text-[color:var(--text-secondary)]">Próximo passo:</span>
+ <span className="text-sm text-[color:var(--text-secondary)]">
  {nextStep?.label ?? "Todas as etapas concluídas ✓"}
  </span>
  </div>

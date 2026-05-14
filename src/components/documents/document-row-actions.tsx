@@ -65,7 +65,7 @@ export function DocumentRowActions({ documentId, processId, caseId, cases }: Pro
 
  return (
  <div className="flex items-start gap-1">
- {error ? <span className="text-[11px] text-rose-300">{error}</span> : null}
+ {error ? <span className="text-sm text-rose-300">{error}</span> : null}
  {processId ? (
  <Button asChild variant="ghost" size="sm" title="Abrir documento">
  <Link href={`/processos/${processId}/documentos/${documentId}`}>

@@ -168,7 +168,7 @@ export function LexThemeToggle({ className }: { className?: string }) {
  type="button"
  onClick={() => apply("dark")}
  aria-pressed={darkPressed}
- className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium lex-transition",
+ className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium lex-transition",
  darkPressed
  ? "bg-[color:var(--surface-card)] text-[color:var(--text-primary)] shadow-sm"
  : "text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]",
@@ -181,7 +181,7 @@ export function LexThemeToggle({ className }: { className?: string }) {
  type="button"
  onClick={() => apply("light")}
  aria-pressed={lightPressed}
- className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium lex-transition",
+ className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium lex-transition",
  lightPressed
  ? "bg-[color:var(--surface-card)] text-[color:var(--text-primary)] shadow-sm"
  : "text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)]",

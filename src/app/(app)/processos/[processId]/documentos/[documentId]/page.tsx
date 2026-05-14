@@ -37,7 +37,7 @@ export default async function DocumentoPage({
  Processo {doc.process?.number ?? ""}
  </Link>{" "}
  · status:{" "}
- <Badge variant="outline" className="text-[10px]">
+ <Badge variant="outline" className="text-caption">
  {doc.status} {doc.status !== "INDEXED" ? `(${pct}%)` : null}
  </Badge>
  </div>
@@ -117,11 +117,11 @@ export default async function DocumentoPage({
  ) : (
  doc.chunks.map((c) => (
  <div key={c.id} className="rounded-lg border border-[color:var(--border-default)] bg-[color:var(--surface-overlay)] p-3">
- <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
- <Badge variant="outline" className="text-[10px]">
+ <div className="flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
+ <Badge variant="outline" className="text-caption">
  #{c.chunkIndex}
  </Badge>
- <Badge variant="secondary" className="text-[10px]">
+ <Badge variant="secondary" className="text-caption">
  {c.section}
  </Badge>
  {c.tokenEstimate ? (
@@ -131,7 +131,7 @@ export default async function DocumentoPage({
  <p className="mt-2 whitespace-pre-wrap text-xs text-[color:var(--text-primary)]">
  {c.textPreview}
  </p>
- <div className="mt-2 text-[11px] text-muted-foreground">
+ <div className="mt-2 text-caption text-muted-foreground">
  <p className="truncate">
  hash: <span className="text-[color:var(--text-primary)]">{c.contentHash ?? "—"}</span>
  </p>

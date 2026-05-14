@@ -198,7 +198,7 @@ export function IntakeSidebarPanel({
           <Button
             type="button"
             variant="secondary"
-            className="h-auto min-h-[44px] w-full py-2.5 text-[15px] font-semibold"
+            className="h-auto min-h-[44px] w-full py-2.5 text-control font-semibold"
             disabled={loading !== null}
             onClick={onDraft}
             data-testid="save-draft-sidebar"
@@ -208,7 +208,7 @@ export function IntakeSidebarPanel({
           </Button>
           <Button
             type="button"
-            className="h-auto min-h-[44px] w-full bg-violet-600 py-2.5 text-[15px] font-semibold text-white hover:bg-violet-500"
+            className="h-auto min-h-[44px] w-full bg-violet-600 py-2.5 text-control font-semibold text-white hover:bg-violet-500"
             disabled={loading !== null}
             onClick={onStructure}
             data-testid="save-structure-sidebar"
@@ -246,7 +246,7 @@ export function IntakeMobileActionBar({
         <Button
           type="button"
           variant="secondary"
-          className="h-11 min-h-[44px] flex-1 text-[15px] font-medium"
+          className="h-11 min-h-[44px] flex-1 text-control font-medium"
           disabled={loading !== null}
           onClick={onDraft}
           data-testid="save-draft-mobile"

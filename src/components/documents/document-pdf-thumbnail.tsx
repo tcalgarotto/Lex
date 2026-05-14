@@ -97,7 +97,7 @@ export function DocumentPdfThumbnail({
         aria-label={label ? `Pré-visualização indisponível para ${label}` : "Pré-visualização indisponível"}
       >
         <FileText className="size-8 opacity-80" aria-hidden />
-        <span className="max-w-[95%] text-center text-[9px] font-semibold uppercase leading-tight tracking-wide opacity-95">
+        <span className="max-w-[95%] text-center text-micro font-semibold uppercase leading-tight tracking-wide opacity-95">
           Prévia indisponível
         </span>
       </div>
@@ -135,6 +135,7 @@ export function DocumentPdfThumbnail({
           )}
           loading={lqipLoading}
           decoding="async"
+          fetchPriority={lqipLoading === "eager" ? "high" : "low"}
           onLoad={() => setListLqipPainted(true)}
           onError={() => setPhase("error")}
         />

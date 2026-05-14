@@ -46,12 +46,12 @@ export function NextActionsCard({ bundle }: { bundle: NextActionsBundle }) {
  <CardContent className="space-y-4">
  {visibleGroups.map((g) => (
  <section key={g.key} className="space-y-1.5">
- <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+ <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
  {g.title}
  {g.items.length > 0 ? ` · ${g.items.length}` : null}
  </h4>
  {g.items.length === 0 ? (
- <p className="rounded-md border border-dashed border-[color:var(--border-default)] px-3 py-2 text-[11px] text-muted-foreground">
+ <p className="rounded-md border border-dashed border-[color:var(--border-default)] px-3 py-2 text-sm text-muted-foreground">
  {g.emptyText}
  </p>
  ) : (
@@ -70,12 +70,12 @@ export function NextActionsCard({ bundle }: { bundle: NextActionsBundle }) {
  {it.label}
  </p>
  {it.hint ? (
- <p className="text-[11px] text-muted-foreground">{it.hint}</p>
+ <p className="text-sm text-muted-foreground">{it.hint}</p>
  ) : null}
  </div>
  <Badge
  variant="outline"
- className={`shrink-0 text-[10px] ${TONE_BADGE[it.tone]}`}
+ className={`shrink-0 text-caption ${TONE_BADGE[it.tone]}`}
  >
  <ArrowRight className="size-3" />
  </Badge>
@@ -102,7 +102,7 @@ function BasesAvailability({ bundle }: { bundle: NextActionsBundle }) {
  <Badge
  key={b.label}
  variant="outline"
- className={`text-[10px] ${
+ className={`text-micro ${
  b.ok
  ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-200"
  : "border-[color:var(--border-default)] text-muted-foreground"

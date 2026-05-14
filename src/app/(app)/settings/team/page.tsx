@@ -4,11 +4,14 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { getWorkspaceSeatSnapshot } from "@/lib/auth/workspace-seats";
 import { WORKSPACE_LICENSE_LABEL_PT } from "@/lib/billing/workspace-license";
 import { prisma } from "@/lib/prisma";
 import { ROLE_LABEL, can } from "@/lib/auth/permissions";
+import { getWorkspaceStorageSummary } from "@/lib/storage/storage-quota";
+import { WorkspaceStorageIndicator } from "@/components/workspace/workspace-storage-indicator";
 import { InviteMemberForm } from "./invite-form";
 import { MemberRow } from "./member-row";
 import { InvitationRow } from "./invitation-row";
@@ -18,7 +21,7 @@ export default async function TeamPage() {
  if (!role) notFound();
  const allowedToManage = can(role, "membersInvite");
 
- const [members, invitations, seatSnapshot] = await Promise.all([
+ const [members, invitations, seatSnapshot, storageSummary] = await Promise.all([
  prisma.membership.findMany({
  where: { workspaceId },
  include: { user: true },
@@ -29,10 +32,25 @@ export default async function TeamPage() {
  orderBy: { createdAt: "desc" },
  }),
  getWorkspaceSeatSnapshot(workspaceId),
+ getWorkspaceStorageSummary(workspaceId),
  ]);
 
  return (
  <div className="space-y-6">
+ <WorkspaceStorageIndicator summary={storageSummary} />
+ <Card>
+ <CardHeader>
+ <CardTitle className="text-base">Planos e armazenamento</CardTitle>
+ <CardDescription>
+ Limite atual da nuvem de documentos do escritório. Checkout para upgrades ainda não está ativo.
+ </CardDescription>
+ </CardHeader>
+ <CardContent>
+ <Button type="button" variant="secondary" disabled className="w-full sm:w-auto">
+ Aumentar armazenamento (em breve)
+ </Button>
+ </CardContent>
+ </Card>
  {allowedToManage ? (
  <Card>
  <CardHeader>
@@ -52,7 +70,7 @@ export default async function TeamPage() {
  {seatSnapshot.capacity !== null ? ` / ${seatSnapshot.capacity}` : " (ilimitado)"}
  </span>
  {seatSnapshot.license === WorkspaceLicense.ENTERPRISE && seatSnapshot.customSeatLimit === null ? (
- <span className="block pt-1 text-[11px] text-muted-foreground">
+ <span className="block pt-1 text-sm text-muted-foreground">
  Limite empresarial pode ser definido pela equipe de vendas.
  </span>
  ) : null}
@@ -73,7 +91,7 @@ export default async function TeamPage() {
  {members.length} {members.length === 1 ? "pessoa" : "pessoas"} no workspace.
  </CardDescription>
  </div>
- <Badge variant="outline" className="text-[10px]">
+ <Badge variant="outline" className="text-caption">
  Você: {ROLE_LABEL[role]}
  </Badge>
  </CardHeader>

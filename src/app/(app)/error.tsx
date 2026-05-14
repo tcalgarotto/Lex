@@ -87,7 +87,7 @@ export default function AppSegmentError({
  </div>
 
  {error.digest ? (
- <p className="mt-4 text-[11px] text-[color:var(--text-muted)]">ref: {error.digest}</p>
+ <p className="mt-4 text-caption text-[color:var(--text-muted)]">ref: {error.digest}</p>
  ) : null}
  </div>
  );

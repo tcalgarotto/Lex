@@ -84,7 +84,7 @@ export function LegalSectionCard({
       <header className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-[color:var(--border-default)]/80 pb-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="shrink-0 font-mono text-[13px] font-semibold">
+            <Badge variant="outline" className="shrink-0 font-mono text-caption font-semibold">
               {step}
             </Badge>
             <h2 className="text-lg font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-xl">

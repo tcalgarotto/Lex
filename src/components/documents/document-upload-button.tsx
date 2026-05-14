@@ -6,6 +6,9 @@ import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lexGlassCtaClassName } from "@/lib/lex-ds";
 import { cn } from "@/lib/utils";
+import { useWorkspaceStorageQuota } from "@/hooks/use-workspace-storage-quota";
+import { formatBytesHumanIec } from "@/lib/storage/storage-quota";
+import { parseUploadErrorResponseText } from "@/lib/storage/upload-error-message";
 
 interface UploadResult {
   documentId: string;
@@ -64,6 +67,13 @@ export function DocumentUploadButton({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { quota, loading: quotaLoading, refresh: refreshQuota } = useWorkspaceStorageQuota();
+
+  const quotaBlocked = quota !== null && quota.percentUsed >= 100;
+  const quotaLabel =
+    quota !== null
+      ? `Seu plano inclui ${formatBytesHumanIec(BigInt(quota.quotaBytes))} de armazenamento.`
+      : null;
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -79,10 +89,11 @@ export function DocumentUploadButton({
       const res = await fetch("/api/documents/upload", { method: "POST", body: fd });
       if (!res.ok) {
         const t = await res.text().catch(() => "");
-        throw new Error(t || `HTTP ${res.status}`);
+        throw new Error(parseUploadErrorResponseText(t));
       }
       const data = (await res.json()) as UploadResult;
       onUploaded?.(data);
+      void refreshQuota();
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -93,6 +104,9 @@ export function DocumentUploadButton({
 
   return (
     <div className={cn("flex flex-col items-end gap-1", className)}>
+      {quotaLabel ? (
+        <p className="max-w-sm text-right text-caption leading-snug text-[color:var(--text-muted)]">{quotaLabel}</p>
+      ) : null}
       <input
         ref={inputRef}
         type="file"
@@ -104,7 +118,7 @@ export function DocumentUploadButton({
         type="button"
         size={ctaGlass ? "default" : size}
         variant={ctaGlass ? "secondary" : variant}
-        disabled={busy}
+        disabled={busy || quotaLoading || quotaBlocked}
         className={cn(ctaGlass && lexGlassCtaClassName)}
         onClick={() => inputRef.current?.click()}
       >
@@ -113,10 +127,10 @@ export function DocumentUploadButton({
         ) : (
           <Upload className="mr-1 size-3" />
         )}
-        {busy ? "Enviando…" : label}
+        {busy ? "Enviando…" : quotaBlocked ? "Limite atingido" : label}
       </Button>
       {error ? (
-        <p className="max-w-xs text-right text-[11px] text-rose-300">{error}</p>
+        <p className="max-w-xs text-right text-sm text-rose-300">{error}</p>
       ) : null}
     </div>
   );

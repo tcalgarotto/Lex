@@ -54,48 +54,52 @@ export const AppTopbar = memo(function AppTopbar({
         </div>
 
         <div className="flex min-w-0 flex-1 items-center px-4 md:px-6 lg:px-8">
-          <div className="lex-app-header-grid">
-            <div className="lex-app-header-grid__title flex min-w-0 items-center gap-3 md:gap-4">
+          <div className="lex-app-header-split">
+            <div className="lex-app-header-split__title flex min-w-0 items-center gap-3 md:gap-4">
               <span
                 className="hidden h-9 w-px shrink-0 bg-[color:var(--border-subtle)] sm:block"
                 aria-hidden
               />
-              <div className="min-w-0 sm:max-w-[min(52vw,32rem)] lg:max-w-[min(40vw,28rem)]">
-                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] md:text-[11px]">
+              <div className="min-w-0 max-w-full">
+                <p
+                  className="truncate text-micro font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] md:text-caption"
+                  title={officeLine}
+                >
                   {officeLine}
                 </p>
-                <h1 className="truncate text-base font-semibold leading-tight text-[color:var(--text-primary)] md:text-lg lg:text-xl">
+                <h1
+                  className="truncate text-base font-semibold leading-tight text-[color:var(--text-primary)] md:text-lg lg:text-xl"
+                  title={title}
+                >
                   {title}
                 </h1>
               </div>
             </div>
 
-            <div className="lex-app-header-grid__spacer min-w-0" aria-hidden="true" />
+            <div className="lex-app-header-split__actions flex w-full min-w-0 items-center justify-end gap-2 md:w-full">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden h-11 w-11 shrink-0 rounded-xl text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-overlay-strong)] hover:text-[color:var(--text-primary)] md:flex"
+                disabled
+                title="Notificações em breve"
+              >
+                <Bell className="size-[22px] shrink-0" strokeWidth={1.75} aria-hidden />
+              </Button>
 
-            <div className="lex-app-header-grid__search flex w-full min-w-0 items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className={cn(
-                  "hidden h-11 min-w-0 flex-1 justify-start gap-3 rounded-xl border-[color:var(--border-default)] md:flex",
-                  "bg-[color:var(--surface-elevated)]/80 text-left text-sm text-[color:var(--text-secondary)] shadow-sm",
+                  "hidden h-11 min-w-0 shrink-0 justify-start gap-3 rounded-xl border-[color:var(--border-default)] md:inline-flex",
+                  "w-[320px] max-w-full bg-[color:var(--surface-elevated)]/80 text-left text-sm text-[color:var(--text-secondary)] shadow-sm",
                   "hover:bg-[color:var(--surface-overlay-strong)] hover:text-[color:var(--text-primary)]",
                 )}
                 onClick={() => setCmd(true)}
               >
                 <Search className="size-4 shrink-0 opacity-80" aria-hidden />
                 <span className="truncate font-normal">Busca global, atalhos e navegação…</span>
-                <kbd className="lex-kbd ml-auto hidden shrink-0 text-[11px] lg:inline">⌘K</kbd>
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hidden h-10 w-10 shrink-0 rounded-xl opacity-45 xl:flex"
-                disabled
-                title="Notificações em breve"
-              >
-                <Bell className="size-4" />
+                <kbd className="lex-kbd ml-auto hidden shrink-0 text-caption lg:inline">⌘K</kbd>
               </Button>
 
               <Button
@@ -109,6 +113,7 @@ export const AppTopbar = memo(function AppTopbar({
                 <Search className="size-4" />
               </Button>
             </div>
+            <div className="lex-app-header-split__tail hidden min-h-0 md:block" aria-hidden />
           </div>
         </div>
       </div>

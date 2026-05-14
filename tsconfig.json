@@ -27,7 +27,8 @@
     "tests/**/*",
     "vitest.config.ts",
     "vitest.integration.config.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "scripts/**/*"
   ]
 }
 

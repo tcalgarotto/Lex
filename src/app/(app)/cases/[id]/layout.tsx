@@ -69,7 +69,7 @@ export default async function CaseDetailLayout({
  <SetPageTitle title={c.title} />
  <div className="w-full min-w-0 space-y-6">
  <header className="lex-glass lex-transition space-y-4 rounded-xl p-4 md:p-5">
- <nav className="flex flex-wrap items-center gap-1 text-[12px] md:text-[13px]" aria-label="Navegação do caso">
+ <nav className="flex flex-wrap items-center gap-1 text-sm" aria-label="Navegação do caso">
  <Link
  href="/cases"
  className="font-medium text-[color:var(--text-muted)] lex-transition hover:text-[color:var(--text-primary)]"
@@ -89,14 +89,14 @@ export default async function CaseDetailLayout({
  <div className="flex flex-wrap items-center gap-2">
  <Badge
  variant="secondary"
- className="border-[0.5px] border-[color:var(--border-default)] text-[10px] uppercase tracking-wide text-[color:var(--text-secondary)]"
+ className="border-[0.5px] border-[color:var(--border-default)] text-caption uppercase tracking-wide text-[color:var(--text-secondary)]"
  >
  {caseStatusLabel(c.status)}
  </Badge>
  {preProcessual ? (
  <Badge
  variant="outline"
- className="border-[0.5px] border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] text-[10px] text-[color:var(--brand-text)]"
+ className="border-[0.5px] border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] text-caption text-[color:var(--brand-text)]"
  >
  <Clock className="mr-1 size-3" aria-hidden /> Pré-processual
  </Badge>
@@ -104,7 +104,7 @@ export default async function CaseDetailLayout({
  {tribunal ? (
  <Badge
  variant="outline"
- className="border-[0.5px] border-[color:var(--border-default)] text-[10px] text-[color:var(--text-secondary)]"
+ className="border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)]"
  >
  <Building2 className="mr-1 size-3" aria-hidden /> {tribunal.code} · {tribunal.name}
  </Badge>
@@ -112,7 +112,7 @@ export default async function CaseDetailLayout({
  {c.uf ? (
  <Badge
  variant="outline"
- className="border-[0.5px] border-[color:var(--border-default)] text-[10px] text-[color:var(--text-secondary)]"
+ className="border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)]"
  >
  {c.uf}
  </Badge>
@@ -120,7 +120,7 @@ export default async function CaseDetailLayout({
  {c.processNumber ? (
  <Badge
  variant="outline"
- className="border-[0.5px] border-[color:var(--border-default)] font-mono text-[10px] text-[color:var(--text-secondary)]"
+ className="border-[0.5px] border-[color:var(--border-default)] font-mono text-caption text-[color:var(--text-secondary)]"
  >
  <Hash className="mr-1 size-3" aria-hidden />
  {c.processNumber}
@@ -128,7 +128,7 @@ export default async function CaseDetailLayout({
  ) : null}
  <Badge
  variant="outline"
- className="border-[0.5px] border-[color:var(--border-default)] text-[10px] text-[color:var(--text-secondary)]"
+ className="border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)]"
  >
  <Calendar className="mr-1 size-3" aria-hidden />
  {new Date(c.createdAt).toLocaleDateString("pt-BR")}
@@ -137,14 +137,14 @@ export default async function CaseDetailLayout({
 
  <div className="flex flex-col gap-4 border-t border-[color:var(--border-subtle)] pt-4 md:flex-row md:items-start md:justify-between">
  <div className="min-w-0 space-y-1">
- <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-widest text-[color:var(--text-muted)]">
+ <div className="flex items-center gap-2 text-micro font-medium uppercase tracking-widest text-[color:var(--text-muted)]">
  <Sparkles className="size-3.5 text-[color:var(--brand-text)]" aria-hidden /> Caso
  </div>
  <h1 className="text-xl font-semibold leading-tight tracking-tight text-[color:var(--text-primary)] md:text-2xl">
  {c.title}
  </h1>
  {c.summary ? (
- <p className="max-w-3xl text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+ <p className="max-w-3xl text-sm leading-relaxed text-[color:var(--text-secondary)]">
  {c.summary}
  </p>
  ) : null}
