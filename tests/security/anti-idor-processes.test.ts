@@ -10,7 +10,10 @@ vi.mock("@/lib/prisma", () => ({
 
 describe("Anti-IDOR: Processes", () => {
   it("should prevent access to cross-workspace processes", async () => {
-    vi.mocked(getWorkspaceContext).mockResolvedValue({ user: { id: "u1" } as any, workspaceId: "w1" } as any);
+    vi.mocked(getWorkspaceContext).mockResolvedValue({
+      user: { id: "u1", email: "u1@test.local" },
+      workspaceId: "w1",
+    } as unknown as Awaited<ReturnType<typeof getWorkspaceContext>>);
     vi.mocked(prisma.process.findFirst).mockResolvedValue(null);
     const req = new Request("http://localhost/api/processes/proc_2/documents");
     const res = await getProcessDocs(req, { params: Promise.resolve({ processId: "proc_2" }) });

@@ -16,8 +16,9 @@ describe("Auth Required", () => {
     try {
       await createCase(req);
       throw new Error("Expected to throw");
-    } catch (e: any) {
-      expect(e.message).toMatch(/Sessão não encontrada/);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      expect(msg).toMatch(/Sessão não encontrada/);
     }
   });
 });

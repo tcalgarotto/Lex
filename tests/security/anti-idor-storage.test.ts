@@ -13,7 +13,10 @@ vi.mock("@/lib/biblioteca/platform-library", () => ({
 
 describe("Anti-IDOR: Storage", () => {
   it("should block cross-tenant storage access", async () => {
-    vi.mocked(getWorkspaceContext).mockResolvedValue({ user: { id: "u1" } as any, workspaceId: "w1" } as any);
+    vi.mocked(getWorkspaceContext).mockResolvedValue({
+      user: { id: "u1", email: "u1@test.local" },
+      workspaceId: "w1",
+    } as unknown as Awaited<ReturnType<typeof getWorkspaceContext>>);
     vi.mocked(prisma.document.findFirst).mockResolvedValue(null);
     const req = new Request("http://localhost/api/documents/doc_2/file");
     const res = await getDocumentFile(req, { params: Promise.resolve({ documentId: "doc_2" }) });

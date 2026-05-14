@@ -10,24 +10,22 @@ vi.mock("@/lib/auth/session", () => ({
 describe("Admin Access", () => {
   it("should require admin role to access observability stats", async () => {
     vi.mocked(requirePermission).mockRejectedValue(new Error("Permissão insuficiente. Requer: ADMIN, OWNER"));
-    const req = new Request("http://localhost/api/admin/corpus-stats");
-    const res = await getCorpusStats(req);
+    const res = await getCorpusStats();
     expect(res.status).toBe(403);
-    const json = await res.json();
-    expect(json.error).toBe("forbidden");
+    const json = (await res.json()) as Record<string, unknown>;
+    expect(json["error"]).toBe("forbidden");
   });
 
   it("should allow admin to access observability stats", async () => {
     vi.mocked(requirePermission).mockResolvedValue({
-      user: { id: "admin1" } as any,
+      user: { id: "admin1", email: "admin1@test.local" },
       workspaceId: "w1",
-      role: MembershipRole.ADMIN
-    });
-    const req = new Request("http://localhost/api/admin/corpus-stats");
+      role: MembershipRole.ADMIN,
+    } as unknown as Awaited<ReturnType<typeof requirePermission>>);
     try {
-      const res = await getCorpusStats(req);
+      const res = await getCorpusStats();
       expect(res.status).toBe(200);
-    } catch (e) {
+    } catch {
       // Ignora erros de BD pós-auth para focar no RBAC
     }
   });
