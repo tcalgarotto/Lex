@@ -47,7 +47,7 @@ export interface NextActionsBundle {
  * Coleta as próximas ações para um workspace. Cada query é leve e
  * paralela (`Promise.all`). Limita cada lista a 5 itens para a UI.
  *
- * Não toca em RAG nem corpus — só Postgres do app.
+ * Não toca em corpus nem busca semântica — só Postgres do app.
  */
 export async function buildNextActions(workspaceId: string): Promise<NextActionsBundle> {
   const TAKE = 5;

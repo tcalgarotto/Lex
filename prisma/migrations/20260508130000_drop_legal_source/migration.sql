@@ -1,4 +1,4 @@
--- Reset canônico do RAG: a tabela legacy `LegalSource` é substituída pelo
+-- Reset canônico do índice jurídico: a tabela legacy `LegalSource` é substituída pelo
 -- modelo canônico `LegalNorm` / `LegalNormVersion` / `LegalChunk` /
 -- `LegalCitation`. Todo retrieval jurídico passa exclusivamente por
 -- `retrieveLegalContext` em cima dessas tabelas.

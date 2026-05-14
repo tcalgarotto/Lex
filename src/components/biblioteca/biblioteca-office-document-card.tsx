@@ -26,7 +26,7 @@ export function BibliotecaOfficeDocumentCard({
   thumbnailVersion,
   topBadge,
   showCaseRow = true,
-  lqipLoading = "lazy",
+  lqipLoading = "eager",
 }: {
   href: string;
   documentId: string;
@@ -40,7 +40,7 @@ export function BibliotecaOfficeDocumentCard({
   topBadge?: string;
   /** Quando falso, não mostra linha de caso (ex.: catálogo sem vínculo). */
   showCaseRow?: boolean;
-  /** Primeiros cards visíveis: `eager` para o LQIP do PDF começar logo. */
+  /** Por omissão `eager` na biblioteca para o LQIP começar com o esqueleto; use `lazy` em grelhas muito grandes. */
   lqipLoading?: "eager" | "lazy";
 }) {
   const pdf = isPdfMime(mimeType, title);
@@ -89,7 +89,7 @@ export function BibliotecaOfficeDocumentCard({
         <span className="inline-flex rounded-md bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-200/95">
           {badgeLabel}
         </span>
-        <p className="line-clamp-2 text-sm font-semibold leading-snug text-[color:var(--text-primary)] group-hover:underline">
+        <p className="line-clamp-2 min-h-[3rem] text-sm font-semibold leading-snug text-[color:var(--text-primary)] group-hover:underline">
           {title}
         </p>
         {showCaseRow ? (

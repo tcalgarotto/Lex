@@ -1,6 +1,6 @@
 # Lex — Sistema operacional jurídico com IA
 
-Copiloto jurídico **caso-cêntrico** com **RAG multicamada** (corpus nacional + documentos do workspace), **Case Brain** (partes, fatos, pedidos, riscos, timeline), **memória e estilo do escritório**, **processos judiciais** (CNJ / integrações oficiais), **pesquisa jurídica auditável** e **editor de peças** com exportação.
+Copiloto jurídico **caso-cêntrico** com **pesquisa e fundamentação assistidas** (Lex AI / DeepSeek, com validação humana), **Case Brain** (partes, fatos, pedidos, riscos, timeline), **memória e estilo do escritório**, **processos judiciais** (CNJ / integrações oficiais), **pesquisa jurídica** no produto e **editor de peças** com exportação.
 
 **Stack principal:** Next.js 15 (App Router, `serverActions`, Turbopack em dev), React 19, TypeScript, Prisma 6, PostgreSQL (Supabase), Qdrant, Redis (opcional em dev), Inngest, Supabase Auth + Storage, DeepSeek + DeepInfra (embeddings BGE-M3, reranker).
 
@@ -38,13 +38,13 @@ Criar caso (/cases/new — entrevista fundamental)  →  Documentos do caso  →
 | `/processos` · `/processos/[processId]` · `/processos/analytics` | Processos judiciais, detalhe por CNJ, painel analítico DataJud |
 | `/publicacoes` | Registo/import de **publicações oficiais** (DJEN, diário, portal tribunal, etc.) com revisão humana |
 
-**Redirecionamento legado:** `GET /retrieval` → `/pesquisa-juridica`. **`/retrieval/explain`** mantém-se como modo técnico de auditoria do retrieval.
+**Redirecionamento legado:** `GET /retrieval` → `/pesquisa-juridica`.
 
 **Configurações (`/settings/…`):** `perfil`, `estilo`, `team`, `integracoes` (conectores judiciais oficiais / pontes), `jobs`, `readiness`, `admin` (custos/observabilidade para quem tem permissão).
 
-**Avançado / produto & marketing (conforme flags e permissões):** `/cockpit`, `/strategy`, `/retrieval/explain`, `/test-guide` (guia de primeiro teste), `/demo`, `/apresentacao`, `/busca`.
+**Avançado / produto & marketing (conforme flags e permissões):** `/cockpit`, `/strategy`, `/test-guide` (guia de primeiro teste), `/demo`, `/apresentacao`, `/busca`.
 
-Documentação de fluxo UX e auditorias: [`docs/UX_FLOW_AUDIT.md`](docs/UX_FLOW_AUDIT.md). Pipeline Case Brain: [`docs/CASE_BRAIN.md`](docs/CASE_BRAIN.md). Métodos de trabalho no dashboard: [`docs/features/DASHBOARD_WORK_METHODS.md`](docs/features/DASHBOARD_WORK_METHODS.md).
+Documentação de fluxo UX e auditorias: [`docs/UX_FLOW_AUDIT.md`](docs/UX_FLOW_AUDIT.md). Pipeline Case Brain: [`docs/CASE_BRAIN.md`](docs/CASE_BRAIN.md). Métodos de trabalho no dashboard: [`docs/features/DASHBOARD_WORK_METHODS.md`](docs/features/DASHBOARD_WORK_METHODS.md). Arquitetura do motor interno de busca no corpus: [`docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md`](docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md). **Fase futura** (busca reunificada + Wiki LLM): [`docs/features/FUTURE_BUSCA_INDEXADA_WIKI_LLM.md`](docs/features/FUTURE_BUSCA_INDEXADA_WIKI_LLM.md).
 
 ---
 
@@ -57,6 +57,7 @@ Documentação de fluxo UX e auditorias: [`docs/UX_FLOW_AUDIT.md`](docs/UX_FLOW_
 - `docs/RETRIEVAL_PIPELINE_AUDIT.md`
 - `docs/DEEPINFRA_EMBEDDING_AUDIT.md`
 - `docs/UX_INSPIRATION_NOTES.md`
+- `docs/features/FUTURE_BUSCA_INDEXADA_WIKI_LLM.md` (fase futura: busca indexada + Wiki LLM)
 
 ---
 
@@ -188,13 +189,13 @@ Corpus **partilhado** de normas brasileiras (legislação + jurisprudência), mu
 
 ---
 
-## Retrieval jurídico
+## Retrieval jurídico (infra interna, fase seguinte)
 
-`src/lib/retrieval/legal/` implementa o pipeline **`retrieveLegalContext`**: cache Redis, classificação de intent, reescrita de queries, **híbrido BM25 + denso** (Postgres FTS + Qdrant), fusão RRF, expansão por grafo de citações, rerank cross-encoder (DeepInfra), boosts, grounding e trace para UI/debug.
+O código em `src/lib/retrieval/legal/` conserva o pipeline **`retrieveLegalContext`** (BM25, vetor, fusão, etc.) para quando o produto voltar a expor **busca indexada** de forma estável. **Na UX atual**, a pesquisa voltada ao advogado prioriza **Lex AI / DeepSeek** com revisão humana (`docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md`).
 
-**Smoke manual:** `npm run retrieval:smoke -- "sua consulta aqui"`.
+**Smoke manual (motor interno):** `npm run retrieval:smoke -- "sua consulta aqui"`.
 
-**UI:** `/pesquisa-juridica` e `/retrieval/explain` (auditoria). API: `/api/retrieval/explain`, `/api/retrieval/search`, etc.
+**UI:** `/pesquisa-juridica`. API usada pelo painel: `/api/retrieval/search`, `/api/search`, etc.
 
 ---
 

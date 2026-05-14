@@ -29,7 +29,7 @@ Usar exatamente estes textos onde couber (banners, tooltips, rodapé de resultad
 
 - `Resultado sugerido por IA. Revise antes de usar.`
 - `Jurisprudência candidata. Confirme a fonte antes de citar.`
-- `O RAG interno está em otimização; esta busca usa DeepSeek temporariamente.`
+- `A busca indexada no acervo está em otimização; esta pesquisa usa Lex AI / DeepSeek temporariamente.`
 - `Sugestão de estratégia — valide fatos e provas do seu caso antes de protocolar.`
 - `Sem número de processo identificado — não cite como precedente até confirmar.`
 
@@ -40,3 +40,8 @@ Ver bloco no final de `.env.example` e o ADR `docs/decisions/ADR_DEEPSEEK_LEGAL_
 ## Governança
 
 Owners Legal / Security / QA ainda **PROVISÓRIOS** — qualquer PR Tier-S deve carregar nota explícita de que aguarda **dupla revisão Thales (PO) + Cursor (CTO interim)**.
+
+## Ver também
+
+- `docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md` — motores internos e critérios de reativação.
+- `docs/features/FUTURE_BUSCA_INDEXADA_WIKI_LLM.md` — visão de fase futura (Wiki LLM + busca reunificada, workflows e impacto no chat).

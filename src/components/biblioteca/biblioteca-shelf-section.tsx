@@ -50,19 +50,7 @@ export function BibliotecaShelfSection({
   );
 }
 
-/**
- * Faixa horizontal com várias obras lado a lado (largura ~148–172px cada), scroll em ecrãs estreitos
- * ou quando há muitos itens — igual ao comportamento original da Biblioteca.
- */
-export function BibliotecaShelfCarousel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative -mx-1 min-w-0">
-      <div className="grid auto-cols-[minmax(148px,172px)] grid-flow-col gap-4 overflow-x-auto overscroll-x-contain px-1 pb-2 pt-1 [scrollbar-width:thin] snap-x snap-mandatory">
-        {children}
-      </div>
-    </div>
-  );
-}
+export { BibliotecaShelfCarousel } from "./biblioteca-shelf-carousel";
 
 /** Grelha que quebra linha (lista completa), para páginas «Ver todos» sem scroll horizontal longo. */
 export function BibliotecaDocumentsGrid({ children }: { children: React.ReactNode }) {

@@ -130,7 +130,7 @@ Ou use snapshots automatizados do Qdrant Cloud (settings da UI).
 npm run retrieval:smoke
 
 # Smoke remoto (logado)
-curl "https://lex-navy.vercel.app/api/retrieval/explain?q=responsabilidade+civil+do+fornecedor"
+curl "https://lex-navy.vercel.app/api/retrieval/search?q=responsabilidade+civil+do+fornecedor&scope=tudo"
 ```
 
 Devem voltar fontes com `urn`, `score`, `confidence > 0.5` e citações resolvidas.

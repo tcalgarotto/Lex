@@ -1,6 +1,6 @@
 # Code Review P0 — Lex
 
-> Checklist de code review focado em riscos P0 (produto jurídico + multi-tenant + RAG seguro).
+> Checklist de code review focado em riscos P0 (produto jurídico + multi-tenant + busca com fontes citáveis).
 > Última atualização: 2026-05-09.
 
 ## 1. Objetivo
@@ -8,7 +8,7 @@
 Impedir regressões críticas em:
 - multi-tenant / workspace scoping
 - IDOR
-- RAG grounding (fonte citável)
+- fundamentação com fontes citáveis (fonte citável)
 - placeholders mascarados em minuta
 - export/download/segurança
 

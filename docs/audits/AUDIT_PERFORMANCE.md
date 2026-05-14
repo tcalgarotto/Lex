@@ -33,7 +33,7 @@
 
 ---
 
-## 3. RAG e IA
+## 3. Busca indexada e IA
 
 ### 3.1 Busca Vetorial Sequencial
 - **Evidência:** `src/lib/retrieval/legal/index.ts`.

@@ -4,7 +4,7 @@
 
 - **Estratégia do caso** ainda carregava o tab legado (`CaseStrategyPiecesTab`) em vez do fluxo Lane D (`CaseDraftingTab`).
 - **Pin / marcar verificado** nas rotas globais de pesquisa retornavam **202 shim** sem persistir no caso.
-- **`case-brain-shim`** no drafting lia apenas fontes RAG clássicas e ignorava pins do Case Brain em `metadataJson`.
+- **`case-brain-shim`** no drafting lia apenas fontes só do corpus indexado (legado) e ignorava pins do Case Brain em `metadataJson`.
 - **Pesquisa no caso** enviava `caseBrainSummary` e omitia `resultTypes`, incompatível com o schema da Lane A; a resposta era tratada como `{ result }` mas a API devolve o corpo **plano**.
 - **Pesquisa global** chamava `recommend-for-case` sem `caseId` obrigatório; 404/501 eram silenciados como “stub”.
 - **Typecheck**: `activity-log` (`metaJson`) e cast em `pinned-foundations` API; **ESLint**: `prefer-const` em export PDF.

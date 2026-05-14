@@ -14,8 +14,8 @@ Garantir que:
 
 ## 2. Evidência documentada (referências)
 
-- `docs/reports/RAG_HYBRID_PIPELINE_AUDIT.md`
-- `docs/reports/RAG_HYBRID_SEARCH_UPGRADE.md`
+- `docs/reports/CORPUS_HYBRID_PIPELINE_AUDIT.md`
+- `docs/reports/CORPUS_HYBRID_SEARCH_UPGRADE.md`
 
 ## 3. Itens a confirmar por evidência (P0)
 

@@ -1,9 +1,9 @@
-# Reset canônico do RAG — plano executivo
+# Reset canônico da busca indexada — plano executivo
 
 **Branch:** `corpus/canonical-rebuild`
 **Iniciado:** 2026-05-08
 **Objetivo:** resetar completamente o corpus jurídico vetorial e reconstruir o
-pipeline RAG sobre a arquitetura canônica (`LegalNorm` / `LegalNormVersion` /
+pipeline de busca indexada sobre a arquitetura canônica (`LegalNorm` / `LegalNormVersion` /
 `LegalChunk` / `LegalCitation`), sem features visuais novas, sem mexer em auth,
 billing ou onboarding.
 

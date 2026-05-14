@@ -11,25 +11,22 @@ import { nanoid } from "nanoid";
 import { inngest } from "@/lib/inngest/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { documentStoragePath, uploadDocumentBuffer } from "@/lib/storage";
+import { documentStoragePath, removeDocumentBuffer, uploadDocumentBuffer } from "@/lib/storage";
 import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
+import { ALLOWED_DOCUMENT_UPLOAD_MIME_TYPES, getMaxUploadFileSizeBytes } from "@/lib/documents/upload-constraints";
+import {
+  assertCanUploadFileToWorkspace,
+  recalculateWorkspaceStorageUsage,
+  storageUploadErrorResponse,
+} from "@/lib/storage/storage-quota";
 
 export const runtime = "nodejs";
 
 const log = getLogger("lex.api.cases.documents");
-
-const MAX_BYTES = 50 * 1024 * 1024;
-const ALLOWED_MIME = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
-  "text/plain",
-  "application/octet-stream",
-]);
 
 function mapUiStatus(status: DocumentStatus, hasText: boolean): string {
   if (status === DocumentStatus.FAILED) return "FAILED";
@@ -101,80 +98,128 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
+
+  const maxBytes = getMaxUploadFileSizeBytes();
+  if (file.size > maxBytes) {
     return NextResponse.json(
-      { error: `Arquivo excede ${(MAX_BYTES / 1024 / 1024).toFixed(0)} MB.` },
+      {
+        code: "FILE_SIZE_EXCEEDS_PLAN_LIMIT",
+        message: "Este arquivo excede o limite individual permitido para o seu plano.",
+        maxFileSizeBytes: maxBytes,
+        attemptedBytes: file.size,
+      },
       { status: 413 },
     );
   }
+
   const mime = file.type || "application/octet-stream";
-  if (!ALLOWED_MIME.has(mime)) {
+  if (!ALLOWED_DOCUMENT_UPLOAD_MIME_TYPES.has(mime)) {
     return NextResponse.json(
       { error: `Tipo não suportado. Aceitamos PDF, DOCX, TXT.` },
       { status: 415 },
     );
   }
 
+  try {
+    await assertCanUploadFileToWorkspace({ workspaceId, fileSizeBytes: file.size });
+  } catch (e) {
+    const resp = storageUploadErrorResponse(e);
+    if (resp) return resp;
+    throw e;
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer());
+  if (buffer.length !== file.size) {
+    return NextResponse.json({ error: "Tamanho do arquivo inconsistente" }, { status: 400 });
+  }
+
+  try {
+    await assertCanUploadFileToWorkspace({ workspaceId, fileSizeBytes: buffer.length });
+  } catch (e) {
+    const resp = storageUploadErrorResponse(e);
+    if (resp) return resp;
+    throw e;
+  }
+
   const documentId = nanoid();
   const path = documentStoragePath(workspaceId, documentId, file.name);
 
-  await uploadDocumentBuffer({
-    path,
-    buffer,
-    contentType: file.type || "application/octet-stream",
-  });
-
-  const doc = await prisma.document.create({
-    data: {
-      id: documentId,
-      workspaceId,
-      caseId,
-      uploadedByUserId: user.id,
-      libraryShelf: DocumentLibraryShelf.OFFICE_PRIVATE,
-      originalName: file.name,
-      mimeType: file.type || "application/octet-stream",
-      sizeBytes: buffer.length,
-      storagePath: path,
-      status: DocumentStatus.UPLOADED,
-    },
-  });
-
   try {
-    await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
+    await uploadDocumentBuffer({
+      path,
+      buffer,
+      contentType: file.type || "application/octet-stream",
+    });
   } catch (e) {
-    log.warn("inngest send failed (non-fatal)", {
+    log.warn("storage upload failed", {
       workspaceId,
-      documentId: doc.id,
       err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
     });
+    throw e;
   }
 
-  if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
-    scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
-  }
+  try {
+    const doc = await prisma.document.create({
+      data: {
+        id: documentId,
+        workspaceId,
+        caseId,
+        uploadedByUserId: user.id,
+        libraryShelf: DocumentLibraryShelf.OFFICE_PRIVATE,
+        originalName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: buffer.length,
+        storagePath: path,
+        status: DocumentStatus.UPLOADED,
+      },
+    });
 
-  await recordCaseMutationActivity({
-    workspaceId,
-    kind: "case.document.upload",
-    title: `Documento enviado ao caso`,
-    meta: { caseId, documentId: doc.id },
-  });
+    try {
+      await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
+    } catch (e) {
+      log.warn("inngest send failed (non-fatal)", {
+        workspaceId,
+        documentId: doc.id,
+        err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+      });
+    }
 
-  await prisma.caseTimelineEvent.create({
-    data: {
+    if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+      scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
+    }
+
+    await recordCaseMutationActivity({
+      workspaceId,
+      kind: "case.document.upload",
+      title: `Documento enviado ao caso`,
+      meta: { caseId, documentId: doc.id },
+    });
+
+    await prisma.caseTimelineEvent.create({
+      data: {
+        caseId,
+        kind: "NOTE",
+        message: `Documento "${file.name}" enviado (em processamento).`,
+        payloadJson: { documentId: doc.id, action: "document.uploaded" },
+        ...(user?.id ? { userId: user.id } : {}),
+      },
+    });
+
+    await recalculateWorkspaceStorageUsage(workspaceId);
+
+    return NextResponse.json({
+      documentId: doc.id,
+      status: doc.status,
+      uiStatus: mapUiStatus(doc.status, false),
       caseId,
-      kind: "NOTE",
-      message: `Documento "${file.name}" enviado (em processamento).`,
-      payloadJson: { documentId: doc.id, action: "document.uploaded" },
-      ...(user?.id ? { userId: user.id } : {}),
-    },
-  });
-
-  return NextResponse.json({
-    documentId: doc.id,
-    status: doc.status,
-    uiStatus: mapUiStatus(doc.status, false),
-    caseId,
-  });
+    });
+  } catch (e) {
+    await removeDocumentBuffer(path).catch(() => {});
+    log.error("document create failed after storage upload", {
+      workspaceId,
+      documentId,
+      err: e instanceof Error ? { name: e.name, message: e.message } : { message: String(e) },
+    });
+    throw e;
+  }
 }

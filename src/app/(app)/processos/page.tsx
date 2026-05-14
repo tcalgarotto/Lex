@@ -29,7 +29,7 @@ export default async function ProcessosPage({
  where: { workspaceId },
  orderBy: { updatedAt: "desc" },
  }),
- getProcessAnalytics(workspaceId),
+ getProcessAnalytics(workspaceId, { scope: "counts" }),
  prisma.legalProcess.findMany({
  where: { workspaceId },
  orderBy: { updatedAt: "desc" },
@@ -154,7 +154,7 @@ export default async function ProcessosPage({
  {p.tribunalAcronym} · {p.classeNome ?? "Classe não informada"}
  </p>
  </div>
- <span className="rounded-md border border-white/15 px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+ <span className="rounded-md border border-white/15 px-2 py-0.5 text-micro uppercase text-muted-foreground">
  {p.dataJudStatus}
  </span>
  </div>

@@ -5,21 +5,13 @@ import { cn } from "@/lib/utils";
 export default function CasesLoading() {
   return (
     <>
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-        <div className="min-w-0 space-y-2">
-          <Skeleton className="h-9 w-32 rounded-lg md:h-10 md:w-40" />
-          <Skeleton className="h-4 w-full max-w-2xl rounded-md" />
-          <Skeleton className="h-4 w-[85%] max-w-xl rounded-md" />
-        </div>
-        <Skeleton className="h-11 w-36 shrink-0 rounded-2xl" />
-      </header>
-
       <div className={cn(lexRouteSkeletonPanelClassName, "p-4 md:p-5")}>
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Skeleton className="h-11 min-h-[44px] w-full rounded-lg sm:min-w-[320px] sm:flex-1 md:max-w-xl" />
           <div className="flex flex-wrap gap-2">
             <Skeleton className="h-11 w-24 rounded-lg" />
             <Skeleton className="h-11 w-40 rounded-lg" />
+            <Skeleton className="h-11 w-36 shrink-0 rounded-2xl" />
           </div>
         </div>
       </div>

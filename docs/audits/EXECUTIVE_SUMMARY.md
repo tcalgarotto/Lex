@@ -13,11 +13,11 @@ O projeto Lex possui uma fundação técnica extremamente ambiciosa e utiliza te
 | 02 | **Segurança** | Vazamento potencial de segredos e PII em logs (JSON.stringify). | Crítico |
 | 03 | **Performance** | Waterfalls de queries sequenciais em rotas críticas (Search/Chat). | Alto |
 | 04 | **Performance** | Uso de `ILIKE` em tabelas de grande volume (Sequential Scan). | Alto |
-| 05 | **RAG** | Inconsistência entre dois motores de busca (Geral vs Legal). | Alto |
+| 05 | **Busca indexada** | Inconsistência entre dois motores de busca (Geral vs Legal). | Alto |
 | 06 | **Segurança** | Deleção de vetores no Qdrant sem filtro de tenant (`workspaceId`). | Alto |
 | 07 | **UX** | Funcionalidades "fantasma" (PJe/e-SAJ) prometidas mas não implementadas. | Alto |
 | 08 | **Modelagem** | Redundância maciça entre `LegalSource` e `LegalNorm`. | Médio |
-| 09 | **RAG** | Corpus jurídico nacional insuficiente/vazio para uso real. | Médio |
+| 09 | **Busca indexada** | Corpus jurídico nacional insuficiente/vazio para uso real. | Médio |
 | 10 | **UX** | Exposição de jargão técnico (tokens, chunks) para o usuário final. | Médio |
 
 ---
@@ -42,4 +42,4 @@ O projeto Lex possui uma fundação técnica extremamente ambiciosa e utiliza te
 ---
 
 ## Conclusão Brutal
-O Lex hoje é uma excelente demonstração de engenharia de RAG, mas uma **ferramenta jurídica frágil**. A prioridade deve ser consolidar o que já existe (unificar a busca, limpar a dívida técnica) e garantir a segurança do multi-tenancy antes de buscar novos usuários.
+O Lex hoje é uma excelente demonstração de engenharia de busca indexada, mas uma **ferramenta jurídica frágil**. A prioridade deve ser consolidar o que já existe (unificar a busca, limpar a dívida técnica) e garantir a segurança do multi-tenancy antes de buscar novos usuários.

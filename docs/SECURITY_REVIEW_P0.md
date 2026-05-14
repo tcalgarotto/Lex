@@ -18,7 +18,7 @@ Garantir que o Lex:
 - **Minutas**: drafts, review, export (`/api/cases/[id]/drafts/*`)
 - **Biblioteca**: lista/grid, ações de arquivo (rename/delete/tags/vínculos)
 - **Processos**: `Process` legado vs `processo judicial` (CNJ)
-- **Admin/Jobs/Debug**: `/settings/admin`, `/settings/jobs`, `/retrieval/explain`
+- **Admin/Jobs/Debug**: `/settings/admin`, `/settings/jobs` (e eventuais páginas de diagnóstico removidas ou protegidas por revisão contínua)
 - **Qdrant**: `lex_main` (workspace) e `lex_corpus_*` (global)
 - **Cache**: Redis (chaves com `workspaceId` quando aplicável)
 - **Logs**: scrub de PII/segredos e proibição de log de texto cru
@@ -28,7 +28,7 @@ Garantir que o Lex:
 - `docs/SECURITY.md` (defesas implementadas + limites conhecidos)
 - `docs/audits/AUDIT_SECURITY.md` (risco histórico; pode estar desatualizado)
 - `docs/audits/AUDIT_ARCHITECTURE.md` (riscos de tenancy por “filtro manual”)
-- `docs/RAG_ARCHITECTURE.md` (separação de motores e collections)
+- `docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md` (separação de motores e collections)
 
 ## 4. Estado atual (a confirmar por evidência)
 
@@ -61,8 +61,8 @@ Um item é **P0** se permitir:
 - ✅ **Workspace scoping em Prisma (superfície crítica)** — **aceito-com-justificativa**: não foi provada exaustividade em 100% das rotas; há amostragem por `rg workspaceId` em `src/app/api/documents/*`, `src/app/api/cases/*`, `src/app/api/library/*`, `src/app/api/office-memory/*`, `src/app/api/pieces/*` + testes de integração multi-tenant listados na §7.
 - ✅ **Anti-IDOR (regressão automatizada nas rotas mais sensíveis)**  
   - **Evidência**: `tests/integration/case-structured-crud-routes.test.ts`, `case-delete.test.ts`, `case-draft-export.test.ts`, `library-foundations.test.ts`, `office-memory.test.ts` (404 cross-workspace onde aplicável).
-- ✅ **Admin gating server-side**: rotas admin/jobs/debug bloqueadas por role no servidor.  
-  - **Evidência**: `src/app/api/retrieval/explain/route.ts`, `src/app/(app)/retrieval/explain/page.tsx`, `src/app/(app)/settings/jobs/page.tsx`, `src/app/(app)/processos/actions.ts` (actions sensíveis).
+- ✅ **Admin gating server-side**: rotas admin/jobs bloqueadas por role no servidor.  
+  - **Evidência**: revisar `src/app/(app)/settings/jobs/page.tsx`, `src/app/(app)/processos/actions.ts` e demais handlers sensíveis; rotas de diagnóstico legadas de retrieval foram removidas do produto.
 - ✅ **Uploads (documentos)**: `getWorkspaceContext()` + `documentStoragePath(workspaceId, documentId, …)` + validação de `caseId`/`processId` no mesmo workspace.  
   - **Evidência**: `src/app/api/documents/upload/route.ts` (linhas com `where: { … workspaceId }` antes de persistir).
 - ✅ **Leitura / delete de documento por API**: `findFirst({ id: documentId, workspaceId })` em GET/DELETE/reprocess/link-case.  

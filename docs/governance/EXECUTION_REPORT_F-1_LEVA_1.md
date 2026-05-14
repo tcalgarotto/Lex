@@ -99,7 +99,7 @@ tier: mvp
   - `src/app/(app)/biblioteca/memoria/page.tsx`
   - `src/app/(app)/biblioteca/fundamentos/novo/page.tsx`
   - `src/app/(app)/biblioteca/fundamentos/[id]/page.tsx`
-- README também diz `/retrieval → /pesquisa-juridica`. Mas há `src/app/(app)/retrieval/page.tsx` e `src/app/(app)/retrieval/explain/page.tsx`.
+- README também diz `/retrieval → /pesquisa-juridica`. Existe `src/app/(app)/retrieval/page.tsx` (redirect); a antiga rota de diagnóstico `/retrieval/explain` foi **removida** do produto.
 - **Risco**: o usuário (e o desenvolvedor) tem dois mapas mentais conflitantes; SEO interno e analytics ficam ambíguos.
 - **Ação proposta (F0)**: decidir entre (a) consolidar em `/pesquisa-juridica` e remover páginas `/biblioteca/**` e `/retrieval/**`; ou (b) atualizar README para refletir que ambas existem com escopos distintos. Registrar em `DOC_VS_CODE_DIVERGENCE.md`.
 
@@ -263,7 +263,7 @@ Documentos existentes em `docs/`:
 - `UX_FLOW_AUDIT.md`
 - `DRAFTING_REVIEW_FLOW.md`
 - `CASE_BRAIN.md`
-- `RAG_ARCHITECTURE.md`
+- `CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md`
 - `COLBERT_LEGAL_RETRIEVAL.md`
 
 - O plano v3.2 não os referencia explicitamente nas seções de auditoria F0/F4. Há risco de retrabalho ("auditar de novo o que já foi auditado").

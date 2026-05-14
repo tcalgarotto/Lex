@@ -30,11 +30,16 @@ export default async function IntegracoesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Integrações judiciais</h1>
-        <p className="text-sm text-muted-foreground">
-          Máximo gratuito e oficial sem expor chaves, endpoints técnicos ou credenciais sensíveis.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Integrações judiciais</h1>
+          <p className="text-sm text-muted-foreground">
+            Máximo gratuito e oficial sem expor chaves, endpoints técnicos ou credenciais sensíveis.
+          </p>
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/settings/integracoes/acesso-oficial">Programa de acesso oficial</Link>
+        </Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {getCourtConnectorDefinitions().map((connector) => {

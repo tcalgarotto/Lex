@@ -104,7 +104,7 @@ tier: mvp
 ### F-O-07 — Não multi-model orchestration antes de retrieval/grounding estável
 
 - **regra**: provider routing avançado, fallback inter-modelo, custo adaptativo (P2 / F28) só depois de Suíte A + Suíte B de [`QUALITY_THRESHOLDS.md`](QUALITY_THRESHOLDS.md) atingirem MVP por **30 dias** consecutivos.
-- **motivo**: trocar modelo enquanto retrieval ruim mascara o problema real; engenheiro fica caçando modelo fantasma quando o gargalo é o RAG.
+- **motivo**: trocar modelo enquanto retrieval ruim mascara o problema real; engenheiro fica caçando modelo fantasma quando o gargalo é a recuperação no corpus.
 - **risco_se_violar**: regressão silenciosa; custo sobe sem qualidade subir.
 - **excecao_permitida**: nenhuma; é melhor estabilizar 1 modelo bem do que 3 mal.
 - **aprovacao_necessaria**: CTO + IA owner + QA Lead + Legal Lead.
@@ -131,7 +131,7 @@ tier: mvp
 - **documento_relacionado**: `ARCHITECTURE_STABILITY_POLICY.md` §D.
 - **stop_condition**: S-02, S-03.
 
-**Nota (2026-05-10) — modo DeepSeek na pesquisa jurídica (P0):** expor pesquisa assistida via API DeepSeek para **sugestões estruturadas** na UX **não** viola F-O-08 nem F-O-09: não substitui modelo de embeddings nem chunker do corpus interno; RAG interno e Qdrant permanecem nos mesmos contratos de estabilidade. O que muda é apenas a **camada de apresentação/síntese assistida** documentada em `docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md`.
+**Nota (2026-05-10) — modo DeepSeek na pesquisa jurídica (P0):** expor pesquisa assistida via API DeepSeek para **sugestões estruturadas** na UX **não** viola F-O-08 nem F-O-09: não substitui modelo de embeddings nem chunker do corpus interno; motor interno de busca no corpus e Qdrant permanecem nos mesmos contratos de estabilidade. O que muda é apenas a **camada de apresentação/síntese assistida** documentada em `docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md`.
 
 ### F-O-10 — Não alterar prompts de drafting sem benchmark adversarial
 

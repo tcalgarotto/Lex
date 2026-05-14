@@ -7,9 +7,8 @@ import { test, expect } from "@playwright/test";
  * verificado sem autenticação real:
  *
  *   1. Páginas centrais existem e fazem auth gate (302 → /login?next=…).
- *   2. Redirects /biblioteca → /pesquisa-juridica e /retrieval → /pesquisa-juridica.
+ *   2. Redirect `/retrieval` → `/pesquisa-juridica`.
  *   3. APIs novas devolvem 401 sem cookie (segurança garantida).
- *   4. /retrieval/explain continua funcional (admin/debug, ainda gated).
  *
  * Os cenários "criar caso → upload → pesquisa → estratégia → peça" exigem
  * sessão Supabase real e ficam para a suite e2e-authed (separada).
@@ -22,7 +21,7 @@ const PROTECTED_ROUTES = [
   { path: "/cases/abc-123", scenario: "Detalhe de caso (6 abas)" },
   { path: "/documentos", scenario: "Lista de documentos do escritório" },
   { path: "/documentos?unlinked=1", scenario: "Filtro: documentos sem caso" },
-  { path: "/pesquisa-juridica", scenario: "Pesquisa jurídica (RAG amigável)" },
+  { path: "/pesquisa-juridica", scenario: "Pesquisa jurídica assistida" },
   { path: "/pesquisa-juridica?q=devido%20processo&scope=legislacao", scenario: "Pesquisa com query inicial" },
   { path: "/editor", scenario: "Lista de peças" },
   { path: "/busca?q=teste", scenario: "Busca global agregada" },
@@ -54,11 +53,6 @@ test.describe("ux-flow: jornada caso-cêntrica (sem sessão)", () => {
     await expect(page).toHaveURL(/\/login\?.*next=/);
   });
 
-  test("/retrieval/explain continua acessível como admin/debug (gated)", async ({ page }) => {
-    const res = await page.goto("/retrieval/explain");
-    expect(res?.status()).toBeLessThan(500);
-    await expect(page).toHaveURL(/\/login\?next=%2Fretrieval%2Fexplain/);
-  });
 });
 
 test.describe("ux-flow: APIs novas exigem auth", () => {

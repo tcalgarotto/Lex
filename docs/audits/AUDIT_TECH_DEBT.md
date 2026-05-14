@@ -7,7 +7,7 @@
 - **Dívida:** 
   - `LegalSource`: Tabela simples, scripts de indexação próprios (`seed/ingest-corpus.ts`), motor de busca `hybrid-retriever.ts`.
   - `LegalNorm`: Tabela complexa, versionada, scripts de sync real (`corpus-sync.ts`), motor de busca `retrieveLegalContext`.
-- **Impacto:** Manutenção em dobro. Metade do sistema usa um motor "burro" e a outra metade usa o motor "inteligente". Isso gera resultados inconsistentes e dificulta a evolução do RAG.
+- **Impacto:** Manutenção em dobro. Metade do sistema usa um motor "burro" e a outra metade usa o motor "inteligente". Isso gera resultados inconsistentes e dificulta a evolução da busca indexada.
 - **Recomendação:** Deletar `LegalSource` e migrar todas as referências (busca global e chat) para `LegalNorm`.
 
 ---

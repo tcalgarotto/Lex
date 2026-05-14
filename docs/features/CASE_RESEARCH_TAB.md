@@ -7,7 +7,7 @@ Centralizar **busca assistida** (modo DeepSeek temporário) e **fundamentos fixa
 ## Dados
 
 - **Case Brain** (`GET /api/cases/[id]/case-brain`): narrative, contagens, fingerprint — usado para montar `caseBrain` em `recommend-for-case`.
-- **Fundamentos fixados (corpus)**: continuam em `CaseLegalSource` via fluxo existente de biblioteca/pin RAG quando aplicável.
+- **Fundamentos fixados (corpus)**: continuam em `CaseLegalSource` via fluxo existente de biblioteca e pins no corpus indexado quando aplicável.
 - **Fundamentos fixados (assistido)**: `POST /api/legal-research/pin` persiste em `metadataJson.caseBrain.pinnedFoundations` (Lane B).
 
 ## Integração Lane A

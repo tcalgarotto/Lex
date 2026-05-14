@@ -5,7 +5,7 @@ import { join } from "node:path";
 const strategyRoutePath = join(process.cwd(), "src/app/api/cases/[id]/strategy/route.ts");
 
 describe("POST /api/cases/[id]/strategy", () => {
-  it("não importa retrieveLegalContext (fluxo principal sem RAG)", () => {
+  it("não importa retrieveLegalContext (fluxo principal via DeepSeek)", () => {
     const src = readFileSync(strategyRoutePath, "utf-8");
     expect(src).not.toMatch(/retrieveLegalContext/);
     expect(src).toMatch(/generateStrategy/);

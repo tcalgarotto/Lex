@@ -43,7 +43,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  const [privateMem, setPrivateMem] = useState(false);
  const [useAsModel, setUseAsModel] = useState(false);
  const [useAsStyle, setUseAsStyle] = useState(false);
- const [optInSearch, setOptInRag] = useState(false);
+ const [optInSearch, setOptInSearch] = useState(false);
 
  const caseOptions = useMemo(
  () => props.cases.map((c) => ({ value: c.id, label: c.title || "Sem título" })),
@@ -91,7 +91,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  setPrivateMem(false);
  setUseAsModel(false);
  setUseAsStyle(false);
- setOptInRag(false);
+ setOptInSearch(false);
  await refresh();
  } catch (err) {
  setError(err instanceof Error ? err.message : String(err));
@@ -201,7 +201,7 @@ export function OfficeMemoryPanel(props: { initialMemories: OfficeMemoryRow[]; c
  Referência de estilo
  </label>
  <label className="flex items-center gap-2">
- <input type="checkbox" checked={optInSearch} onChange={(e) => setOptInRag(e.target.checked)} />
+ <input type="checkbox" checked={optInSearch} onChange={(e) => setOptInSearch(e.target.checked)} />
  Incluir na busca assistida (quando suportado)
  </label>
  </div>

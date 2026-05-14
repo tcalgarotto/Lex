@@ -14,7 +14,7 @@
 ## Decisão
 
 - Expor um **modo de pesquisa jurídica assistida** que usa a **DeepSeek API** como provedor temporário de geração estruturada (`LEGAL_RESEARCH_PROVIDER=deepseek`, variáveis `DEEPSEEK_*`).
-- **Não remover** o RAG interno, **não apagar** coleções Qdrant e **não desmontar** o pipeline existente em `src/lib/retrieval/**` — apenas **isolar** o uso desse pipeline da pesquisa jurídica voltada ao usuário final enquanto o modo DeepSeek estiver ativo.
+- **Não remover** o motor interno de busca no corpus, **não apagar** coleções Qdrant e **não desmontar** o pipeline existente em `src/lib/retrieval/**` — apenas **isolar** o uso desse pipeline da pesquisa jurídica voltada ao usuário final enquanto o modo DeepSeek estiver ativo.
 - Toda saída relevante a norma ou jurisprudência candidata permanece **não verificada** até ação humana explícita no produto (`AI_RECOMMENDED_UNVERIFIED` por padrão).
 
 ## Consequências
@@ -33,12 +33,12 @@
 
 ## Alternativas consideradas
 
-1. **Continuar apenas com o RAG interno** até atingir benchmark acordado — rejeitada para o prazo do piloto por bloquear feedback útil de produto.
+1. **Continuar apenas com o motor interno de busca no corpus** até atingir benchmark acordado — rejeitada para o prazo do piloto por bloquear feedback útil de produto.
 2. **Trocar para outro provedor LLM** (OpenAI, Anthropic, etc.) — mantida como opção futura; DeepSeek escolhida por alinhamento com stack já usada no chat (`AI_CHAT_PROVIDER`) e custo/latência.
 3. **Postergar qualquer pesquisa assistida** — rejeitada por não atender necessidade de demo controlada.
 
 ## Rollback
 
-- Definir `LEGAL_RESEARCH_PROVIDER=rag` para forçar o comportamento de stub que informa indisponibilidade da pesquisa interna otimizada (sem acionar o motor real nesta lane).
+- Definir `LEGAL_RESEARCH_PROVIDER` para o **valor stub legado** documentado em `docs/plans/P0_DEEPSEEK_LEGAL_RESEARCH_MIGRATION.md` (comportamento **503** amigável na pesquisa assistida; não aciona `retrieveLegalContext` nesta lane). Ver `src/lib/legal-research/provider.ts`.
 - Restaurar `LEGAL_RESEARCH_PROVIDER=deepseek` quando o modo externo for novamente desejado.
 - Plano operacional detalhado: `docs/plans/P0_DEEPSEEK_LEGAL_RESEARCH_MIGRATION.md`.

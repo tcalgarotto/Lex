@@ -33,7 +33,7 @@
 - **Risco:** O método de deleção no Qdrant não recebe nem filtra pelo `workspaceId`.
 - **Arquivo:** `src/lib/retrieval/vector-store/qdrant-store.ts`
 - **Cenário de Exploração:** Embora os call-sites atuais (`ingest-document`) sejam internos, uma futura exposição ou bug no orquestrador poderia permitir que um usuário apague índices vetoriais de documentos que não pertencem ao seu workspace.
-- **Impacto:** Perda de integridade de dados e negação de serviço (DoS) no RAG.
+- **Impacto:** Perda de integridade de dados e negação de serviço (DoS) na busca indexada.
 - **Correção Recomendada:** Sempre incluir `workspaceId` no filtro de deleção do Qdrant para garantir isolamento físico na camada vetorial.
 
 ### 2.2 Proteção CSRF Frágil
@@ -56,7 +56,7 @@
 ### 3.2 Truncamento de Texto Extraído
 - **Evidência:** `src/lib/inngest/functions/ingest-document.ts`.
 - **Risco:** O campo `extractedText` no Prisma é truncado em 250k caracteres (`.slice(0, 250_000)`).
-- **Impacto:** Embora o RAG use o texto completo para chunks, a auditoria humana e o viewer do documento no dashboard podem mostrar informações incompletas, gerando confusão jurídica ou perda de evidência em auditorias internas.
+- **Impacto:** Embora o motor de indexação use o texto completo para chunks, a auditoria humana e o viewer do documento no dashboard podem mostrar informações incompletas, gerando confusão jurídica ou perda de evidência em auditorias internas.
 - **Correção Recomendada:** Se o texto for maior que o limite, salvar o excedente em múltiplos registros ou usar um storage (S3/Supabase) em vez de coluna `Text` no Postgres para o texto completo.
 
 ---

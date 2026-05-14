@@ -92,7 +92,7 @@ flowchart LR
 
 **Se 1 etapa quebra para 1 advogado real, isso é P0**. Ponto.
 
-**Nota (2026-05-10 — F-1 / Lane P0):** a pesquisa jurídica assistida via DeepSeek entra como parte da **jornada feliz mínima interna** (demo/piloto controlado) para obter feedback útil sem bloquear o escritório na ausência de benchmarks do RAG interno. Isso **não** suspende as restrições do sign-off F-1: **release público pagante continua bloqueado** enquanto Legal/Security/QA Lead estiverem provisórios e os gates de produção não forem reavaliados (`F-1_SIGNOFF.md`).
+**Nota (2026-05-10 — F-1 / Lane P0):** a pesquisa jurídica assistida via DeepSeek entra como parte da **jornada feliz mínima interna** (demo/piloto controlado) para obter feedback útil sem bloquear o escritório na ausência de benchmarks do motor interno de busca no corpus. Isso **não** suspende as restrições do sign-off F-1: **release público pagante continua bloqueado** enquanto Legal/Security/QA Lead estiverem provisórios e os gates de produção não forem reavaliados (`F-1_SIGNOFF.md`).
 
 ---
 

@@ -22,7 +22,7 @@
 8. Documentos → Case Brain — **parcial** (pipeline existente; smoke documento não reexecutado nesta sessão).
 9. Persistência partes/fatos/pedidos/riscos — **✓** (já coberto por integração pré-existente + Lane B).
 10. Sem jargão nas mensagens testadas — **✓** (teste `USER_FACING_MESSAGES` subset).
-11. Transparência DeepSeek / RAG futuro — **✓** (`DEEPSEEK_TRANSPARENCY_TOP`, ADR).
+11. Transparência DeepSeek / busca indexada (fases futuras) — **✓** (`DEEPSEEK_TRANSPARENCY_TOP`, ADR).
 12. lint / typecheck / test / build — **✓** neste workspace (1 warning ESLint pré-existente em `interview-extraction.ts`).
 
 ## QA executado (Lane E)

@@ -1,5 +1,5 @@
 /**
- * Revisão da minuta: heurísticas locais + passagem assistida (DeepSeek), sem RAG.
+ * Revisão da minuta: heurísticas locais + passagem assistida (DeepSeek).
  */
 
 import { generateText } from "ai";
@@ -115,7 +115,7 @@ async function deepseekReview(content: string): Promise<ReviewIssue[] | null> {
 
 Regras:
 - Aponte lacunas, incoerências fato/pedido, jurisprudência tratada como verificada quando for apenas candidata, fundamentos frágeis, clareza/estrutura.
-- Não invente fatos. Não use RAG nem cite chunks.
+- Não invente fatos. Não cite bases que não estejam no contexto fornecido.
 - Se estiver adequada, devolva issues vazio.
 
 Texto da minuta:

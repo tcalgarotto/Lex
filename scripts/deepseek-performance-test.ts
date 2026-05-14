@@ -3,7 +3,7 @@ import { retrieveContext } from "../src/lib/retrieval/hybrid-retriever";
 import { getLegalResearchProvider } from "../src/lib/legal-research";
 
 async function benchmark() {
-  console.log("🚀 Iniciando Benchmark Pós-Transição DeepSeek (RAG OFF)...");
+  console.log("🚀 Iniciando benchmark pós-transição (DeepSeek + índices locais)...");
 
   const workspace = await prisma.workspace.findFirst();
   if (!workspace) {
@@ -52,7 +52,7 @@ async function benchmark() {
     "DeepSeek API Latency": `Ver acima`,
   });
 
-  console.log("\n🌟 CONCLUSÃO: O sistema agora opera com latência de banco de dados mínima e delega a inteligência jurídica ao DeepSeek, eliminando a dependência do motor de RAG interno.");
+  console.log("\n🌟 CONCLUSÃO: latência local nos índices do Postgres e síntese jurídica via DeepSeek na pesquisa assistida.");
 }
 
 benchmark().catch(console.error).finally(() => prisma.$disconnect());

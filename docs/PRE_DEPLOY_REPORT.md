@@ -13,7 +13,7 @@
 
 ### 1.2 `[lex.retrieval] dense err: Reached the max retries per request limit`
 - **Causa**: o cache jurídico em `src/lib/retrieval/legal/cache.ts` chamava `cacheGet(key)` direto via `getRedis().get(...)`. Sem Redis, ioredis cumpria `maxRetriesPerRequest=3` antes de rejeitar — cada miss perdia ~10s.
-- **Sintoma**: `/api/retrieval/explain` levou ~18s e `/api/search` ficou irregular.
+- **Sintoma**: chamadas ao pipeline jurídico (smoke / busca) levaram ~18s em alguns cenários e `/api/search` ficou irregular.
 
 ### 1.3 Logs do Prisma em dev poluídos
 - **Causa**: `src/lib/prisma.ts` tinha `log: ["query", "error", "warn"]` em dev. Cada SELECT/INSERT em listagem de casos vazava um log inteiro.
@@ -265,7 +265,7 @@ Novos arquivos de teste:
 - `/strategy` (auth-protected)
 - `/cockpit` (auth-protected)
 - `/processos` (auth-protected)
-- `/retrieval/explain` (auth-protected)
+- `/pesquisa-juridica` (auth-protected)
 - `/test-guide` (auth-protected) **← novo**
 - `/api/ready` (público) ← responde estrutura estável
 - `/api/health` (público) ← responde estrutura estável com `checks.flags`
@@ -284,7 +284,7 @@ Novos arquivos de teste:
 - `GET /api/notifications`
 - `GET/POST /api/cases`, `POST /api/cases/[id]/draft`, `POST /api/cases/[id]/review`
 - `GET /api/cases/[id]/comments`, `POST /api/cases/[id]/approvals`
-- `GET /api/retrieval/explain`
+- `GET /api/retrieval/search`
 - `POST /api/inngest` (webhook, exceção do origin guard)
 
 ## 23. Build status

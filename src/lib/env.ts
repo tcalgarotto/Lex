@@ -48,11 +48,15 @@ const envSchema = z
     INNGEST_EVENT_KEY: z.string().optional(),
     INNGEST_SIGNING_KEY: z.string().optional(),
     STORAGE_BUCKET_DOCUMENTS: z.string().default("documents"),
+    /** Quota padrão por workspace (bytes) quando `Workspace.storageQuotaBytes` não é alterada. */
+    DEFAULT_WORKSPACE_STORAGE_QUOTA_BYTES: z.coerce.number().int().positive().default(2147483648),
+    /** Limite máximo por ficheiro no upload (bytes). */
+    DEFAULT_MAX_UPLOAD_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(104857600),
     OCR_PROVIDER: z.enum(["tesseract", "mistral"]).default("tesseract"),
     MISTRAL_API_KEY: z.string().optional(),
 
     // ----------------------------------------------------------------
-    // Provedores jurídicos públicos (corpus RAG).
+    // Provedores jurídicos públicos (corpus indexado).
     //
     // Modos suportados por provider:
     //   - `live`      → usa fonte real (HTTP) com rate-limit/timeout

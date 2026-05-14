@@ -17,7 +17,7 @@
 - **Isolamento:** O `workspaceId` é a chave de isolamento principal.
 - **Risco:** O middleware não valida se o usuário tem acesso ao `workspaceId` específico da requisição, apenas se está logado. O isolamento depende de filtros manuais `where: { workspaceId }` em cada query Prisma/Qdrant.
 
-### 2.2 Ingestão de Documentos (RAG)
+### 2.2 Ingestão de documentos (indexação)
 - **Trigger:** Upload de arquivo -> Evento Inngest `lex/document.ingest`.
 - **Pipeline:** 
   1. Extração de texto (Mammoth, PDF.js, Tesseract).
@@ -52,7 +52,7 @@ Existem duas implementações divergentes:
 - **Status:** Integrado via `ioredis`.
 
 ## 4. Pontos de Atenção Imediata
-1. **Fragmentação do RAG:** A coexistência de dois retrievers com lógicas totalmente diferentes cria inconsistência nos resultados para o usuário.
+1. **Fragmentação da busca indexada:** A coexistência de dois retrievers com lógicas totalmente diferentes cria inconsistência nos resultados para o usuário.
 2. **Performance do Postgres:** O uso de `ILIKE %pattern%` em tabelas que podem crescer (como `DocumentChunk`) causará gargalos severos de CPU e IO no banco de dados.
 3. **Complexidade do Schema:** O `schema.prisma` é excessivamente denso, com muitos Enums e relações que podem dificultar migrations futuras.
 4. **Vazamento de Memória/Bundle:** O uso de lazy imports no Inngest (`ingest-document.ts`) é um "workaround" para limitações de build que podem esconder dependências circulares ou problemas de arquitetura.

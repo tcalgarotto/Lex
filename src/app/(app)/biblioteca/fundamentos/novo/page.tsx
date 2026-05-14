@@ -14,7 +14,7 @@ export default function NewFoundationPage() {
  const [title, setTitle] = useState("");
  const [tags, setTags] = useState("");
  const [contentMd, setContentMd] = useState("");
- const [optInSearch, setOptInRag] = useState(false);
+ const [optInSearch, setOptInSearch] = useState(false);
  const [optInMemory, setOptInMemory] = useState(false);
  const [saving, setSaving] = useState(false);
  const [error, setError] = useState<string | null>(null);
@@ -72,7 +72,7 @@ export default function NewFoundationPage() {
  </div>
 
  <div className="flex flex-wrap items-center gap-2">
- <Button type="button" variant={optInSearch ? "default" : "outline"} onClick={() => setOptInRag((v) => !v)}>
+ <Button type="button" variant={optInSearch ? "default" : "outline"} onClick={() => setOptInSearch((v) => !v)}>
  {optInSearch ? "Busca assistida: ligada" : "Busca assistida: desligada"}
  </Button>
  <Button type="button" variant={optInMemory ? "default" : "outline"} onClick={() => setOptInMemory((v) => !v)}>

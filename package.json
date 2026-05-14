@@ -68,6 +68,8 @@
     "providers:smoke:datajud-all": "tsx --env-file=.env scripts/legal-providers-smoke.ts -- --datajud-all",
     "providers:smoke:datajud-only": "tsx --env-file=.env scripts/legal-providers-smoke.ts -- --only-datajud-all",
     "documents:audit": "tsx --env-file=.env scripts/documents-audit.ts",
+    "storage:usage:dry-run": "tsx --env-file=.env scripts/backfill-workspace-storage-usage.ts -- --dry-run",
+    "storage:usage:backfill": "tsx --env-file=.env scripts/backfill-workspace-storage-usage.ts",
     "qa:production": "tsx --env-file=.env scripts/qa-production.ts",
     "qa:local": "tsx --env-file=.env scripts/qa-production.ts -- --skip-http",
     "retrieval:smoke": "tsx --env-file=.env scripts/retrieval-smoke.ts",

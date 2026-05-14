@@ -14,9 +14,6 @@ export const LIBRARY_BADGE_OPT_IN_SEARCH = "Incluir na busca assistida";
 export const INTERNAL_SEARCH_SCOPE_REMINDER =
   "As respostas usam apenas trechos do acervo indexado; se o tema não estiver coberto, o sistema deve sinalizar lacuna — sem inventar fundamento.";
 
-/** @deprecated use INTERNAL_SEARCH_SCOPE_REMINDER */
-export const RAG_SCOPE_REMINDER = INTERNAL_SEARCH_SCOPE_REMINDER;
-
 export const PRODUCT_TERMINOLOGY = {
   "Chunk recuperado": "Trecho encontrado",
   Embedding: "Índice de busca",
@@ -28,7 +25,7 @@ export const PRODUCT_TERMINOLOGY = {
   Verified: "Verificado",
   USER_PINNED: "Fixado no caso",
   USER_VERIFIED: "Conferido pelo advogado",
-  VERIFIED_BY_INTERNAL_RAG: "Verificado (acervo interno)",
+  VERIFIED_BY_INTERNAL_RAG: "Verificado (índice interno)",
   VERIFIED_BY_OFFICIAL_SOURCE: "Verificado (fonte oficial)",
   Pin: "Fixar no caso",
   "ApprovedLegalFoundation": "Fundamento aprovado",

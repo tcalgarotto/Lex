@@ -42,7 +42,7 @@ O relatório final deve conter:
 - Preferir linguagem de produto para advogados, evitando jargão técnico na documentação de produto.
 
 ## Como você deve trabalhar
-1. Ler os docs e relatórios existentes relevantes (audits, UX flow, security, RAG, case brain, drafting/review).
+1. Ler os docs e relatórios existentes relevantes (audits, UX flow, security, busca indexada, case brain, drafting/review).
 2. Identificar o que já está comprovado vs o que é suposição.
 3. Consolidar numa narrativa única (fluxo caso-cêntrico) com checklist de verificação.
 4. Registrar comandos rodados e resultados (ou marcar explicitamente “não rodado”).

@@ -2,7 +2,7 @@
  * GET/POST /api/cases/[id]/strategy
  *
  * GET — estratégia legada, estratégia P0 (`draftingStrategy`), aprovação e prontidão.
- * POST — gera `draftingStrategy` via DeepSeek (sem RAG/Qdrant) e persiste em `metadataJson`.
+ * POST — gera `draftingStrategy` via DeepSeek e persiste em `metadataJson`.
  */
 
 import { NextResponse } from "next/server";

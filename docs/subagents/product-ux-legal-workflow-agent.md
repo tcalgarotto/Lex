@@ -26,7 +26,7 @@ Novo caso
 - **Documento** é insumo/prova.
 - **Peça** é produção jurídica.
 - **Biblioteca** é o acervo do escritório.
-- **Pesquisa jurídica** é a interface final do retrieval/RAG.
+- **Pesquisa jurídica** é a interface final do recuperação contextual no acervo.
 - Jobs, logs, Qdrant, embeddings, custos, sparse/dense, intent, grounding e afins são detalhes técnicos e **não devem aparecer** para usuário comum.
 
 ## Sua missão (o que entregar)

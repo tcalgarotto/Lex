@@ -1,13 +1,13 @@
 # Lex Project Audit Report — 2026-05-08
 
 ## 1. Executive Summary
-The Lex project is in a highly functional state with a robust multi-tenant architecture and a sophisticated legal RAG pipeline. The transition to a "Case-centric" flow is mostly complete, but several legacy routes and technical terms remain. A critical issue is the current production build failure, which must be resolved before deployment. Security and data isolation are strong.
+The Lex project is in a highly functional state with a robust multi-tenant architecture and a sophisticated indexed legal retrieval pipeline. The transition to a "Case-centric" flow is mostly complete, but several legacy routes and technical terms remain. A critical issue is the current production build failure, which must be resolved before deployment. Security and data isolation are strong.
 
 **General Grade: 8.5/10**
 
 ## 2. Key Strengths
 - **Security & Multi-tenancy:** Rigorous workspace isolation in both Prisma and Qdrant. No cross-tenant leaks identified.
-- **RAG Accuracy:** Legal search passed 15/15 in QA, with high precision for Constitutional law.
+- **Indexed search accuracy:** Legal search passed 15/15 in QA, with high precision for Constitutional law.
 - **Processing Robustness:** Document ingestion is well-stepped with Inngest, handling errors and "stalled" states gracefully.
 - **Architecture:** Clean separation of concerns between Legal Corpus (global) and Workspace Documents (private).
 

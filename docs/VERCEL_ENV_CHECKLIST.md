@@ -98,7 +98,7 @@ EMAIL_FROM=lex@<dominio-verificado>
 SENTRY_DSN=<...>
 NEXT_PUBLIC_SENTRY_DSN=<...>
 
-# Provedores jurídicos públicos (corpus RAG)
+# Provedores jurídicos públicos (corpus indexado)
 # LexML/STF/STJ são gratuitos, sem chave. DataJud exige chave (CNJ).
 LEXML_BASE_URL=https://www.lexml.gov.br/busca/SRU
 LEXML_PROVIDER_MODE=live

@@ -84,7 +84,7 @@ class MockLegalResearchProvider implements LegalResearchProvider {
 /**
  * Fábrica do provedor de pesquisa jurídica.
  * `LEGAL_RESEARCH_PROVIDER`: `deepseek` (default) | `mock`
- * O valor legado `rag` é tratado como `deepseek` (motor interno desligado na UX).
+ * Qualquer outro valor não reconhecido continua no fluxo DeepSeek nesta build (comportamento P0; ver ADR para rollback/stub).
  */
 export function getLegalResearchProvider(): LegalResearchProvider {
   const raw = process.env["LEGAL_RESEARCH_PROVIDER"]?.trim().toLowerCase();

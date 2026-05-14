@@ -8,13 +8,13 @@ Habilitar pesquisa e recomendação utilizáveis em **demo controlada** e **pilo
 
 | Variável | Efeito |
 |---------|--------|
-| `LEGAL_RESEARCH_PROVIDER=rag` | Respostas da API de pesquisa nova retornam **503** com mensagem amigável; não aciona `retrieveLegalContext`. |
+| `LEGAL_RESEARCH_PROVIDER` com **valor stub legado** (503; ver `src/lib/legal-research/provider.ts` e ADR) | Respostas da API de pesquisa nova retornam **503** com mensagem amigável; não aciona `retrieveLegalContext`. |
 | `DEEPSEEK_LEGAL_RESEARCH_ENABLED=false` | Com `LEGAL_RESEARCH_PROVIDER=deepseek`, rotas `search` / `recommend-for-case` retornam **503**. |
 | `DEEPSEEK_API_KEY` vazio / `DEEPSEEK_MODEL` vazio | Chamadas DeepSeek falham com erro tratado na resposta estruturada. |
 
 ## Rollback em 1 PR
 
-1. Definir `LEGAL_RESEARCH_PROVIDER=rag` (ou restaurar consumo apenas de `/api/retrieval/search` na UI, Lane E).
+1. Definir `LEGAL_RESEARCH_PROVIDER` para o **valor stub legado** descrito no ADR (ou restaurar consumo apenas de `/api/retrieval/search` na UI, Lane E).
 2. Remover ou ocultar entradas de menu que apontem para `/api/legal-research/*` se necessário (Lane C/D).
 3. Nenhuma migration foi adicionada nesta lane — rollback não exige `prisma migrate`.
 
@@ -40,7 +40,7 @@ Habilitar pesquisa e recomendação utilizáveis em **demo controlada** e **pilo
 
 ## Checkpoint para reativar o motor interno
 
-1. `RAG_LEGAL_RESEARCH_ENABLED=true` (futuro) alinhado a critérios no `docs/RAG_ARCHITECTURE.md`.
+1. Feature flag futura para priorizar o motor interno na pesquisa principal (nome a definir na implementação), alinhada a critérios em `docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md`.
 2. Desligar progressivamente o modo DeepSeek após validação em staging com **mesmas** queries do gold-set.
 3. Lane E decide se `/api/retrieval/search` passa a orquestrar adapter + motor interno ou apenas motor interno.
 

@@ -395,7 +395,7 @@ function Body({
  return (
  <EmptyState
  icon={<BookOpen className="size-5" />}
- title="Pesquisa jurídica em camadas"
+ title="Pesquisa jurídica assistida"
  description={`Combine legislação indexada, trechos dos documentos do workspace, peças e (com caso aberto) fundamentos já salvos no caso. ${INTERNAL_SEARCH_SCOPE_REMINDER}`}
  />
  );
@@ -422,8 +422,8 @@ function Body({
  return (
  <EmptyState
  icon={<Search className="size-5" />}
- title="Nenhum resultado nestas camadas"
- description="Tente outro termo, ative mais camadas acima ou abra um caso para buscar fixações locais."
+ title="Nenhum resultado nestas fontes"
+ description="Tente outro termo, ative mais fontes acima ou abra um caso para buscar fixações locais."
  />
  );
  }

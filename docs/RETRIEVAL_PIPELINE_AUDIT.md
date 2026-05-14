@@ -13,7 +13,7 @@ Garantir que a pesquisa jurídica do Lex:
 
 ## 2. Arquitetura (fonte de verdade)
 
-Ver `docs/RAG_ARCHITECTURE.md`.
+Ver `docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md`.
 
 - **Corpus oficial**: `retrieveLegalContext` → Postgres (`LegalNorm*`, `LegalChunk`) + Qdrant (`lex_corpus_*`).
 - **Workspace**: `retrieveContext` → Postgres (`DocumentChunk`, `LegalPiece`) + Qdrant (`lex_main`).

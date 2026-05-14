@@ -188,7 +188,7 @@ async function main() {
   console.log(
     [
       "",
-      "=== CONSTITUICAO.md RAG AUDIT ===",
+      "=== CONSTITUICAO.md INDEX AUDIT ===",
       `artigos_total=${report.artigosTotal}`,
       `artigos_sem_meta=${report.artigosSemMeta}`,
       `headings_invalidos=${report.headingsInvalidos}`,

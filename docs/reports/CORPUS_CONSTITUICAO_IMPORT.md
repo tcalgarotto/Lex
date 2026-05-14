@@ -1,4 +1,4 @@
-# RAG — Reset & Import da Constituição Federal de 1988
+# Corpus — reset e import da Constituição Federal de 1988
 
 **Data:** 2026-05-08
 **Markdown fonte:** `codigos de leis/CONSTITUICAO.md` (548 KB, 12 141 linhas)

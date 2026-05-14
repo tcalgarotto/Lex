@@ -83,5 +83,5 @@
 ## 10. Confirmações explícitas
 
 - **Não** foi executado `git add` / `git commit` / `git push` por esta lane.
-- **RAG interno** (`src/lib/retrieval/**`) e **Qdrant** **não** foram removidos nem alterados para esta entrega.
+- **motor interno de busca no corpus** (`src/lib/retrieval/**`) e **Qdrant** **não** foram removidos nem alterados para esta entrega.
 - Owners Legal/Security/QA continuam **\[PROVISÓRIO\]**; release público **bloqueado** conforme F-1.

@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseUploadErrorResponseText } from "@/lib/storage/upload-error-message";
 
 export function DocumentDropzone({
  processId,
@@ -25,7 +26,7 @@ export function DocumentDropzone({
  fd.append("processId", processId);
  try {
  const res = await fetch("/api/documents/upload", { method: "POST", body: fd });
- if (!res.ok) throw new Error(await res.text());
+ if (!res.ok) throw new Error(parseUploadErrorResponseText(await res.text()));
  const data = (await res.json()) as { documentId: string; status: string };
  toast.success(`Documento enviado (${data.status}). Indexação em background.`);
  onUploaded?.(data.documentId);

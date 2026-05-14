@@ -37,7 +37,7 @@ export default async function ReadinessPage() {
  legalRetrievalEnabled = Boolean(env.ENABLE_LEGAL_RETRIEVAL);
  envOk.push({ label: "Supabase URL/Anon", ok: Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY) });
  envOk.push({ label: "Database URL", ok: Boolean(env.DATABASE_URL) });
- envOk.push({ label: "Qdrant", ok: !legalRetrievalEnabled || Boolean(env.QDRANT_URL), detail: legalRetrievalEnabled ? undefined : "RAG desativado por enquanto" });
+ envOk.push({ label: "Qdrant", ok: !legalRetrievalEnabled || Boolean(env.QDRANT_URL), detail: legalRetrievalEnabled ? undefined : "Busca jurídica no corpus desativada por enquanto" });
  envOk.push({ label: "Redis", ok: Boolean(env.REDIS_URL) });
  envOk.push({ label: "Embeddings (DeepInfra)", ok: Boolean(env.DEEPINFRA_API_KEY) });
  envOk.push({ label: "Chat provider", ok: Boolean(env.AI_CHAT_PROVIDER) });
@@ -60,7 +60,7 @@ export default async function ReadinessPage() {
 
  let qdrantStatus: { status: Status; detail?: string } = { status: "Pendente" };
  if (!legalRetrievalEnabled) {
- qdrantStatus = { status: "Desativado", detail: "Infra de RAG/Qdrant desativada por enquanto" };
+ qdrantStatus = { status: "Desativado", detail: "Infra Qdrant / busca no corpus desativada por enquanto" };
  } else {
  try {
  // Smoke check: deleta IDs inexistentes (no-op) só pra exercitar a

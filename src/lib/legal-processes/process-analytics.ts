@@ -34,7 +34,50 @@ function isMissingLegalProcessTableError(error: unknown): boolean {
   );
 }
 
-export async function getProcessAnalytics(workspaceId: string) {
+export type GetProcessAnalyticsOptions = {
+  /**
+   * `counts` — só contagens (dashboard, lista de processos). Evita groupBy e último sync.
+   * `full` — painel/API com breakdown por tribunal e estado.
+   */
+  scope?: "counts" | "full";
+};
+
+export async function getProcessAnalytics(
+  workspaceId: string,
+  options?: GetProcessAnalyticsOptions,
+): Promise<ProcessAnalytics> {
+  const scope = options?.scope ?? "full";
+
+  if (scope === "counts") {
+    try {
+      const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const [total, openAlerts, recentMovements, syncErrors] = await Promise.all([
+        prisma.legalProcess.count({ where: { workspaceId } }),
+        prisma.legalProcessAlert.count({ where: { workspaceId, status: "OPEN" } }),
+        prisma.legalProcessMovement.count({
+          where: { workspaceId, createdAt: { gte: since7d } },
+        }),
+        prisma.legalProcessSyncLog.count({
+          where: {
+            workspaceId,
+            status: LegalProcessSyncStatus.ERROR,
+            startedAt: { gte: since7d },
+          },
+        }),
+      ]);
+      return {
+        ...EMPTY_PROCESS_ANALYTICS,
+        total,
+        openAlerts,
+        recentMovements,
+        syncErrors,
+      };
+    } catch (error) {
+      if (isMissingLegalProcessTableError(error)) return EMPTY_PROCESS_ANALYTICS;
+      throw error;
+    }
+  }
+
   let total = 0;
   let byTribunal: Array<{ tribunalAcronym: string; _count: { _all: number } }> = [];
   let byStatus: Array<{ dataJudStatus: string; _count: { _all: number } }> = [];

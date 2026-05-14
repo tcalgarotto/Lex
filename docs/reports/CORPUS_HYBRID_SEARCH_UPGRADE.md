@@ -1,4 +1,4 @@
-# RAG Hybrid Search Upgrade — Relatório final (FASE 14)
+# Corpus — hybrid search (upgrade) — Relatório final (FASE 14)
 
 **Data:** 2026-05-08
 **Autor:** Lex Engineering (Principal Engineer / Retrieval)
@@ -7,8 +7,8 @@
 invalidação por hash de corpus, breakdown de latência e QA jurídico ampliado.
 
 Referências:
-- Estado anterior: [`RAG_CONSTITUICAO_IMPORT.md`](RAG_CONSTITUICAO_IMPORT.md)
-- Auditoria FASE 0: [`RAG_HYBRID_PIPELINE_AUDIT.md`](RAG_HYBRID_PIPELINE_AUDIT.md)
+- Estado anterior: [`CORPUS_CONSTITUICAO_IMPORT.md`](CORPUS_CONSTITUICAO_IMPORT.md)
+- Auditoria FASE 0: [`CORPUS_HYBRID_PIPELINE_AUDIT.md`](CORPUS_HYBRID_PIPELINE_AUDIT.md)
 - Design ColBERT (opcional): [`../COLBERT_LEGAL_RETRIEVAL.md`](../COLBERT_LEGAL_RETRIEVAL.md)
 
 ---
@@ -34,7 +34,7 @@ Referências:
 
 ## 2. FASE 0 — Auditoria
 
-Relatório separado em [`RAG_HYBRID_PIPELINE_AUDIT.md`](RAG_HYBRID_PIPELINE_AUDIT.md).
+Relatório separado em [`CORPUS_HYBRID_PIPELINE_AUDIT.md`](CORPUS_HYBRID_PIPELINE_AUDIT.md).
 Principais constatações:
 
 - `lex_corpus_norms` criada com **vetor único sem nome** (1024D Cosine), **sem
@@ -377,8 +377,8 @@ Speedup warm = ~525× (cache LRU; em produção com Redis, esperamos warm 1–3m
 
 **Novos (docs):**
 - `docs/COLBERT_LEGAL_RETRIEVAL.md`
-- `docs/reports/RAG_HYBRID_PIPELINE_AUDIT.md`
-- `docs/reports/RAG_HYBRID_SEARCH_UPGRADE.md` (este arquivo)
+- `docs/reports/CORPUS_HYBRID_PIPELINE_AUDIT.md`
+- `docs/reports/CORPUS_HYBRID_SEARCH_UPGRADE.md` (este arquivo)
 
 **Modificados:**
 - `src/lib/constants.ts` — `LEGAL_CORPUS_TENANT_ID`, `CORPUS_LAYER_*`.

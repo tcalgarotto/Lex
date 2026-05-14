@@ -32,7 +32,7 @@ Ordem fixa na subnavegação persistente (`CaseSubnav`):
 
 - Fonte: `src/lib/ui/product-terminology.ts` — `PRODUCT_TERMINOLOGY`, `translateTerm`, `USER_FACING_MESSAGES`.
 - **Regra:** não exibir ao usuário comum strings com jargão interno (ex.: nomes de infraestrutura técnica); usar tradução ou mensagem canônica.
-- **Divergência intencional:** a mensagem obrigatória do prompt que citava “RAG interno” foi adaptada para **“A pesquisa interna no acervo…”** (mesmo significado, sem sigla na UI).
+- **Divergência intencional:** a mensagem obrigatória do prompt que citava “motor interno de busca no corpus” foi adaptada para **“A pesquisa interna no acervo…”** (mesmo significado, sem sigla na UI).
 
 ## Dados: Case Brain → UI
 

@@ -1,4 +1,4 @@
-# Corpus Seeding — popular o RAG do Lex
+# Corpus Seeding — popular o índice jurídico do Lex
 
 > Roteiro objetivo para encher o `lex_corpus_norms` e `lex_corpus_jurisprudence`
 > sem depender de Inngest local nem chaves opcionais.
@@ -118,8 +118,8 @@ npm run corpus:stats
 # Endpoint admin (apenas OWNER)
 curl https://lex-navy.vercel.app/api/admin/corpus-stats | jq .
 
-# Smoke retrieval — devolve fontes citadas
-curl https://lex-navy.vercel.app/api/retrieval/explain?q=responsabilidade+civil+do+fornecedor
+# Smoke retrieval — devolve fontes citadas (substitui endpoint de diagnóstico legado)
+curl "https://lex-navy.vercel.app/api/retrieval/search?q=responsabilidade+civil+do+fornecedor&scope=tudo"
 ```
 
 ---

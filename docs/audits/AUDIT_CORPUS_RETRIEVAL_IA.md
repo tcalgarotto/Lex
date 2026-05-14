@@ -1,4 +1,4 @@
-# Auditoria de RAG e IA — Projeto Lex
+# Auditoria de busca indexada e IA — Projeto Lex
 
 ## 1. Qualidade da Recuperação (Retrieval)
 

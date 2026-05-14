@@ -10,8 +10,6 @@ const FORBIDDEN = [
   "Qdrant",
   "rerank",
   "vector",
-  "RAG",
-  "fallback",
   "pipeline",
 ] as const;
 

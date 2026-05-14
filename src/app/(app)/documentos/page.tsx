@@ -10,6 +10,7 @@ import { DocumentStatus } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { devLogLexTiming } from "@/lib/dev/server-timing";
 import { prisma } from "@/lib/prisma";
+import { getWorkspaceStorageSummary } from "@/lib/storage/storage-quota";
 import { officePrivateDocumentsAndParts } from "@/lib/documents/office-list-filter";
 import {
   deriveDocumentDisplayStatus,
@@ -18,7 +19,8 @@ import {
 import { DocumentPdfThumbnail } from "@/components/documents/document-pdf-thumbnail";
 import { DocumentRowActions } from "@/components/documents/document-row-actions";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
-import { lexPageLeadClassName, lexPageTitleClassName } from "@/lib/lex-ds";
+import { WorkspaceStorageIndicator } from "@/components/workspace/workspace-storage-indicator";
+import { lexPageLeadClassName, lexPageTitleClassName, lexTypeCardTitleClassName } from "@/lib/lex-ds";
 
 
 interface DocumentosPageProps {
@@ -44,7 +46,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
   if (sp.unlinked === "1") andParts.push({ caseId: null });
 
   const tDb = performance.now();
-  const [documents, cases] = await Promise.all([
+  const [documents, cases, storageSummary] = await Promise.all([
     prisma.document.findMany({
       where: {
         workspaceId,
@@ -76,6 +78,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
       take: 50,
       select: { id: true, title: true },
     }),
+    getWorkspaceStorageSummary(workspaceId),
   ]);
   devLogLexTiming("documentos.prisma", performance.now() - tDb);
   devLogLexTiming("documentos.page", performance.now() - pageT0);
@@ -98,6 +101,8 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
             ctaGlass
           />
         </header>
+
+        <WorkspaceStorageIndicator summary={storageSummary} />
 
         <FiltersBar status={sp.status ?? null} unlinked={sp.unlinked === "1"} />
 
@@ -161,20 +166,20 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
                               {d.case ? (
                                 <Link
                                   href={`/cases/${d.case.id}`}
-                                  className="text-[13px] font-medium text-violet-300 hover:underline"
+                                  className="text-sm font-medium text-violet-300 hover:underline"
                                 >
                                   {d.case.title}
                                 </Link>
                               ) : (
                                 <Badge
                                   variant="secondary"
-                                  className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
+                                  className="border-[0.5px] border-[color:var(--border-default)] px-2 py-0.5 text-caption font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]"
                                 >
                                   Sem caso
                                 </Badge>
                               )}
                             </div>
-                            <h2 className="line-clamp-2 text-[17px] font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-lg">
+                            <h2 className={`line-clamp-2 ${lexTypeCardTitleClassName}`}>
                               {d.originalName}
                             </h2>
                           </div>
@@ -189,7 +194,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-col gap-1 border-t border-[color:var(--border-subtle)] pt-3 text-[13px] text-[color:var(--text-muted)]">
+                    <div className="mt-3 flex flex-col gap-1 border-t border-[color:var(--border-subtle)] pt-3 text-caption text-[color:var(--text-muted)]">
                       <p className="leading-snug">
                         {d.totalChunks !== null ? (
                           <span className="text-[color:var(--text-secondary)]">
@@ -228,7 +233,7 @@ function StatusChip({ kind, label }: { kind: DocumentDisplayKind; label: string 
   return (
     <Badge
       variant="outline"
-      className={`border-[0.5px] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${KIND_TONE[kind]}`}
+      className={`border-[0.5px] px-2 py-0.5 text-caption font-semibold uppercase tracking-wide ${KIND_TONE[kind]}`}
     >
       {label}
     </Badge>
@@ -264,7 +269,7 @@ function FiltersBar({ status, unlinked }: { status: string | null; unlinked: boo
             asChild
             type="button"
             variant={i.active ? "secondary" : "outline"}
-            className="h-11 min-h-[44px] text-[15px] font-medium"
+            className="h-11 min-h-[44px] text-control font-medium"
           >
             <Link href={i.href}>{i.label}</Link>
           </Button>

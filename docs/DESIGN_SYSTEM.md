@@ -18,11 +18,13 @@ Design system do produto **Lex**, alinhado à experiência da área de **Casos**
 
 | Uso | Stack | Onde |
 |-----|--------|------|
-| UI / corpo | Geist Sans (`--font-geist-sans`) | `body`, componentes |
-| Código / atalhos | Geist Mono | `.lex-kbd`, trechos técnicos |
+| UI / corpo | Atkinson Hyperlegible → Inter → sistema (`--font-sans`) | `body`, componentes |
+| Código / atalhos | Geist Mono (`GeistMono.variable` no `html`) | `.lex-kbd`, trechos técnicos |
 | Títulos de marketing / hero | DM Serif Display (`--font-serif`) | `font-serif`, landing |
 
-Tamanho raiz: **14px** em `html` (ajuste global de densidade).
+**Raiz:** `html` a **16px**; `body` usa `font-size: var(--text-base)` — ver `src/app/globals.css`.
+
+**Escala, papéis semânticos e mapa por secção (dashboard, shell, formulários):** [DESIGN_SYSTEM_TYPOGRAPHY.md](./DESIGN_SYSTEM_TYPOGRAPHY.md). **Inventário residual e tokens:** [DESIGN_SYSTEM_TYPOGRAPHY_AUDIT.md](./DESIGN_SYSTEM_TYPOGRAPHY_AUDIT.md).
 
 ---
 
@@ -172,6 +174,7 @@ O `backdrop-filter` dos elementos com vidro compõe com o que está visualmente 
 | **Tooltip** | `src/components/ui/tooltip.tsx` — `.lex-glass` + tokens |
 | **Painéis tracejados / inset** | `globals.css` — `.lex-inset`, `.lex-inset-solid` |
 | **Classes partilhadas** | `src/lib/lex-ds.ts` |
+| **Tipografia (escala + mapa por secção)** | [DESIGN_SYSTEM_TYPOGRAPHY.md](./DESIGN_SYSTEM_TYPOGRAPHY.md) |
 
 ---
 
@@ -199,8 +202,10 @@ O `backdrop-filter` dos elementos com vidro compõe com o que está visualmente 
 | `src/components/ui/dialog.tsx` | Modal = vidro forte |
 | `src/lib/lex-ds.ts` | CTAs e strings de classe partilhadas |
 | `tailwind.config.ts` | `darkMode: ['selector', '[data-theme="dark"]']` |
+| `docs/DESIGN_SYSTEM_TYPOGRAPHY.md` | Escala, papéis, mapa por secção |
+| `docs/DESIGN_SYSTEM_TYPOGRAPHY_AUDIT.md` | Inventário `text-[Npx]` residual + hierarquia |
 
-Documento HTML legado (referência visual histórica): `docs/model design/lex-design-system-v2.html` — o **DS canónico do produto** é este ficheiro + `globals.css`.
+Documento HTML legado (referência visual histórica): `docs/model design/lex-design-system-v2.html` — o **DS canónico do produto** é este ficheiro + `globals.css` + tipografia (`DESIGN_SYSTEM_TYPOGRAPHY.md`, `DESIGN_SYSTEM_TYPOGRAPHY_AUDIT.md`).
 
 ---
 

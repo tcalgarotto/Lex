@@ -3,7 +3,7 @@
  *
  * Quem usa Drafting/Review precisa saber EXATAMENTE quais normas estão
  * indexadas e quais ainda não estão. Sem isso, o sistema cita "art. 300
- * CPC" como se tivesse recuperado via RAG quando o CPC sequer foi
+ * CPC" como se tivesse sido recuperado por busca indexada quando o CPC sequer foi
  * ingerido — risco regulatório/auditoria.
  *
  * Implementação:

@@ -18,14 +18,14 @@ Checklist (marcar ✅ apenas com evidência):
 - ⏳ **Onde estou?**: cada tela tem título + descrição curta + contexto do caso (quando aplicável).
 - ⏳ **Próxima ação**: cada tela/aba tem CTA principal coerente e não “expulsa” o usuário do caso.
 - ⏳ **Sem jargão técnico**: usuário não vê “embedding/chunk/qdrant/sparse/dense/intent/grounding”.  
-  - **Progresso (P1)**: mapa mínimo em `src/lib/ui/product-terminology.ts` (badge biblioteca, lembrete RAG) + rodadas anteriores em busca/peças/pesquisa/timeline/API (ver §8.1); **não** há scrub global nem modo “avançado” só admin.
+  - **Progresso (P1)**: mapa mínimo em `src/lib/ui/product-terminology.ts` (badge biblioteca, lembrete sobre a base indexada) + rodadas anteriores em busca/peças/pesquisa/timeline/API (ver §8.1); **não** há scrub global nem modo “avançado” só admin.
 - ⏳ **Estados vazios** orientam (não “tela fria”).
 - ⏳ **Tabs/cards** não quebram em 1366×768.  
   - **Progresso**: `TabsList` do caso com `overflow-x-auto` + `min-w-0` (`case-tabs.tsx`) — smoke manual 1366×768 ainda recomendado para todas as abas.
 - ⏳ **Caso vs Processo**: pré-processual é explícito; CNJ só quando existe; Jobs ≠ Processos.
 - ✅ **Pesquisa jurídica**: relevância em níveis (Alta/Média/Baixa) + tooltips no painel (`legal-search-panel.tsx`); copy “Adicionar ao caso” alinhada em `/pesquisa-juridica` e botão do painel. **Busca global** `/busca`: escopos em PT-BR e relevância sem % cru (ver §8.1).
-- ⏳ **RAG limitation**: UI deixa claro quando base não está disponível (lacuna) e **nunca** vende como fundamento recuperado.  
-  - **Progresso**: texto `RAG_SCOPE_REMINDER` no estado vazio da pesquisa jurídica + `/test-guide` (`product-terminology.ts`, `legal-search-panel.tsx`, `test-guide/page.tsx`); **não** cobre ainda revisão/minuta/dashboard por completo.
+- ⏳ **Limitação da base indexada**: UI deixa claro quando base não está disponível (lacuna) e **nunca** vende como fundamento recuperado.  
+  - **Progresso**: copy de transparência no estado vazio da pesquisa jurídica + `/test-guide` (`product-terminology.ts`, `legal-search-panel.tsx`, `test-guide/page.tsx`); **não** cobre ainda revisão/minuta/dashboard por completo.
 - ✅ **CRUD do caso**: partes/fatos/pedidos/riscos editáveis inline com origem/confidence/status/timeline.  
   - **Evidência (UI)**: `src/components/cases/case-facts-tab.tsx`, `case-parties-tab.tsx`, `case-requests-tab.tsx`, `case-risks-tab.tsx` (+ copy obrigatória em riscos).  
   - **Evidência (API)**: `src/app/api/cases/[id]/{facts,parties,requests,risks}/route.ts` (multi-tenant via `workspaceId` + `caseId`).  
@@ -129,11 +129,11 @@ Checklist (marcar ✅ apenas com evidência):
 
 - **Rotas avançadas sem gating server-side (debug/admin/jobs acessíveis por URL)**  
   - **Problema**: usuário comum consegue acessar por URL superfícies de debug/admin e disparar ações com side-effect, comprometendo UX comercial e elevando risco operacional/LGPD.  
-  - **Evidência**: `src/app/api/retrieval/explain/route.ts` e `src/app/(app)/retrieval/explain/page.tsx` sem checagem de role; `src/app/(app)/settings/jobs/page.tsx` expõe `triggerCorpusReindexAction` via form sem role.  
+  - **Evidência (histórico)**: antes existia uma rota de diagnóstico `/retrieval/explain` sem gating adequado; **removida**. Permanece revisar `src/app/(app)/settings/jobs/page.tsx` (`triggerCorpusReindexAction` via form) sob perspectiva de role.
   - **Severidade**: **P0**  
-  - **Correção proposta**: exigir role/permission no servidor (page-level e handlers/actions). Para explain: considerar `useCache=false` por padrão.  
+  - **Correção proposta**: exigir role/permission no servidor (page-level e handlers/actions) em todas as superfícies admin/jobs/diagnóstico.  
   - **Agente responsável**: `security-lgpd-multitenant-agent` + `code-review-refactor-agent`  
-  - **Teste de aceite**: integration/e2e: usuário não-OWNER recebe 403/404 em `/retrieval/explain` e `/settings/jobs` e não consegue chamar `/api/retrieval/explain`.
+  - **Teste de aceite**: integration/e2e: usuário não-OWNER recebe 403/404 em `/settings/jobs` e não consegue disparar ações com side-effect de corpus sem permissão.
 
 - **Cache de retrieval não inclui `workspaceId`/`caseContext` (risco de poluição/leak)**  
   - **Problema**: retrieval contextual pode incluir sinais do caso (ex.: `problem` do Case Brain) e, se cache não separar por workspace/contexto, vira risco LGPD (poluição cross-tenant) e comportamento incorreto.  
@@ -226,7 +226,7 @@ Checklist (marcar ✅ apenas com evidência):
 ### P2 (polish)
 - **Performance percebida na busca global/contextual (latência cold)**  
   - **Problema**: busca global pode parecer lenta se sempre esperar retrieval legal; advogado quer resposta rápida com estados claros.  
-  - **Evidência**: `docs/reports/GEMINI_FULL_AUDIT_2026_05_08.md` §5 (Global Search Latency); `docs/reports/RAG_HYBRID_SEARCH_UPGRADE.md` mostra cold avg ~3163ms vs warm ~6ms (cache).  
+  - **Evidência**: `docs/reports/GEMINI_FULL_AUDIT_2026_05_08.md` §5 (Global Search Latency); `docs/reports/CORPUS_HYBRID_SEARCH_UPGRADE.md` mostra cold avg ~3163ms vs warm ~6ms (cache).  
   - **Severidade**: **P2**  
   - **Correção proposta**: UI com streaming/progressive results; cache key já inclui `corpusContentHash` (manter), debounce e paralelização; estados “busca simples” vs “busca contextual”.  
   - **Agente responsável**: `performance-observability-agent` + `design-system-frontend-polish-agent`  
@@ -287,7 +287,7 @@ Usar o roteiro em `docs/UX_FLOW_AUDIT.md` e registrar aqui quaisquer becos sem s
 
 - Tabela e evidências em **§5.2 “P1 — fechamento desta rodada”** (`6edf8e8`, `32abc3b`, `5949777`).
 - **Gate A–N**: **não reaberto**; alterações são só camada de produto (strings, labels, deep-link, mapeamento de enums na UI).
-- **Pendência explícita**: checklist amplo §3 (tabs em 1366×768, “onde estou” em **todas** as telas, estados vazios globais, RAG limitation em toda superfície) continua **dívida** — ver itens ⏳ em §3; próxima rodada pode usar `design-system-frontend-polish-agent` com screenshots.
+- **Pendência explícita**: checklist amplo §3 (tabs em 1366×768, “onde estou” em **todas** as telas, estados vazios globais, limitação da base indexada em toda superfície) continua **dívida** — ver itens ⏳ em §3; próxima rodada pode usar `design-system-frontend-polish-agent` com screenshots.
 
 ### 8.2 Gate de segurança / observabilidade (critério L)
 

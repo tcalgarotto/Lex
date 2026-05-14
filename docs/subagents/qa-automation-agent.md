@@ -22,7 +22,7 @@ Sua missão é criar testes que impeçam regressão e provem que o Lex funciona 
 - entrevista genérica offline (sempre disponível)
 - entrevista por IA (sugestões a partir do relato)
 - templates (creche/saúde/consumidor/contratos/família/etc.)
-- RAG por domínio (domínios sentinela)
+- Busca indexada por domínio (domínios sentinela)
 - penalidade/controle de ADCT (não dominar fora de contexto)
 - draft guard (proibir citações fora do corpus indexado)
 - export DOCX (abre e preserva estrutura)

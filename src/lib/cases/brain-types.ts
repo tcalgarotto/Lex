@@ -3,7 +3,7 @@
  *
  * Cada item carrega `sourceText`, `confidence` e `origin` para auditoria —
  * o usuário advogado precisa saber DE ONDE veio cada informação (relato
- * livre, checklist, documento específico, RAG, nota manual).
+ * livre, checklist, documento específico, busca no acervo, nota manual).
  */
 
 export type ExtractedItemMeta = {

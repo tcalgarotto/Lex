@@ -1,6 +1,6 @@
 # Lex — Fontes Jurídicas Públicas, API Keys e Plano de Ingestão
 
-> Objetivo: organizar todas as fontes jurídicas que podem alimentar o Lex, separar o que precisa de chave do que é público, e orientar o Cursor a extrair o máximo possível de valor para RAG, pesquisa jurisprudencial, strategy engine, cockpit e knowledge graph.
+> Objetivo: organizar todas as fontes jurídicas que podem alimentar o Lex, separar o que precisa de chave do que é público, e orientar o Cursor a extrair o máximo possível de valor para o corpus indexado, pesquisa jurisprudencial, strategy engine, cockpit e knowledge graph.
 
 > Domínio atual do app: https://lex-navy.vercel.app
 
@@ -85,7 +85,7 @@ STJ_BASE_URL=https://processo.stj.jus.br
 STJ_RATE_LIMIT_PER_MINUTE=10
 ```
 
-### Corpus/RAG
+### Corpus indexado
 
 ```env
 ENABLE_CORPUS_SYNC=true

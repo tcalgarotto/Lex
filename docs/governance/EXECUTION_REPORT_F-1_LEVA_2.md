@@ -104,7 +104,7 @@ Cada métrica tem **11 campos** (id, definição, como medir hoje, baseline_atua
 10. Heurística.
 11. Fallback LLM.
 
-Inclui **matriz de capacidade** por nível (pode citar / fundamentar / sobrescrever / exige validação / exige revisão / pode entrar em memória/RAG/cliente/export); **12 regras absolutas** ("IA nunca é fonte primária", "base ausente = lacuna nunca fundamento", etc); diferenciação operacional explícita entre `LegalSource` (DROPPED), `LegalNorm`, `LegalChunk`, `CaseLegalSource`, `ApprovedLegalFoundation`, `Document`, `OfficeMemory`, `InterviewTemplate`; distinção `AI_REASONING ≠ LEGAL_TRUTH`.
+Inclui **matriz de capacidade** por nível (pode citar / fundamentar / sobrescrever / exige validação / exige revisão / pode entrar em memória/busca indexada/cliente/export); **12 regras absolutas** ("IA nunca é fonte primária", "base ausente = lacuna nunca fundamento", etc); diferenciação operacional explícita entre `LegalSource` (DROPPED), `LegalNorm`, `LegalChunk`, `CaseLegalSource`, `ApprovedLegalFoundation`, `Document`, `OfficeMemory`, `InterviewTemplate`; distinção `AI_REASONING ≠ LEGAL_TRUTH`.
 
 **Lacuna anterior fechada**: docs antigas (e até README) ainda referenciam `LegalSource` e confundem `CaseLegalSource` com norma; gates G-58/S-03 mencionavam "fundamento inventado" sem definir hierarquia oficial. Agora há **um** documento canônico para "o que é fonte".
 

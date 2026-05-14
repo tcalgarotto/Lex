@@ -347,7 +347,7 @@ Convenção: bandas relativas usam **multiplicadores do baseline** (ex.: "p95 �
 - **threshold_pro**: ≤ 20%.
 - **threshold_enterprise**: ≤ 12%.
 - **owner**: workflow jurídico owner + Legal Lead.
-- **stop_condition**: indireta (alta taxa indica problema de UX/RAG, não regressão).
+- **stop_condition**: indireta (alta taxa indica problema de UX e busca indexada, não regressão).
 - **gate**: G-57 (qualidade da experiência).
 - **acao_se_falhar**: `require-override` (não bloqueia, mas dispara revisão).
 

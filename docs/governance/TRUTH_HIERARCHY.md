@@ -109,7 +109,7 @@ tier: mvp
 
 > Cada `✓` é uma capacidade **permitida**; `✗` é **proibida**; `cond.` é **condicional** com regra explícita na coluna "regra".
 
-| Nível | Pode citar? | Pode fundamentar peça? | Pode sobrescrever outro nível? | Exige validação? | Exige revisão humana? | Pode entrar na memória? | Pode entrar no RAG? | Pode aparecer para cliente? | Pode ser usado no export? | Regra |
+| Nível | Pode citar? | Pode fundamentar peça? | Pode sobrescrever outro nível? | Exige validação? | Exige revisão humana? | Pode entrar na memória? | Pode entrar na busca indexada? | Pode aparecer para cliente? | Pode ser usado no export? | Regra |
 |------:|:-----------:|:----------------------:|:------------------------------:|:----------------:|:----------------------:|:------------------------:|:--------------------:|:----------------------------:|:--------------------------:|-------|
 | 1 — Legislação oficial vigente | ✓ | ✓ | ✓ (sobrescreve níveis 2-11) | parser oficial + URN-LEX + `validFrom/To` | apenas para inclusão no corpus | ✓ (memória pode referenciar; nunca substitui) | ✓ (`lex_corpus_norms`) | ✓ | ✓ | nível 1 nunca é "estilo"; é texto **vigente na data** |
 | 2 — Jurisprudência oficial | ✓ | ✓ | sobrescreve 3-11 (não 1) | fonte oficial + URN ou tribunal verificável | apenas para inclusão | ✓ (apenas referência) | ✓ (`lex_corpus_jurisprudence`) | ✓ | ✓ | citar apenas se `STJ`/`STF`/etc adapter validado |
@@ -165,7 +165,7 @@ A distinção é canônica e impacta UI/API/contratos:
 
 | Entidade | Existe no código? | O que representa | Relacionamento principal | Status |
 |----------|-------------------|------------------|----------------------------|--------|
-| `LegalSource` | **NÃO** (DROP em migration `20260508130000_drop_legal_source`) | Modelo legacy do RAG anterior | — | **removido**; menções em README são stale (ver Leva 1 §4.2) |
+| `LegalSource` | **NÃO** (DROP em migration `20260508130000_drop_legal_source`) | Modelo legacy do índice anterior | — | **removido**; menções em README são stale (ver Leva 1 §4.2) |
 | `LegalNorm` | sim | Norma canônica identificada por URN-LEX | tem N `LegalNormVersion`; tem N `LegalChunk` | nível 1 (legislação) e 2 (jurisprudência) da hierarquia |
 | `LegalNormVersion` | sim | Snapshot temporal (vigência) com `validFrom`/`validTo` e `contentHash` | pertence a `LegalNorm`; tem N `LegalChunk` | habilita filtro `asOf` |
 | `LegalChunk` | sim | Trecho com hierarquia tipada (Art./§/inciso) e `vectorPointId` no Qdrant | pertence a `LegalNormVersion` | unidade indexada/recuperada |
@@ -203,7 +203,7 @@ A distinção é canônica e impacta UI/API/contratos:
 - Sugestões IA (nível 9) sempre com badge "Sugestão IA" + opção "ver fonte".
 - Fallback (nível 11) sempre com banner "base insuficiente — esta resposta é exploratória; não use como fundamento".
 
-### 6.5 Em RAG / corpus
+### 6.5 No corpus indexado
 
 - Apenas níveis 1 e 2 entram no `lex_corpus_norms` / `lex_corpus_jurisprudence`.
 - Documentos do caso (nível 4) e memória (nível 7) vão para índices separados, **escopados por workspace** (nunca cruzam).

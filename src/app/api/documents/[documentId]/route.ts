@@ -7,6 +7,7 @@ import { userCanDeleteDocument, userCanReadDocument } from "@/lib/documents/docu
 import { removeDocumentBuffer, removeDocumentThumbnails } from "@/lib/storage";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { getLogger } from "@/lib/logger";
+import { recalculateWorkspaceStorageUsage } from "@/lib/storage/storage-quota";
 
 const log = getLogger("lex.api.documents.id");
 
@@ -93,6 +94,7 @@ export async function DELETE(
       processId: true,
       originalName: true,
       storagePath: true,
+      sizeBytes: true,
       libraryShelf: true,
       uploadedByUserId: true,
     },
@@ -126,6 +128,13 @@ export async function DELETE(
   }
 
   await prisma.document.delete({ where: { id: doc.id } });
+
+  await recalculateWorkspaceStorageUsage(workspaceId).catch((err) => {
+    log.warn("storage usage recalc failed (non-fatal)", {
+      workspaceId,
+      err: err instanceof Error ? { name: err.name, message: err.message } : { message: String(err) },
+    });
+  });
 
   await prisma.activity.create({
     data: {

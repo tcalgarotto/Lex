@@ -2,7 +2,7 @@
  * Orquestrador da camada Legal Workflow Automation.
  *
  * Workflows operacionais multi-tenant. O fluxo principal de minuta/revisão
- * não usa mais retrieval vetorial (RAG/Qdrant) — delega a `generateDraft` /
+ * não usa retrieval vetorial no drafting — delega a `generateDraft` /
  * `reviewDraft` (DeepSeek via modelo de peça).
  */
 

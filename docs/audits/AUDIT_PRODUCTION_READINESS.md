@@ -28,7 +28,7 @@ No estado atual, o Lex parece um **"Technical Prototype de Luxo"**. Há muita in
 ## Os 10 Blocker Absolutos (Prioridade Zero)
 
 1.  **Segurança Inngest:** Garantir `INNGEST_SIGNING_KEY` em produção para evitar injeção de eventos.
-2.  **Unificação do RAG:** Deletar o motor legado (`LegalSource`) e unificar tudo no motor canônico (`LegalNorm`).
+2.  **Unificação da busca indexada:** Deletar o motor legado (`LegalSource`) e unificar tudo no motor canônico (`LegalNorm`).
 3.  **Performance de Busca:** Substituir `ILIKE` por FTS ou busca puramente vetorial no Qdrant.
 4.  **Sinceridade na UI:** Remover ou marcar como "Em breve" as integrações inexistentes no Cockpit.
 5.  **Populamento do Corpus:** Ingerir pelo menos a legislação federal base (CF, CC, CPC, CP) antes de qualquer onboarding.

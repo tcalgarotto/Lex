@@ -239,7 +239,7 @@ Alternativas: SES (`AWS_*`), SMTP genérico, ou Supabase Auth SMTP nativo.
 
 ---
 
-## J. Provedores jurídicos (corpus RAG)
+## J. Provedores jurídicos (corpus indexado)
 
 > Detalhes completos de pipeline e como popular: ver §J.4 abaixo + `docs/QDRANT_CLOUD_SETUP.md`.
 
@@ -254,7 +254,7 @@ Alternativas: SES (`AWS_*`), SMTP genérico, ou Supabase Auth SMTP nativo.
 
 > **STF/STJ/LexML/Fixture não exigem chave** — são portais públicos. As variáveis `*_PROVIDER_MODE` apenas alternam entre o provider real (`live`) e o embutido (`fixture`).
 
-### J.2 Mapa: o que cada provider alimenta no RAG
+### J.2 Mapa: o que cada provider alimenta no corpus
 
 | Provider | Chave? | Cobre | Vai para a collection |
 |---|---|---|---|

@@ -28,7 +28,7 @@ function isJurisprudence(c: LegalFoundationCandidate | JurisprudenceCandidate): 
   return "court" in c && typeof (c as JurisprudenceCandidate).court === "string";
 }
 
-/** `CaseLegalSource.chunkId` sintético para pins da pesquisa assistida (sem corpus/RAG). */
+/** `CaseLegalSource.chunkId` sintético para pins da pesquisa assistida (sem corpus indexado). */
 export function assistedPinChunkId(kind: PinnedFoundationKind, pinnedId: string): string {
   return kind === "jurisprudence" ? `lex-assisted-juris:${pinnedId}` : `lex-assisted-pin:${pinnedId}`;
 }

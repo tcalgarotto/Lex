@@ -290,7 +290,7 @@ export async function GET() {
       qdrantRequired,
       async () => {
         if (!legalRetrievalEnabled) {
-          return { hint: "RAG/Qdrant desativado por enquanto." };
+          return { hint: "Qdrant / busca no corpus desativados por enquanto." };
         }
         const url = process.env["QDRANT_URL"];
         if (!url) {

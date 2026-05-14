@@ -1,11 +1,11 @@
-# RAG Hybrid Pipeline — Auditoria de estado (FASE 0)
+# Corpus — pipeline híbrido — Auditoria de estado (FASE 0)
 
 **Data:** 2026-05-08
 **Escopo:** auditar o pipeline de retrieval jurídico já em produção sobre o corpus
 da Constituição Federal (514 chunks/514 pontos) **antes** de qualquer mudança.
 Sem alterações de código nesta fase.
 
-Referência prévia: [`docs/reports/RAG_CONSTITUICAO_IMPORT.md`](RAG_CONSTITUICAO_IMPORT.md).
+Referência prévia: [`docs/reports/CORPUS_CONSTITUICAO_IMPORT.md`](CORPUS_CONSTITUICAO_IMPORT.md).
 
 ---
 
@@ -220,7 +220,7 @@ do trace (dense_ms, bm25_ms, fusion_ms, rerank_ms, cache hit/miss).
 ## 13. Estado das collections (snapshot — `npm run qdrant:stats`)
 
 > A última execução documentada em
-> [`docs/reports/RAG_CONSTITUICAO_IMPORT.md`](RAG_CONSTITUICAO_IMPORT.md) §5
+> [`docs/reports/CORPUS_CONSTITUICAO_IMPORT.md`](CORPUS_CONSTITUICAO_IMPORT.md) §5
 > registra:
 >
 > - `lex_main` — 428 pontos (uploads de usuários, intocada)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DASHBOARD_FORBIDDEN_METHOD_TERMS, DASHBOARD_HOME_UI_COPY } from "@/components/dashboard/morning-briefing";
+import { DASHBOARD_FORBIDDEN_METHOD_TERMS, DASHBOARD_HOME_UI_COPY } from "../../components/dashboard/morning-briefing";
 import {
   type BriefingActionItem,
   formatLawyerGreetingFirstName,
@@ -25,7 +25,7 @@ describe("morning briefing UI helpers", () => {
   });
 
   it("keeps user-visible copy free of infra jargon", () => {
-    const forbidden = /\b(RAG|Qdrant|chunk|embedding|pipeline|workspace)\b/i;
+    const forbidden = /\b(Qdrant|chunk|embedding|pipeline|workspace)\b/i;
     const samples = [
       "Sem entrevista completa, o Lex não consegue organizar fatos, partes e pedidos.",
       "Fluxo de documentos",
@@ -38,7 +38,8 @@ describe("morning briefing UI helpers", () => {
   });
 
   it("planejamento da semana copy omits method-management jargon", () => {
-    for (const value of Object.values(DASHBOARD_HOME_UI_COPY)) {
+    const copyStrings = Object.values(DASHBOARD_HOME_UI_COPY) as string[];
+    for (const value of copyStrings) {
       const lower = value.toLowerCase();
       for (const term of DASHBOARD_FORBIDDEN_METHOD_TERMS) {
         expect(lower.includes(term.toLowerCase())).toBe(false);

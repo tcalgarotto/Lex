@@ -44,6 +44,6 @@
 - **Impacto:** Sensação de produto quebrado ou incompleto.
 
 ### 4.2 Excesso de Texto Explicativo
-- **Evidência:** Cabeçalhos de páginas como `/retrieval/explain` e `/cockpit` possuem parágrafos longos explicando o que a página faz.
+- **Evidência:** Cabeçalhos de páginas como `/cockpit` (e antigas superfícies técnicas removidas) tinham parágrafos longos explicando o que a página faz.
 - **Problema:** "Show, don't tell". Se você precisa de 3 linhas de texto para explicar o que é um "Cockpit", a interface falhou em ser intuitiva.
 - **Impacto:** UI poluída e cansativa.

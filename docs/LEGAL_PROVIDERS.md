@@ -1,4 +1,4 @@
-# Lex — Provedores Jurídicos (corpus RAG)
+# Lex — Provedores jurídicos (corpus indexado)
 
 > Mapa canônico do que cada provider alimenta, qual chave precisa, e como
 > ativá-lo. Atualizado para a nova arquitetura com `registry.ts`, modos

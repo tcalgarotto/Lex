@@ -64,7 +64,7 @@ A prioridade **não é opinião** — é uma **classe** atribuída por critério
 - LGPD mínima (logs sem PII, `pii.ts`, retention default) — implementado, **doc + DPA** = P0.
 - Performance básica (timeouts retrieval, cache LRU, Redis) — implementado, **dashboards** = P0.
 - Admin gating server-side (não só esconder no menu) — pendente = P0.
-- **DeepSeek Legal Research Mode (P0, temporário)** — pesquisa jurídica voltada ao usuário usa **inferência estruturada** via DeepSeek API enquanto o RAG interno é otimizado em ciclo futuro; **kill-switch** por `LEGAL_RESEARCH_PROVIDER`, `DEEPSEEK_LEGAL_RESEARCH_ENABLED` e ausência de chaves; **não** remove RAG nem Qdrant; toda saída permanece **candidata / sugestão** até ação humana (`AI_RECOMMENDED_UNVERIFIED` por padrão). Ver `docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md`.
+- **DeepSeek Legal Research Mode (P0, temporário)** — pesquisa jurídica voltada ao usuário usa **inferência estruturada** via DeepSeek API enquanto o motor interno de busca no corpus é otimizado em ciclo futuro; **kill-switch** por `LEGAL_RESEARCH_PROVIDER`, `DEEPSEEK_LEGAL_RESEARCH_ENABLED` e ausência de chaves; **não** remove o motor interno de busca nem o Qdrant; toda saída permanece **candidata / sugestão** até ação humana (`AI_RECOMMENDED_UNVERIFIED` por padrão). Ver `docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md`.
 
 ### P1 — Core comercial
 

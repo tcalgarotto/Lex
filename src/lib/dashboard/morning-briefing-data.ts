@@ -80,7 +80,7 @@ export type PulseLibraryDetail = {
 
 export type BriefingActionType = "caso" | "documento" | "peça" | "pesquisa" | "processo";
 
-export type BriefingActionEisenhowerBucket = "maximum" | "important" | "waiting";
+export type BriefingActionEisenhowerBucket = "maximum" | "important";
 
 /** Origem discreta na UI (sem jargão de método de trabalho). */
 export type BriefingActionDiscreteOrigin = "lex_sugerido" | "aguardando_cliente" | "aguardando_responsavel";
@@ -97,9 +97,30 @@ export type BriefingActionItem = {
   eisenhowerBucket?: BriefingActionEisenhowerBucket;
   /** Indicação curta na UI: sugestão automática vs dependência de cliente/equipa. */
   discreteOrigin?: BriefingActionDiscreteOrigin;
-  /** Linha opcional de contexto (ex.: fase do caso) */
-  statusHint?: string;
 };
+
+const BRIEFING_O_QUE_FAZER_MAXIMUM_COUNT = 2;
+const BRIEFING_O_QUE_FAZER_IMPORTANT_COUNT = 3;
+
+function briefingActionBucket(a: BriefingActionItem): BriefingActionEisenhowerBucket {
+  return a.eisenhowerBucket ?? "maximum";
+}
+
+function sliceBriefingActionsForHome(all: BriefingActionItem[]): {
+  briefingActions: BriefingActionItem[];
+  briefingActionsOverflow: number;
+} {
+  const maxItems = all.filter((a) => briefingActionBucket(a) === "maximum");
+  const impItems = all.filter((a) => briefingActionBucket(a) === "important");
+  const briefingActions = [
+    ...maxItems.slice(0, BRIEFING_O_QUE_FAZER_MAXIMUM_COUNT),
+    ...impItems.slice(0, BRIEFING_O_QUE_FAZER_IMPORTANT_COUNT),
+  ];
+  const briefingActionsOverflow =
+    Math.max(0, maxItems.length - BRIEFING_O_QUE_FAZER_MAXIMUM_COUNT) +
+    Math.max(0, impItems.length - BRIEFING_O_QUE_FAZER_IMPORTANT_COUNT);
+  return { briefingActions, briefingActionsOverflow };
+}
 
 export type ResumeNamedCase = {
   kind: "named";
@@ -841,7 +862,6 @@ function buildMorningBriefingPayloadFromParts(
       priority: "urgent",
       eisenhowerBucket: "maximum",
       discreteOrigin: "lex_sugerido",
-      statusHint: c ? `Minuta · ${statusLabelUser(c.status)}` : undefined,
     });
   }
 
@@ -852,7 +872,7 @@ function buildMorningBriefingPayloadFromParts(
       title: `Documento em espera — ${d.originalName}`,
       reason: "A leitura automática está a demorar mais do que o habitual.",
       cta: "Ver documento",
-      href: "/documentos",
+      href: `/biblioteca/documentos/${d.id}`,
       priority: "urgent",
       eisenhowerBucket: "maximum",
       discreteOrigin: "lex_sugerido",
@@ -888,7 +908,6 @@ function buildMorningBriefingPayloadFromParts(
       priority: "normal",
       eisenhowerBucket: "maximum",
       discreteOrigin: "aguardando_cliente",
-      statusHint: `${statusLabelUser(c.status)} · sem documentos vinculados`,
     });
   }
 
@@ -912,16 +931,16 @@ function buildMorningBriefingPayloadFromParts(
       type: "processo",
       title: `Associar processo — ${c.title}`,
       reason: "Quando existir número CNJ, fica mais fácil acompanhar prazos e movimentações.",
-      cta: "Abrir caso",
-      href: `/cases/${c.id}`,
+      cta: "Importar CNJ",
+      href: `/processos?returnCase=${c.id}`,
       priority: "low",
-      eisenhowerBucket: "waiting",
+      eisenhowerBucket: "important",
       discreteOrigin: "aguardando_cliente",
     });
   }
 
-  const briefingActionsOverflow = Math.max(0, briefingActionsAll.length - 5);
-  const briefingActions = briefingActionsAll.slice(0, 5);
+  const { briefingActions, briefingActionsOverflow } = sliceBriefingActionsForHome(briefingActionsAll);
+  const topBriefingAction = briefingActions[0] ?? null;
 
   const genuinelyAllClear =
     briefingActionsAll.length === 0 &&
@@ -941,7 +960,7 @@ function buildMorningBriefingPayloadFromParts(
       ? [...unnamedCases].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]!
       : null;
 
-  const topPriorityTitle = briefingActionsAll[0] ? extractPriorityCaseTitle(briefingActionsAll[0].title) : null;
+  const topPriorityTitle = topBriefingAction ? extractPriorityCaseTitle(topBriefingAction.title) : null;
 
   const pulseCases: PulseCasesDetail = {
     headline: `${activeCases} casos em andamento`,
@@ -951,7 +970,7 @@ function buildMorningBriefingPayloadFromParts(
       `${readyPieceTrackCount} em fase de minuta ou revisão`,
     ],
     nextActionTitle:
-      briefingActionsAll[0]?.title ??
+      topBriefingAction?.title ??
       (oldestUnnamedFirst
         ? `Continuar entrevista — criado em ${oldestUnnamedFirst.createdAt.toLocaleDateString("pt-BR", {
             day: "numeric",
@@ -959,10 +978,10 @@ function buildMorningBriefingPayloadFromParts(
           })}`
         : null),
     nextHref:
-      briefingActionsAll[0]?.href ??
+      topBriefingAction?.href ??
       (oldestUnnamedFirst ? `/cases/${oldestUnnamedFirst.id}/entrevista` : activeCases > 0 ? "/cases" : "/cases/new"),
     nextCtaLabel:
-      briefingActionsAll[0]?.cta ??
+      topBriefingAction?.cta ??
       (oldestUnnamedFirst ? "Continuar entrevista" : activeCases > 0 ? "Ver casos" : "Novo caso"),
   };
 

@@ -1,4 +1,4 @@
-# Lex — Arquitetura de RAG
+# Lex — Arquitetura de busca indexada no acervo
 
 Existem **dois motores** de recuperação no Lex. Eles convivem por
 herança e têm responsabilidades distintas. Esta página documenta a
@@ -23,7 +23,7 @@ regra para evitar uso cruzado.
 | Caso de uso | Motor | Tabela primária | Collection Qdrant | Status |
 |---|---|---|---|---|
 | Pesquisa jurídica assistida (modo P0 externo) | `src/lib/legal-research` (DeepSeek API) | — | — | 🔶 temporário (F-1) |
-| Pergunta sobre lei/jurisprudência (Strategy, Cases, retrieval explain) | `retrieveLegalContext` | `LegalNorm` + `LegalChunk` | `lex_corpus_norms`, `lex_corpus_jurisprudence` | ✅ canônico (motor interno intocado) |
+| Pergunta sobre lei/jurisprudência (Strategy, Cases, APIs internas) | `retrieveLegalContext` | `LegalNorm` + `LegalChunk` | `lex_corpus_norms`, `lex_corpus_jurisprudence` | ✅ canônico (motor interno intocado) |
 | Pergunta sobre documento de processo do workspace (chat de processo, geração de peça) | `retrieveContext` (hybrid) | `Document` + `DocumentChunk` + `LegalPiece` | `lex_main` (multi-tenant) | ✅ válido |
 | Busca global `/busca` | endpoint `/api/search/route.ts` (consome ambos com saneamento) | mix | mix | ✅ válido |
 | `LegalSource` (legacy) | hybrid (com filtro anti-demo) | `LegalSource` | `lex_main` | ⚠️ legacy — **não** usar para novas features |
@@ -45,7 +45,6 @@ Usar **sempre** que a fonte da verdade for **lei, código, súmula, jurisprudên
 **Quem chama**:
 - `/api/strategy/analyze`
 - `src/lib/cases/orchestrator.ts` (`draftWorkflow`, review)
-- `/api/retrieval/explain`
 - `/api/search` (para a aba "lei")
 
 ## Motor 2: `retrieveContext` (`src/lib/retrieval/hybrid-retriever.ts`)

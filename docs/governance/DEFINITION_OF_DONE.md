@@ -139,7 +139,7 @@ Copiar o checklist abaixo no **corpo da PR** ou em arquivo `.github/PULL_REQUEST
 - Owner: UX owner; reviewer: PO.
 
 **15. Linguagem para o advogado**
-- Não introduzir termos como "embedding", "vector", "chunk", "RAG", "Inngest job", "Qdrant", "Redis", "DLQ" em UI exceto em `/observability` (admin).
+- Não introduzir termos como "embedding", "vector", "chunk", "índice vetorial interno", "Inngest job", "Qdrant", "Redis", "DLQ" em UI exceto em `/observability` (admin).
 - Mensagens de erro humanizadas com próxima ação sugerida.
 - Owner: UX owner; reviewer: PO.
 
