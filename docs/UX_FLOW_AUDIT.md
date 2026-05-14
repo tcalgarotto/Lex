@@ -4,8 +4,8 @@
 
 ## Atualização (2026-05-14) — QA layout foundation (validação final checklist)
 
-- **Automático (fecho P1.1 layout):** `npm run lint`, `npm run typecheck`, `npm test` (654) — OK. `npm run build:clean` — **falhou** com `next dev` ativo (corrida em `.next` / módulo `[turbopack]_runtime.js` em fase “Collecting page data”). Repetir com dev parado (ver `docs/LEX_LAYOUT_FOUNDATION.md`).
-- **Visual (sidebar aberta/recolhida):** não executado aqui com sessão autenticada nem screenshots por rota. Checklist manual sugerido: `/dashboard`, `/agenda`, `/cases/[id]`, `/processos`, `/processos/[id]`, `/documentos`, `/publicacoes`, `/settings/integracoes` — centro estável, rails a absorver largura, sem overflow horizontal, topbar alinhada, cartões sem esticar indevidamente; `/dashboard` com `LexCenterGrid` 4 colunas; `/agenda` sem regressão; rail do caso extensível só com JSX em `CaseDetailRightRail` (sem CSS global).
+- **Automático (fecho P1.1 layout):** `npm run lint`, `npm run typecheck`, `npm test` (654) — OK. **`npm run build:clean` passou** com `next dev` parado (`pkill -f "next dev"`), `.next` removido, e build de produção concluído (2026-05-14; duas corridas seguidas após suíte). Com dev a escrever no mesmo `.next`, o build pode falhar (ver `docs/LEX_LAYOUT_FOUNDATION.md`).
+- **Visual mínimo autenticado (scrollWidth, sidebar aberta/recolhida):** não executável neste ambiente (sem browser com sessão). Rotas a validar localmente: `/dashboard`, `/agenda`, `/cases/[id]`, `/processos`, `/processos/[id]`, `/documentos`, `/publicacoes`, `/settings/integracoes` — consola: `document.documentElement.scrollWidth <= window.innerWidth`; centro estável, topbar alinhada, rails a absorver largura, cartões sem esticar indevidamente; `/dashboard` com `LexCenterGrid` 4 colunas; `/agenda` sem regressão; rail do caso via `CaseDetailRightRail` (sem CSS global novo).
 - **Padrão:** corpo autenticado `(app)` via `LexPageFrame` (layouts de segmento, páginas `/cases` e `/cases/new`, `cases/[id]/layout`, ou `LexAgendaShell` com bleed para `/agenda`).
 
 ## QA manual — layout (sidebar × viewport × rotas)
@@ -20,11 +20,10 @@
 
 **Dashboard — esqueleto:** `dashboard/loading.tsx` passou a usar os mesmos `col-span-*` que a página dentro de `LexCenterGrid` (alinhado aos cartões de calendário); regressão visual de loading a validar manualmente.
 
-## Atualização (2026-05-14) — Chrome: toggle da sidebar no header
+## Atualização (2026-05-14) — Chrome: toggle da sidebar no rodapé
 
-- **Concluído:** recolher/expandir menu lateral saiu da `AppSidebar` e passou para `AppTopbar`, na faixa da marca (logo + wordmark à esquerda, **Recolher** à direita). Com sidebar recolhida, **hover** na área da logo mostra o botão **Expandir** (stack `peer` + z-index para cliques na logo quando não em hover; teclado: foco no botão expande).
-- **Ficheiros:** `src/components/app/app-topbar.tsx`, `src/components/app/app-sidebar.tsx`.
-- **QA local (esta sub-rodada):** `npm run typecheck` — OK.
+- **Concluído:** recolher/expandir menu lateral na **parte inferior** da `AppSidebar` (após conta/workspace), com `border-t`; header volta a ser só logo + wordmark condicional.
+- **Ficheiros:** `src/components/app/app-sidebar.tsx`, `src/components/app/app-topbar.tsx`.
 
 ## Atualização (2026-05-14) — P1.1 layout global (LexPageFrame em `(app)`)
 
