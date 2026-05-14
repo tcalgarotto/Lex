@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppTopbar } from "@/components/app/app-topbar";
 import { CoreRoutePrefetcher } from "@/components/app/core-route-prefetcher";
 import { useWorkspaceContext } from "@/components/app/workspace-context";
+import { getPageLayoutConfig } from "@/lib/layout/page-layout-config";
 
 /** cmdk + dialog — carrega após o shell para não competir com o JS inicial da rota. */
 const CommandMenuLazy = dynamic(
@@ -42,7 +43,7 @@ const MainColumn = memo(function MainColumn({
 }) {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const pathname = usePathname() ?? "";
-  const agendaBleed = pathname === "/agenda";
+  const { bleed: routeBleed } = getPageLayoutConfig(pathname);
   return (
     <div
       className={cn(
@@ -53,23 +54,23 @@ const MainColumn = memo(function MainColumn({
       <main
         className={cn(
           "relative z-10 flex min-h-0 flex-1 min-w-0 flex-col",
-          agendaBleed && "px-0 py-0",
-          !agendaBleed && "px-4 py-6 md:px-6 md:py-8 lg:px-8",
+          routeBleed && "px-0 py-0",
+          !routeBleed && "px-4 py-6 md:px-6 md:py-8 lg:px-8",
         )}
       >
           <div
             className={cn(
               "lex-app-content-well min-w-0",
-              agendaBleed && "max-w-none mx-0 flex w-full flex-1 min-h-0 flex-col self-stretch",
+              routeBleed && "max-w-none mx-0 flex w-full flex-1 min-h-0 flex-col self-stretch",
             )}
           >
           <div
             className={cn(
               "lex-page-shell",
-              agendaBleed && "!pb-0 flex min-h-0 flex-1 flex-col",
+              routeBleed && "!pb-0 flex min-h-0 flex-1 flex-col",
             )}
           >
-            <div className={cn("lex-page-inner", agendaBleed && "!space-y-0 flex min-h-0 flex-1 flex-col")}>
+            <div className={cn("lex-page-inner", routeBleed && "!space-y-0 flex min-h-0 flex-1 flex-col")}>
               {children}
             </div>
           </div>

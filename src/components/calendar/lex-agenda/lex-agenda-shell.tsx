@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { LexPageFrame } from "@/components/layout/lex-page-frame";
 import {
   useCallback,
   useDeferredValue,
@@ -905,7 +906,10 @@ export function LexAgendaShell() {
 
   return (
     <div className="lex-agenda-root flex h-[calc(100svh-var(--app-header-h))] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-transparent text-[color:var(--text-primary)]">
-      <div className="lex-agenda-three-well">
+      <LexPageFrame
+        bleed
+        leftRail={(
+          <>
         {/* Coluna 1: rail — em lg+ mesmo trilho `1fr` que a coluna 3 (simétrico ao header). */}
         <aside className="flex min-h-0 min-w-0 w-full flex-col gap-3 overflow-y-auto overflow-x-auto p-3">
           <Button type="button" className="w-full shrink-0" onClick={() => openCreate(agendaDayKey)}>
@@ -1060,6 +1064,202 @@ export function LexAgendaShell() {
           {err ? <p className="text-xs text-rose-500">{err}</p> : null}
         </aside>
 
+          </>
+        )}
+        rightRail={(
+          <>
+        <aside className="flex min-h-0 min-w-0 w-full flex-col gap-3 overflow-y-auto overflow-x-auto p-3">
+          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/70 p-2 shadow-sm sm:p-3">
+            <p className="mb-3 text-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Filtros</p>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="lex-caso" className="text-xs font-medium text-[color:var(--text-primary)]">
+                  Caso
+                </Label>
+                <select
+                  id="lex-caso"
+                  className="flex h-10 w-full cursor-pointer rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] px-3 text-sm text-[color:var(--text-primary)] shadow-sm transition-colors hover:bg-[color:var(--surface-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-0"
+                  value={casoId}
+                  onChange={(e) => setCasoId(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {cases.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lex-resp" className="text-xs font-medium text-[color:var(--text-primary)]">
+                  Responsável
+                </Label>
+                <select
+                  id="lex-resp"
+                  className="flex h-10 w-full cursor-pointer rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] px-3 text-sm text-[color:var(--text-primary)] shadow-sm transition-colors hover:bg-[color:var(--surface-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-0"
+                  value={responsavelId}
+                  onChange={(e) => setResponsavelId(e.target.value)}
+                >
+                  <option value="">Toda a equipe</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name?.trim() || u.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="mb-2 text-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tipo</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setEventTypeSlug("")}
+                    className={cn(
+                      "min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
+                      !eventTypeSlug ? "border-violet-500 bg-violet-500/15 text-[color:var(--text-primary)]" : "border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] text-muted-foreground hover:border-violet-500/40",
+                    )}
+                  >
+                    Todos
+                  </button>
+                  {SCHEDULE_EVENT_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setEventTypeSlug(t)}
+                      className={cn(
+                        "min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
+                        eventTypeSlug === t
+                          ? "border-violet-500 bg-violet-500/15 text-[color:var(--text-primary)]"
+                          : "border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] text-muted-foreground hover:border-violet-500/40",
+                      )}
+                    >
+                      {SCHEDULE_TYPE_LABEL[t]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2.5 border-t border-[color:var(--border-subtle)]/80 pt-3">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-0.5 py-1 text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--surface-elevated)]/50">
+                  <input type="checkbox" checked={includeDone} onChange={(e) => setIncludeDone(e.target.checked)} className="size-4 rounded border-input text-violet-600 focus:ring-violet-500/40" />
+                  Mostrar concluídos
+                </label>
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-0.5 py-1 text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--surface-elevated)]/50">
+                  <input type="checkbox" checked={includeCancelled} onChange={(e) => setIncludeCancelled(e.target.checked)} className="size-4 rounded border-input text-violet-600 focus:ring-violet-500/40" />
+                  Mostrar cancelados
+                </label>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setCasoId("");
+                  setResponsavelId("");
+                  setEventTypeSlug("");
+                  setIncludeCancelled(false);
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </div>
+          </div>
+
+          {selectedEvent ? (
+            <div className="max-h-[min(52vh,28rem)] overflow-y-auto rounded-xl border border-violet-500/30 bg-violet-500/8 p-3 text-sm shadow-sm">
+              <p className="text-micro font-semibold uppercase tracking-wide text-violet-800 dark:text-violet-100">Evento selecionado</p>
+              <p className="mt-1 text-base font-semibold leading-snug">{selectedEvent.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {SCHEDULE_TYPE_LABEL[selectedEvent.type]}
+                {selectedEvent.all_day ? " · Dia inteiro" : ` · ${selectedEvent.start}${selectedEvent.end ? `–${selectedEvent.end}` : ""}`}
+              </p>
+              {selectedEvent.local ? <p className="mt-1 text-xs">Local: {selectedEvent.local}</p> : null}
+              {selectedEvent.caso_title ? <p className="mt-1 text-xs text-muted-foreground">Caso: {selectedEvent.caso_title}</p> : null}
+              {selectedEvent.process_label ? <p className="mt-1 text-xs text-muted-foreground">{selectedEvent.process_label}</p> : null}
+              {selectedEvent.cnj ? <p className="mt-1 font-mono text-xs text-muted-foreground">{selectedEvent.cnj}</p> : null}
+              {selectedEvent.obs ? <p className="mt-2 line-clamp-4 text-xs text-muted-foreground">{selectedEvent.obs}</p> : null}
+              {scheduleNeedsPortalDisclaimer(selectedEvent) ? (
+                <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] leading-snug text-amber-950 dark:text-amber-50">{SCHEDULE_PORTAL_DISCLAIMER}</p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" size="sm" onClick={() => openEdit(selectedEvent)}>
+                  Editar
+                </Button>
+                {selectedEvent.status === "PENDING" ? (
+                  <Button type="button" size="sm" variant="secondary" onClick={() => void patchEventStatus(selectedEvent.id, "DONE")}>
+                    Concluir
+                  </Button>
+                ) : null}
+                {selectedEvent.status === "PENDING" ? (
+                  <Button type="button" size="sm" variant="outline" onClick={() => void patchEventCancelled(selectedEvent.id)}>
+                    Cancelar
+                  </Button>
+                ) : null}
+                {selectedEvent.caso_id ? (
+                  <Button type="button" size="sm" variant="ghost" asChild>
+                    <Link href={`/cases/${selectedEvent.caso_id}`}>Abrir caso</Link>
+                  </Button>
+                ) : null}
+                {selectedEvent.legal_process_id ? (
+                  <Button type="button" size="sm" variant="ghost" asChild>
+                    <Link href={`/processos/${selectedEvent.legal_process_id}`}>Processo judicial</Link>
+                  </Button>
+                ) : null}
+                {selectedEvent.processo_id ? (
+                  <Button type="button" size="sm" variant="ghost" asChild>
+                    <Link href={`/processos/${selectedEvent.processo_id}`}>Abrir processo</Link>
+                  </Button>
+                ) : null}
+                {selectedEvent.document_id ? (
+                  <Button type="button" size="sm" variant="ghost" asChild>
+                    <Link href={`/biblioteca/documentos/${selectedEvent.document_id}`}>Abrir documento</Link>
+                  </Button>
+                ) : null}
+                {selectedEvent.caso_id ? (
+                  <Button type="button" size="sm" variant="ghost" asChild>
+                    <Link href={`/cases/${selectedEvent.caso_id}/documentos`}>Documentos do caso</Link>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {overdueEvents.length > 0 ? (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wide text-rose-600">Atrasados ({overdueEvents.length})</h3>
+              <p className="mt-1 text-[10px] text-muted-foreground">Pendentes com data/hora já passadas. Concluídos não entram aqui.</p>
+              <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs">
+                {overdueEvents.slice(0, 10).map((e) => (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      className="w-full rounded-md border border-rose-500/25 bg-rose-500/5 px-2 py-1.5 text-left transition-colors hover:bg-rose-500/10"
+                      onClick={() => {
+                        startViewTransition(() => {
+                          const d = parseDateKeyLocal(e.date);
+                          setSelectedKey(e.date);
+                          if (d) setCursorDate(d);
+                          setMiniMonth(e.date.slice(0, 7));
+                          setView("day");
+                        });
+                      }}
+                    >
+                      <span className="tabular-nums text-muted-foreground">{e.date}</span>
+                      <span className="mx-1 text-muted-foreground">·</span>
+                      <span className="font-medium text-[color:var(--text-primary)]">{e.title}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </aside>
+          </>
+        )}
+      >
         {/* Centro: barra + vistas — largura = var(--lex-app-central-well-max), alinhada à busca / poço. */}
         <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 bg-[color:var(--surface-card)]/50 py-2">
@@ -1555,198 +1755,7 @@ export function LexAgendaShell() {
             ) : null}
           </div>
         </section>
-
-        {/* Painel direito (filtros): em lg+ mesma largura que a coluna 1 (`1fr`). */}
-        <aside className="flex min-h-0 min-w-0 w-full flex-col gap-3 overflow-y-auto overflow-x-auto p-3">
-          <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/70 p-2 shadow-sm sm:p-3">
-            <p className="mb-3 text-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Filtros</p>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="lex-caso" className="text-xs font-medium text-[color:var(--text-primary)]">
-                  Caso
-                </Label>
-                <select
-                  id="lex-caso"
-                  className="flex h-10 w-full cursor-pointer rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] px-3 text-sm text-[color:var(--text-primary)] shadow-sm transition-colors hover:bg-[color:var(--surface-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-0"
-                  value={casoId}
-                  onChange={(e) => setCasoId(e.target.value)}
-                >
-                  <option value="">Todos</option>
-                  {cases.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="lex-resp" className="text-xs font-medium text-[color:var(--text-primary)]">
-                  Responsável
-                </Label>
-                <select
-                  id="lex-resp"
-                  className="flex h-10 w-full cursor-pointer rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] px-3 text-sm text-[color:var(--text-primary)] shadow-sm transition-colors hover:bg-[color:var(--surface-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-0"
-                  value={responsavelId}
-                  onChange={(e) => setResponsavelId(e.target.value)}
-                >
-                  <option value="">Toda a equipe</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name?.trim() || u.email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <p className="mb-2 text-micro font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tipo</p>
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setEventTypeSlug("")}
-                    className={cn(
-                      "min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
-                      !eventTypeSlug ? "border-violet-500 bg-violet-500/15 text-[color:var(--text-primary)]" : "border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] text-muted-foreground hover:border-violet-500/40",
-                    )}
-                  >
-                    Todos
-                  </button>
-                  {SCHEDULE_EVENT_TYPES.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setEventTypeSlug(t)}
-                      className={cn(
-                        "min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium leading-tight transition-colors",
-                        eventTypeSlug === t
-                          ? "border-violet-500 bg-violet-500/15 text-[color:var(--text-primary)]"
-                          : "border-[color:var(--border-subtle)] bg-[color:var(--surface-elevated)] text-muted-foreground hover:border-violet-500/40",
-                      )}
-                    >
-                      {SCHEDULE_TYPE_LABEL[t]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2.5 border-t border-[color:var(--border-subtle)]/80 pt-3">
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-0.5 py-1 text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--surface-elevated)]/50">
-                  <input type="checkbox" checked={includeDone} onChange={(e) => setIncludeDone(e.target.checked)} className="size-4 rounded border-input text-violet-600 focus:ring-violet-500/40" />
-                  Mostrar concluídos
-                </label>
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-md px-0.5 py-1 text-xs text-[color:var(--text-primary)] hover:bg-[color:var(--surface-elevated)]/50">
-                  <input type="checkbox" checked={includeCancelled} onChange={(e) => setIncludeCancelled(e.target.checked)} className="size-4 rounded border-input text-violet-600 focus:ring-violet-500/40" />
-                  Mostrar cancelados
-                </label>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => {
-                  setCasoId("");
-                  setResponsavelId("");
-                  setEventTypeSlug("");
-                  setIncludeCancelled(false);
-                }}
-              >
-                Limpar filtros
-              </Button>
-            </div>
-          </div>
-
-          {selectedEvent ? (
-            <div className="max-h-[min(52vh,28rem)] overflow-y-auto rounded-xl border border-violet-500/30 bg-violet-500/8 p-3 text-sm shadow-sm">
-              <p className="text-micro font-semibold uppercase tracking-wide text-violet-800 dark:text-violet-100">Evento selecionado</p>
-              <p className="mt-1 text-base font-semibold leading-snug">{selectedEvent.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {SCHEDULE_TYPE_LABEL[selectedEvent.type]}
-                {selectedEvent.all_day ? " · Dia inteiro" : ` · ${selectedEvent.start}${selectedEvent.end ? `–${selectedEvent.end}` : ""}`}
-              </p>
-              {selectedEvent.local ? <p className="mt-1 text-xs">Local: {selectedEvent.local}</p> : null}
-              {selectedEvent.caso_title ? <p className="mt-1 text-xs text-muted-foreground">Caso: {selectedEvent.caso_title}</p> : null}
-              {selectedEvent.process_label ? <p className="mt-1 text-xs text-muted-foreground">{selectedEvent.process_label}</p> : null}
-              {selectedEvent.cnj ? <p className="mt-1 font-mono text-xs text-muted-foreground">{selectedEvent.cnj}</p> : null}
-              {selectedEvent.obs ? <p className="mt-2 line-clamp-4 text-xs text-muted-foreground">{selectedEvent.obs}</p> : null}
-              {scheduleNeedsPortalDisclaimer(selectedEvent) ? (
-                <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[10px] leading-snug text-amber-950 dark:text-amber-50">{SCHEDULE_PORTAL_DISCLAIMER}</p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" size="sm" onClick={() => openEdit(selectedEvent)}>
-                  Editar
-                </Button>
-                {selectedEvent.status === "PENDING" ? (
-                  <Button type="button" size="sm" variant="secondary" onClick={() => void patchEventStatus(selectedEvent.id, "DONE")}>
-                    Concluir
-                  </Button>
-                ) : null}
-                {selectedEvent.status === "PENDING" ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => void patchEventCancelled(selectedEvent.id)}>
-                    Cancelar
-                  </Button>
-                ) : null}
-                {selectedEvent.caso_id ? (
-                  <Button type="button" size="sm" variant="ghost" asChild>
-                    <Link href={`/cases/${selectedEvent.caso_id}`}>Abrir caso</Link>
-                  </Button>
-                ) : null}
-                {selectedEvent.legal_process_id ? (
-                  <Button type="button" size="sm" variant="ghost" asChild>
-                    <Link href={`/processos/${selectedEvent.legal_process_id}`}>Processo judicial</Link>
-                  </Button>
-                ) : null}
-                {selectedEvent.processo_id ? (
-                  <Button type="button" size="sm" variant="ghost" asChild>
-                    <Link href={`/processos/${selectedEvent.processo_id}`}>Abrir processo</Link>
-                  </Button>
-                ) : null}
-                {selectedEvent.document_id ? (
-                  <Button type="button" size="sm" variant="ghost" asChild>
-                    <Link href={`/biblioteca/documentos/${selectedEvent.document_id}`}>Abrir documento</Link>
-                  </Button>
-                ) : null}
-                {selectedEvent.caso_id ? (
-                  <Button type="button" size="sm" variant="ghost" asChild>
-                    <Link href={`/cases/${selectedEvent.caso_id}/documentos`}>Documentos do caso</Link>
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
-          {overdueEvents.length > 0 ? (
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wide text-rose-600">Atrasados ({overdueEvents.length})</h3>
-              <p className="mt-1 text-[10px] text-muted-foreground">Pendentes com data/hora já passadas. Concluídos não entram aqui.</p>
-              <ul className="mt-2 max-h-48 space-y-1 overflow-y-auto text-xs">
-                {overdueEvents.slice(0, 10).map((e) => (
-                  <li key={e.id}>
-                    <button
-                      type="button"
-                      className="w-full rounded-md border border-rose-500/25 bg-rose-500/5 px-2 py-1.5 text-left transition-colors hover:bg-rose-500/10"
-                      onClick={() => {
-                        startViewTransition(() => {
-                          const d = parseDateKeyLocal(e.date);
-                          setSelectedKey(e.date);
-                          if (d) setCursorDate(d);
-                          setMiniMonth(e.date.slice(0, 7));
-                          setView("day");
-                        });
-                      }}
-                    >
-                      <span className="tabular-nums text-muted-foreground">{e.date}</span>
-                      <span className="mx-1 text-muted-foreground">·</span>
-                      <span className="font-medium text-[color:var(--text-primary)]">{e.title}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </aside>
-      </div>
+      </LexPageFrame>
 
       <LexAgendaEventDialog
         mode={dialogEditingId ? "edit" : "create"}

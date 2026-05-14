@@ -3,7 +3,7 @@
 import { memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell, PanelLeft, PanelLeftClose, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LexLogoMark } from "@/components/brand/lex-logo-mark";
 import { LexWordmark } from "@/components/brand/lex-wordmark";
@@ -21,6 +21,7 @@ export const AppTopbar = memo(function AppTopbar({
 }) {
   const setCmd = useUiStore((s) => s.setCommandOpen);
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const router = useRouter();
   const officeLine = workspaceLabel?.trim() || "Escritório";
   const warmDashboard = () => prefetchOnce(router, "/dashboard");
@@ -35,22 +36,74 @@ export const AppTopbar = memo(function AppTopbar({
       <div className="flex h-[var(--app-header-h)] w-full max-w-[100vw] min-w-0 items-stretch">
         <div
           className={cn(
-            "flex shrink-0 items-center transition-[width,padding] duration-200",
-            sidebarCollapsed ? "w-20 justify-center px-1" : "w-[268px] pl-4 md:pl-6 lg:pl-8 pr-2",
+            "flex shrink-0 items-center transition-[width,padding] duration-200 motion-reduce:transition-none",
+            sidebarCollapsed
+              ? "w-20 justify-center px-1"
+              : "w-[268px] min-w-0 justify-between gap-2 pl-4 md:pl-6 lg:pl-8 pr-2",
           )}
         >
-          <Link
-            href="/dashboard"
-            prefetch={false}
-            onMouseEnter={warmDashboard}
-            onFocus={warmDashboard}
-            className="flex min-w-0 shrink-0 items-center gap-2 rounded-lg p-1 text-[color:var(--text-primary)] transition-colors hover:bg-[color:var(--surface-overlay-strong)] md:gap-2.5"
-            title="Lex — ir ao briefing"
-            aria-label="Lex — ir ao briefing"
-          >
-            <LexLogoMark className="size-10 md:size-11" />
-            {!sidebarCollapsed ? <LexWordmark /> : null}
-          </Link>
+          {!sidebarCollapsed ? (
+            <>
+              <Link
+                href="/dashboard"
+                prefetch={false}
+                onMouseEnter={warmDashboard}
+                onFocus={warmDashboard}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-lg p-1 text-[color:var(--text-primary)] transition-colors hover:bg-[color:var(--surface-overlay-strong)] md:gap-2.5"
+                title="Lex — ir ao briefing"
+                aria-label="Lex — ir ao briefing"
+              >
+                <LexLogoMark className="size-10 shrink-0 md:size-11" />
+                <LexWordmark />
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 shrink-0 rounded-xl text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-overlay-strong)] hover:text-[color:var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[color:var(--brand-border)]"
+                onClick={() => toggleSidebar()}
+                aria-label="Recolher menu lateral"
+                title="Recolher menu lateral"
+              >
+                <PanelLeftClose className="size-6 stroke-2" aria-hidden />
+              </Button>
+            </>
+          ) : (
+            <div className="group relative flex size-full min-h-[44px] min-w-0 flex-1 items-center justify-center">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "peer absolute inset-0 z-10 m-auto h-10 w-10 rounded-xl text-[color:var(--text-secondary)] opacity-0 pointer-events-none transition-opacity duration-150",
+                  "hover:bg-[color:var(--surface-overlay-strong)] hover:text-[color:var(--text-primary)]",
+                  "focus-visible:z-30 focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-[color:var(--brand-border)]",
+                  "group-hover:z-30 group-hover:pointer-events-auto group-hover:opacity-100",
+                )}
+                onClick={() => toggleSidebar()}
+                aria-label="Expandir menu lateral"
+                title="Expandir menu lateral"
+              >
+                <PanelLeft className="size-6 stroke-2" aria-hidden />
+              </Button>
+              <Link
+                href="/dashboard"
+                prefetch={false}
+                onMouseEnter={warmDashboard}
+                onFocus={warmDashboard}
+                className={cn(
+                  "relative z-20 flex items-center justify-center rounded-lg p-1 text-[color:var(--text-primary)] transition-opacity duration-150",
+                  "hover:bg-[color:var(--surface-overlay-strong)]",
+                  "group-hover:z-10 group-hover:pointer-events-none group-hover:opacity-0",
+                  "peer-focus-visible:z-10 peer-focus-visible:pointer-events-none peer-focus-visible:opacity-0",
+                )}
+                title="Lex — ir ao briefing"
+                aria-label="Lex — ir ao briefing"
+              >
+                <LexLogoMark className="size-10 md:size-11" />
+              </Link>
+            </div>
+          )}
         </div>
 
         <span

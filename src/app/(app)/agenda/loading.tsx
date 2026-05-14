@@ -10,7 +10,7 @@ export default function AgendaLoading() {
       aria-busy="true"
       aria-label="A carregar agenda"
     >
-      <div className="lex-agenda-three-well">
+      <div className="lex-layout-three-well" data-lex-tracks="lcr">
         <aside className="flex min-h-0 min-w-0 w-full flex-col gap-3 overflow-hidden p-3">
           <Skeleton className="h-10 w-full rounded-lg" />
           <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)] p-2">

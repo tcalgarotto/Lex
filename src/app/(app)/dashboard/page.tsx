@@ -101,19 +101,23 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="space-y-5">
-      <MorningBriefingHeaderShell
-        displayName={shell.displayName}
-        hasNoCases={shell.hasNoCases}
-        honorific={shell.honorific}
-        headerTrailing={processMetricsTrailing}
-      />
-      {shell.hasNoCases ? null : (
-        <Suspense fallback={<MorningBriefingBodySkeleton />}>
-          <MorningBriefingDeferred briefingArgs={briefingArgs} agg={agg} />
-        </Suspense>
-      )}
-      <DashboardCalendarCards workspaceId={workspaceId} />
-    </div>
+    <>
+        <div className="col-span-full xl:col-span-4">
+          <MorningBriefingHeaderShell
+            displayName={shell.displayName}
+            hasNoCases={shell.hasNoCases}
+            honorific={shell.honorific}
+            headerTrailing={processMetricsTrailing}
+          />
+        </div>
+        {shell.hasNoCases ? null : (
+          <div className="col-span-full xl:col-span-4">
+            <Suspense fallback={<MorningBriefingBodySkeleton />}>
+              <MorningBriefingDeferred briefingArgs={briefingArgs} agg={agg} />
+            </Suspense>
+          </div>
+        )}
+        <DashboardCalendarCards workspaceId={workspaceId} />
+    </>
   );
 }

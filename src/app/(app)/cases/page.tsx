@@ -12,6 +12,7 @@ import { lexGlassCtaClassName, lexTypeCardTitleClassName } from "@/lib/lex-ds";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 import { CaseCardActions } from "@/components/cases/case-card-actions";
+import { LexPageFrame } from "@/components/layout/lex-page-frame";
 import { HoverPrefetchLink } from "@/components/navigation/hover-prefetch-link";
 
 
@@ -36,7 +37,7 @@ export default async function CasesListPage({
  const casesColRight = cases.filter((_, i) => i % 2 === 1);
 
   return (
-    <>
+    <LexPageFrame centerWidth="wide">
       <div className="lex-glass-card rounded-2xl p-4 md:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <form className="flex flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center" action="/cases">
@@ -115,8 +116,8 @@ export default async function CasesListPage({
  </div>
  </>
  )}
- </>
- );
+    </LexPageFrame>
+  );
 }
 
 type CaseRow = Awaited<ReturnType<typeof listCases>>[number];

@@ -8,8 +8,8 @@ export async function DashboardCalendarCards({ workspaceId }: { workspaceId: str
   const { overdue, today, upcoming7d } = await getCalendarDashboardBuckets(workspaceId);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="border-rose-500/20 bg-rose-500/[0.04]">
+    <>
+      <Card className="col-span-full border-rose-500/20 bg-rose-500/[0.04] md:col-span-1 xl:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
           <div>
             <CardTitle className="text-base">Atrasados</CardTitle>
@@ -31,7 +31,7 @@ export async function DashboardCalendarCards({ workspaceId }: { workspaceId: str
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="col-span-full md:col-span-1 xl:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
           <div>
             <CardTitle className="text-base">Agenda de hoje</CardTitle>
@@ -43,7 +43,7 @@ export async function DashboardCalendarCards({ workspaceId }: { workspaceId: str
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-2">
+      <Card className="col-span-full xl:col-span-4">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
           <div>
             <CardTitle className="text-base">Próximos compromissos</CardTitle>
@@ -57,6 +57,6 @@ export async function DashboardCalendarCards({ workspaceId }: { workspaceId: str
           <CalendarEventList events={upcoming7d} emptyLabel="Nenhum compromisso nos próximos 7 dias." />
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

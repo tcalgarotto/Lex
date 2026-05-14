@@ -74,6 +74,28 @@
      */
     --lex-app-central-well-calc: max(0px, calc((100vw - 268px) * 0.7));
     --lex-app-central-well-max: min(100%, var(--lex-app-central-well-calc));
+
+    /**
+     * Layout P1 — faixa central e rails (base = Agenda; 268px = sidebar expandida no cálculo do centro).
+     * O centro mantém a mesma largura ao recolher a sidebar; os `1fr` laterais absorvem o espaço extra.
+     */
+    --lex-content-default: var(--lex-app-central-well-max);
+    --lex-content-wide: min(100%, max(0px, calc((100vw - 268px) * 0.78)));
+    --lex-content-full: 100%;
+    --lex-rail-min: 0px;
+    --lex-rail-left: minmax(0, 1fr);
+    --lex-rail-right: minmax(0, 1fr);
+    --lex-page-gap: 1rem;
+    --lex-center-grid-columns: 4;
+    /** Trilho central em grelhas `1fr | centro | 1fr` (sobrescrito por modificadores wide/full). */
+    --lex-center-track: var(--lex-content-default);
+    --lex-rail-right-max: 20rem;
+  }
+
+  @media (max-width: 1366px) {
+    :root {
+      --lex-page-gap: 0.75rem;
+    }
   }
 
   [data-theme="dark"] {
@@ -651,9 +673,10 @@
   }
 
   /**
-   * Agenda (lg+): mesma divisão do header na área útil — 15% | 70% | 15%.
-   * Assim o fim da coluna central coincide com o fim da faixa onde a busca fica ancorada.
+   * Três trilhos (lg+): rail | centro fixo | rail — mesma lógica do header (`--lex-content-default`).
+   * `data-lex-tracks`: lcr | cr | lc | c (mobile: coluna única, ver LexPageFrame).
    */
+  .lex-layout-three-well,
   .lex-agenda-three-well {
     display: grid;
     flex: 1 1 0%;
@@ -663,14 +686,129 @@
     gap: 0;
     overflow: hidden;
     grid-template-columns: 1fr;
+    --lex-center-track: var(--lex-content-default);
+  }
+
+  .lex-layout-three-well--center-wide,
+  .lex-agenda-three-well.lex-layout-three-well--center-wide {
+    --lex-center-track: var(--lex-content-wide);
+  }
+
+  .lex-layout-three-well--center-full,
+  .lex-agenda-three-well.lex-layout-three-well--center-full {
+    --lex-center-track: minmax(0, 100%);
   }
 
   @media (min-width: 1024px) {
-    .lex-agenda-three-well {
+    /** Sem `data-lex-tracks` (ex.: loading): legado lcr. */
+    .lex-layout-three-well:not([data-lex-tracks]),
+    .lex-agenda-three-well:not([data-lex-tracks]) {
+      grid-template-columns: var(--lex-rail-left) var(--lex-center-track) var(--lex-rail-right);
+    }
+
+    .lex-layout-three-well[data-lex-tracks="lcr"],
+    .lex-agenda-three-well[data-lex-tracks="lcr"] {
+      grid-template-columns: var(--lex-rail-left) var(--lex-center-track) var(--lex-rail-right);
+    }
+
+    /** `cr` / `lc` com bleed=true (área útil larga). Com bleed=false usar `.lex-layout-constrained-*`. */
+    .lex-layout-three-well[data-lex-tracks="cr"],
+    .lex-agenda-three-well[data-lex-tracks="cr"] {
+      grid-template-columns: var(--lex-center-track) var(--lex-rail-right);
+    }
+
+    .lex-layout-three-well[data-lex-tracks="lc"],
+    .lex-agenda-three-well[data-lex-tracks="lc"] {
+      grid-template-columns: var(--lex-rail-left) var(--lex-center-track);
+    }
+
+    .lex-layout-three-well[data-lex-tracks="c"],
+    .lex-agenda-three-well[data-lex-tracks="c"] {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lex-layout-three-well[data-lex-tracks="c"] > .lex-layout-three-well__center,
+    .lex-agenda-three-well[data-lex-tracks="c"] > .lex-layout-three-well__center {
+      max-width: var(--lex-center-track);
+      width: 100%;
+      justify-self: center;
+    }
+  }
+
+  /**
+   * Poço de conteúdo (sem bleed): centro partilha a largura útil com rails — não somar dois caps `--lex-content-default`.
+   */
+  .lex-layout-constrained-cr {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1280px) {
+    .lex-layout-constrained-cr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, min(var(--lex-rail-right-max), 100%));
+      align-items: start;
+    }
+  }
+
+  .lex-layout-constrained-lc {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1280px) {
+    .lex-layout-constrained-lc {
+      display: grid;
+      grid-template-columns: minmax(0, min(var(--lex-rail-right-max), 100%)) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  .lex-layout-constrained-lcr {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1280px) {
+    .lex-layout-constrained-lcr {
+      display: grid;
       grid-template-columns:
+        minmax(0, min(var(--lex-rail-right-max), 100%))
         minmax(0, 1fr)
-        var(--lex-app-central-well-max)
-        minmax(0, 1fr);
+        minmax(0, min(var(--lex-rail-right-max), 100%));
+      align-items: start;
+    }
+  }
+
+  /**
+   * Grelha interna do centro (4 colunas em xl+; 2 em md; 1 em mobile — compatibilidade mínima).
+   */
+  .lex-layout-center-grid {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    gap: var(--lex-page-gap);
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width: 768px) {
+    .lex-layout-center-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .lex-layout-center-grid {
+      grid-template-columns: repeat(var(--lex-center-grid-columns), minmax(0, 1fr));
     }
   }
 }

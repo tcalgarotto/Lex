@@ -12,16 +12,12 @@ import {
   Library,
   FolderKanban,
   Home,
-  PanelLeft,
-  PanelLeftClose,
   Search,
   ScrollText,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useUiStore } from "@/stores/ui-store";
 import { useWorkspaceContext } from "@/components/app/workspace-context";
 import { SidebarAccountFooter } from "@/components/app/sidebar-account-footer";
@@ -167,7 +163,6 @@ SidebarFooter.displayName = "SidebarFooter";
 
 export const AppSidebar = memo(function AppSidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
-  const toggle = useUiStore((s) => s.toggleSidebar);
 
   return (
     <aside
@@ -178,23 +173,6 @@ export const AppSidebar = memo(function AppSidebar() {
         collapsed && "w-20",
       )}
     >
-      <div
-        className={cn(
-          "flex h-12 shrink-0 items-center border-b border-[color:var(--border-subtle)] px-2",
-          collapsed ? "justify-center" : "justify-end",
-        )}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          onClick={() => toggle()}
-          aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-        >
-          {collapsed ? <PanelLeft className="size-5" /> : <PanelLeftClose className="size-5" />}
-        </Button>
-      </div>
-      <Separator className="bg-[var(--border-subtle)]" />
       <SidebarMainNav collapsed={collapsed} />
       <SidebarFooter collapsed={collapsed} />
     </aside>

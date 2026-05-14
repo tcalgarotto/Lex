@@ -8,14 +8,14 @@
  */
 
 import Link from "next/link";
-import { ArrowRight, FileText, Search, Sparkles, ScrollText, AlertTriangle, Hash } from "lucide-react";
+import { ArrowRight, Search, Sparkles, AlertTriangle, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { deriveDocumentDisplayStatus } from "@/lib/documents/status-display";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
 import { ReadinessCard } from "./case-readiness-card";
-import { isCasePreProcessual, PRE_PROCESSUAL_MESSAGE } from "@/lib/cases/labels";
+import { isCasePreProcessual } from "@/lib/cases/labels";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
 import type {
  Case,
@@ -187,16 +187,6 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
 
  return (
  <div className="space-y-4">
- {preProcessual ? (
- <div
- role="status"
- className="lex-glass rounded-xl border-[0.5px] border-[color:var(--brand-border)] p-4 text-[13px] leading-relaxed text-[color:var(--text-secondary)]"
- style={{ background: "var(--brand-subtle)" }}
- >
- <p className="font-medium text-[color:var(--brand-text)]">Pré-processual — ainda sem CNJ</p>
- <p className="mt-2">{PRE_PROCESSUAL_MESSAGE}</p>
- </div>
- ) : null}
 
  {narrative ? (
  <Card className="p-4 text-sm leading-relaxed">
@@ -205,8 +195,13 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  </p>
  <p className="text-foreground/90">{narrative}</p>
  </Card>
- ) : c.summary ? (
- <Card className="p-4 text-sm leading-relaxed text-muted-foreground">{c.summary}</Card>
+ ) : c.summary && c.summary.replace(/\s+/g, " ").trim().length > 200 ? (
+ <Card className="p-4 text-sm leading-relaxed text-muted-foreground">
+ <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+ Descrição completa
+ </p>
+ <p>{c.summary}</p>
+ </Card>
  ) : null}
 
  {readiness ? <ReadinessCard readiness={readiness} /> : null}
@@ -268,29 +263,7 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  </Card>
  ) : null}
 
- <div className="grid gap-3 md:grid-cols-3">
- <StatBlock
- label="Documentos"
- value={`${c.documents.length}`}
- hint={`${docsReady} prontos${docsStalled ? ` · ${docsStalled} travados` : ""}`}
- icon={<FileText className="size-4" />}
- tone={docsStalled > 0 ? "warning" : c.documents.length === 0 ? "muted" : "ok"}
- />
- <StatBlock
- label="Fatos / Partes / Pedidos"
- value={`${c.facts.length} / ${c.parties.length} / ${c.requests.length}`}
- hint={`${c.risks.length} riscos sinalizados`}
- icon={<Sparkles className="size-4" />}
- tone={hasFacts ? "ok" : "muted"}
- />
- <StatBlock
- label="Pesquisa & Peças"
- value={`${c.legalSources.length} / ${c.drafts.length}`}
- hint={`fundamentos do caso / peças`}
- icon={<ScrollText className="size-4" />}
- tone={hasDraft ? "ok" : hasResearch ? "info" : "muted"}
- />
- </div>
+ {readiness ? <ReadinessCard readiness={readiness} /> : null}
 
  {c.process ? (
  <Card className="p-4">
@@ -425,38 +398,5 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  <CaseCollabTab caseId={c.id} />
  </section>
  </div>
- );
-}
-
-const TONE_BORDER: Record<"ok" | "info" | "warning" | "muted", string> = {
- ok: "border-[color:var(--success-border)]",
- info: "border-[color:var(--brand-border)]",
- warning: "border-[color:var(--warning-border)]",
- muted: "border-[color:var(--border-subtle)]",
-};
-
-function StatBlock({
- label,
- value,
- hint,
- icon,
- tone = "muted",
-}: {
- label: string;
- value: string;
- hint?: string;
- icon?: React.ReactNode;
- tone?: "ok" | "info" | "warning" | "muted";
-}) {
- return (
- <Card
- className={`lex-glass rounded-xl border-[0.5px] bg-[color:var(--surface-card)] p-4 ${TONE_BORDER[tone]}`}
- >
- <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">
- {icon} {label}
- </div>
- <p className="mt-1 text-xl font-semibold tracking-tight text-[color:var(--text-primary)]">{value}</p>
- {hint ? <p className="text-[11px] text-[color:var(--text-secondary)]">{hint}</p> : null}
- </Card>
  );
 }
