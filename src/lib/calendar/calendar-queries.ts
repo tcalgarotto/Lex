@@ -27,6 +27,8 @@ export type ListCalendarEventsFilters = {
   assignedToUserId?: string | null;
   eventType?: string | null;
   status?: string | null;
+  /** When set, exclude these statuses (e.g. hide DONE when include_done=false). */
+  excludeStatuses?: CalendarEventStatus[];
 };
 
 export async function listCalendarEvents(filters: ListCalendarEventsFilters): Promise<CalendarEventWithRelations[]> {
@@ -48,6 +50,8 @@ export async function listCalendarEvents(filters: ListCalendarEventsFilters): Pr
   }
   if (filters.status && (Object.values(CalendarEventStatus) as string[]).includes(filters.status)) {
     where.status = filters.status as CalendarEventStatus;
+  } else if (filters.excludeStatuses && filters.excludeStatuses.length > 0) {
+    where.status = { notIn: filters.excludeStatuses };
   }
 
   return prisma.calendarEvent.findMany({

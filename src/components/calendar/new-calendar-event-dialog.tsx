@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CALENDAR_EVENT_TYPE_LABEL_PT } from "@/lib/calendar/calendar-labels";
+import { cn } from "@/lib/utils";
 
 const selectClassName =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
@@ -28,6 +29,8 @@ export function NewCalendarEventDialog({
   legalProcessId,
   documentId,
   label = "Novo evento",
+  defaultStartsAtLocal,
+  triggerClassName,
 }: {
   members: { id: string; name: string | null; email: string }[];
   caseId?: string;
@@ -35,6 +38,9 @@ export function NewCalendarEventDialog({
   legalProcessId?: string;
   documentId?: string;
   label?: string;
+  /** Valor `datetime-local` ao abrir o diálogo (ex.: slot da grade). */
+  defaultStartsAtLocal?: string;
+  triggerClassName?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -51,6 +57,23 @@ export function NewCalendarEventDialog({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
   const [assignedToUserId, setAssignedToUserId] = useState<string>("");
+
+  function applyDefaultStart() {
+    if (defaultStartsAtLocal) {
+      setStartsAt(defaultStartsAtLocal);
+      return;
+    }
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    d.setHours(d.getHours() + 1);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setStartsAt(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+  }
+
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) applyDefaultStart();
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -88,9 +111,14 @@ export function NewCalendarEventDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button type="button" size="sm" variant="secondary">
+        <Button
+          type="button"
+          size="sm"
+          variant={triggerClassName ? "outline" : "secondary"}
+          className={cn(triggerClassName)}
+        >
           {label}
         </Button>
       </DialogTrigger>

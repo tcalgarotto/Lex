@@ -35,7 +35,7 @@ export const AppTopbar = memo(function AppTopbar({
       <div className="flex h-[var(--app-header-h)] w-full max-w-[100vw] min-w-0 items-stretch">
         <div
           className={cn(
-            "flex shrink-0 items-center border-r border-[color:var(--border-subtle)]/50",
+            "flex shrink-0 items-center transition-[width,padding] duration-200",
             sidebarCollapsed ? "w-20 justify-center px-1" : "w-[268px] pl-4 md:pl-6 lg:pl-8 pr-2",
           )}
         >
@@ -53,13 +53,14 @@ export const AppTopbar = memo(function AppTopbar({
           </Link>
         </div>
 
+        <span
+          className="hidden h-9 w-px shrink-0 self-center bg-[color:var(--border-subtle)] sm:block"
+          aria-hidden
+        />
+
         <div className="flex min-w-0 flex-1 items-center px-4 md:px-6 lg:px-8">
-          <div className="lex-app-header-split">
+          <div className="lex-app-header-split w-full min-w-0">
             <div className="lex-app-header-split__title flex min-w-0 items-center gap-3 md:gap-4">
-              <span
-                className="hidden h-9 w-px shrink-0 bg-[color:var(--border-subtle)] sm:block"
-                aria-hidden
-              />
               <div className="min-w-0 max-w-full">
                 <p
                   className="truncate text-micro font-semibold uppercase tracking-[0.14em] text-[color:var(--text-muted)] md:text-caption"
@@ -76,7 +77,7 @@ export const AppTopbar = memo(function AppTopbar({
               </div>
             </div>
 
-            <div className="lex-app-header-split__actions flex w-full min-w-0 items-center justify-end gap-2 md:w-full">
+            <div className="lex-app-header-split__actions flex min-w-0 w-full items-center justify-end gap-2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -113,6 +114,7 @@ export const AppTopbar = memo(function AppTopbar({
                 <Search className="size-4" />
               </Button>
             </div>
+
             <div className="lex-app-header-split__tail hidden min-h-0 md:block" aria-hidden />
           </div>
         </div>

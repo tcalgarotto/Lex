@@ -887,6 +887,8 @@ model CalendarEvent {
   documentId          String?
   title               String
   description         String?              @db.Text
+  /** Local físico ou sala (UI agenda LEX / schedule). */
+  location            String?
   eventType           CalendarEventType    @default(OTHER)
   status              CalendarEventStatus  @default(PENDING)
   startsAt            DateTime

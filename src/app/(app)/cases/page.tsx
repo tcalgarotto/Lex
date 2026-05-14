@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { devLogLexTiming } from "@/lib/dev/server-timing";
-import { lexGlassCtaClassName, lexPageLeadClassName, lexPageTitleClassName, lexTypeCardTitleClassName } from "@/lib/lex-ds";
+import { lexGlassCtaClassName, lexTypeCardTitleClassName } from "@/lib/lex-ds";
 import { listCases } from "@/lib/cases/repository";
 import { caseStatusLabel } from "@/lib/cases/labels";
 import { CaseCardActions } from "@/components/cases/case-card-actions";
@@ -35,54 +35,42 @@ export default async function CasesListPage({
  const casesColLeft = cases.filter((_, i) => i % 2 === 0);
  const casesColRight = cases.filter((_, i) => i % 2 === 1);
 
- const pageTitleClassName = lexPageTitleClassName;
- const pageLeadClassName = lexPageLeadClassName;
-
- return (
- <>
- <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
- <div className="min-w-0 space-y-2">
- <h1 className={pageTitleClassName}>
- Casos
- </h1>
- <p className={pageLeadClassName}>
- Organize atendimentos, documentos, fundamentos e peças num só lugar — com histórico e rastreabilidade.
- </p>
- </div>
- <Link href="/cases/new" className={lexGlassCtaClassName}>
- Novo caso
- </Link>
- </header>
-
- <div className="lex-glass-card rounded-2xl p-4 md:p-5">
- <form className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center" action="/cases">
- <Input
- name="q"
- defaultValue={qRaw}
- placeholder="Buscar por título, resumo ou CNJ…"
- className="h-11 min-h-[44px] w-full border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] text-base text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] sm:min-w-[320px] sm:flex-1 md:max-w-xl"
- />
- <div className="flex flex-wrap gap-2">
- <Button
- type="submit"
- variant="secondary"
- className="h-11 min-w-[100px] text-control font-medium"
- >
- Buscar
- </Button>
- <Button
- asChild
- type="button"
- variant={archived ? "secondary" : "outline"}
- className="h-11 text-control font-medium"
- >
- <Link href={archived ? "/cases" : "/cases?archived=1"}>
- {archived ? "Mostrando arquivados" : "Ver arquivados"}
- </Link>
- </Button>
- </div>
- </form>
- </div>
+  return (
+    <>
+      <div className="lex-glass-card rounded-2xl p-4 md:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <form className="flex flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center" action="/cases">
+            <Input
+              name="q"
+              defaultValue={qRaw}
+              placeholder="Buscar por título, resumo ou CNJ…"
+              className="h-11 min-h-[44px] w-full border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] text-base text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] sm:min-w-[320px] sm:flex-1 md:max-w-xl"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="submit"
+                variant="secondary"
+                className="h-11 min-w-[100px] text-control font-medium"
+              >
+                Buscar
+              </Button>
+              <Button
+                asChild
+                type="button"
+                variant={archived ? "secondary" : "outline"}
+                className="h-11 text-control font-medium"
+              >
+                <Link href={archived ? "/cases" : "/cases?archived=1"}>
+                  {archived ? "Mostrando arquivados" : "Ver arquivados"}
+                </Link>
+              </Button>
+            </div>
+          </form>
+          <Link href="/cases/new" className={lexGlassCtaClassName}>
+            Novo caso
+          </Link>
+        </div>
+      </div>
 
  {cases.length === 0 ? (
  <EmptyState

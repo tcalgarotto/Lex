@@ -13,6 +13,7 @@ const patchBodySchema = z
   .object({
     title: z.string().min(1).max(500).optional(),
     description: z.string().max(20000).optional().nullable(),
+    location: z.string().max(500).optional().nullable(),
     eventType: z.nativeEnum(CalendarEventType).optional(),
     status: z.nativeEnum(CalendarEventStatus).optional(),
     startsAt: z.string().datetime().optional(),
@@ -141,6 +142,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     data: {
       ...(body.title !== undefined ? { title: body.title } : {}),
       ...(body.description !== undefined ? { description: body.description } : {}),
+      ...(body.location !== undefined ? { location: body.location } : {}),
       ...(body.eventType !== undefined ? { eventType: body.eventType } : {}),
       ...(body.status !== undefined ? { status: body.status } : {}),
       ...(startsAt ? { startsAt } : {}),

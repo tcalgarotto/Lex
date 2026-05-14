@@ -13,6 +13,7 @@ export const runtime = "nodejs";
 const createBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(20000).optional().nullable(),
+  location: z.string().max(500).optional().nullable(),
   eventType: z.nativeEnum(CalendarEventType).default(CalendarEventType.OTHER),
   status: z.nativeEnum(CalendarEventStatus).optional(),
   startsAt: z.string().datetime(),
@@ -138,6 +139,7 @@ export async function POST(req: Request) {
       workspaceId,
       title: body.title,
       description: body.description ?? null,
+      location: body.location ?? null,
       eventType: body.eventType,
       status: body.status ?? CalendarEventStatus.PENDING,
       startsAt,

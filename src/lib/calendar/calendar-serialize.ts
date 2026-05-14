@@ -10,6 +10,7 @@ export function serializeCalendarEvent(e: CalendarEventWithRelations) {
     documentId: e.documentId,
     title: e.title,
     description: e.description,
+    location: e.location,
     eventType: e.eventType,
     status: e.status,
     startsAt: e.startsAt.toISOString(),
