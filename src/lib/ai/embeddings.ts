@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { embedMany } from "ai";
+import type { EmbeddingModel } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { getEnv } from "@/lib/env";
 import { cacheGet, cacheSet } from "@/lib/redis";
@@ -21,7 +22,7 @@ function cacheKey(text: string): string {
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   const env = getEnv();
-  const model = deepinfra().embedding(MODEL);
+  const model = deepinfra().embedding(MODEL) as unknown as EmbeddingModel;
   const out: number[][] = [];
   const pending: { idx: number; text: string }[] = [];
 

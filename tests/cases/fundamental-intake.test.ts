@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { cnjVisualError } from "@/components/cases/fundamental-intake-helpers";
+import {
+  cnjVisualError,
+  isReadyForLexStructure,
+  lexStructureBlockedReason,
+} from "@/components/cases/fundamental-intake-helpers";
 import { isValidCpf, isValidCnpj, onlyDigits } from "@/lib/cases/fundamental-intake/br-validators";
 import { parseFundamentalIntakeForm, createDefaultFundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
 import { mergeStructureWithForm } from "@/lib/cases/fundamental-intake/fundamental-intake-service";
@@ -69,6 +73,46 @@ describe("cnjVisualError", () => {
 
   it("rejeita CNJ com menos de 20 dígitos", () => {
     expect(cnjVisualError("1234567-89.0123.4.56.789")).toContain("CNJ");
+  });
+});
+
+describe("isReadyForLexStructure (campos com * na UI)", () => {
+  it("libera Lex no formulário padrão quando Zod e asteriscos estão ok", () => {
+    const f = createDefaultFundamentalIntakeForm();
+    expect(isReadyForLexStructure(f)).toBe(true);
+    expect(lexStructureBlockedReason(f)).toBeNull();
+  });
+
+  it("não libera Lex sem UF (obrigatório *)", () => {
+    const f = createDefaultFundamentalIntakeForm();
+    f.attend.uf = "";
+    expect(isReadyForLexStructure(f)).toBe(false);
+    expect(lexStructureBlockedReason(f)).toMatch(/UF/);
+  });
+
+  it("modo só relato livre exige texto livre mínimo", () => {
+    const f = createDefaultFundamentalIntakeForm();
+    f.freeNarrativeOnly = true;
+    f.narrative.freeText = "";
+    expect(isReadyForLexStructure(f)).toBe(false);
+    expect(lexStructureBlockedReason(f)).toMatch(/Relato livre/);
+  });
+
+  it("permite Lex com payload mínimo válido e asteriscos ok", () => {
+    const r = parseFundamentalIntakeForm({
+      attend: { suggestedTitle: "Caso X", city: "São Paulo", uf: "SP", preOrProcess: "pre_processual" },
+      clientKind: "PERSON",
+      clientPerson: { fullName: "Maria Silva", cpf: "" },
+      opposing: { unknown: true, parties: [] },
+      narrative: { whatHappened: "12345678901 relato com mais de dez caracteres." },
+      documents: { checklist: {} },
+      goals: { clientWants: "" },
+      timeline: [],
+    });
+    expect(r.success).toBe(true);
+    if (!r.success) throw new Error("expected parse success");
+    expect(isReadyForLexStructure(r.data)).toBe(true);
+    expect(lexStructureBlockedReason(r.data)).toBeNull();
   });
 });
 

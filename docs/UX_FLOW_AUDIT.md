@@ -2,6 +2,44 @@
 
 **Status:** F-1 sign-off provisório. Release público bloqueado. Owners Legal / Security / QA Lead: **PROVISÓRIO** (dupla revisão Thales PO + Cursor CTO interim).
 
+## Atualização (2026-05-14) — Entrevista fundamental vs checklist legado (fonte de verdade)
+
+- **Problema:** `/cases/[id]/entrevista` ainda carregava só `CaseChecklistTab` (F2.1); o bootstrap do checklist ignorava `metadataJson.intakeForm`, gerando pendências e bloqueios de fluxo fora de sincronia com `/cases/new` + `POST /api/cases/fundamental-intake`.
+- **Correção:** `src/lib/cases/case-intake-source.ts` detecta fluxo fundamental; `loadCaseChecklistStateForBootstrap` passa a derivar `missingFields` de `pendingRequiredLabels` no rascunho, zera pendências quando `intakeStructuredAt` existe, e expõe `answeredAt` / `intakeMode` para UI e workflow. `GET/POST /api/cases/[id]/checklist`: POST devolve **409** se o caso for fundamental (evita gravar roteiro legado por engano).
+- **UI:** `/cases/[id]/entrevista` renderiza `FundamentalIntakeFormContent` com `seedCaseId` + `seedForm` quando há rascunho não estruturado; mensagem + link quando já estruturado ou formulário ilegível. `/cases/new?continue=[caseId]` reabre o mesmo rascunho. Subnav: label **Entrevista** (neutro). Casos **sem** metadados de intake fundamental continuam com checklist legado, explicitamente titulado na página.
+- **QA local (esta rodada):** `npm run lint`, `npm run typecheck`, `npm test` (665) — OK. **Build:** ver secções “P0 Case Flow Integrity” e “P0 Case Flow QA”.
+
+## Atualização (2026-05-14) — P0 Case Flow Integrity (entrevista → caso → cache)
+
+- **401 / “Unauthorized”:** `middleware.ts` passa a usar `getSession()` como fallback quando `getUser()` não devolve utilizador (cookies de sessão ainda presentes). Resposta JSON de API sem sessão: `code: "SESSION_REQUIRED"` + mensagem em português (em vez de só `Unauthorized`).
+- **Caso parcial sem IA:** `POST /api/cases/fundamental-intake` com `action=structure` **sem** `caseId` chama `runDeepseekFundamentalStructure` **antes** de `persistFundamentalDraft` — falha da IA não cria registo de caso. Com `caseId`, mantém-se persistir rascunho antes da IA (caso já existe).
+- **Cache / UI:** após rascunho ou estrutura, `revalidatePath` em `/cases`, `/cases/[id]` e sub-rotas (`entrevista`, `partes-fatos`, `documentos`, `pesquisa-juridica`, `estrategia`). O formulário chama `router.refresh()` após sucesso.
+- **Layout entrevista no caso:** `FundamentalIntakeFormContent` com `mode="embedded"` em `/cases/[id]/entrevista` — grelha + sidebar `sticky` no centro, sem `fixed` em `md:right-0` que invadia o rail direito.
+- **Pesquisa jurídica:** `credentials: "include"` nos `fetch` de `case-research-tab.tsx` (alinhado ao intake).
+- **Testes:** `tests/cases/fundamental-intake-route-order.test.ts`, `tests/cases/p0-case-flow-qa-contracts.test.ts` (contratos P0 QA). `middleware.test.ts` atualizado.
+- **Build desta sub-rodada:** `pkill -f "next dev" || true`, `rm -rf .next`, `npm run build:clean` — **OK** (Next.js production build concluído).
+
+## Atualização (2026-05-14) — P0.1 Case Flow E2E autenticado + asserts no Postgres
+
+- **Objetivo:** prova de produto (browser + DB), não só contratos Vitest — ver prompt P0.1 na última instância.
+- **Ficheiros:** `tests/e2e/auth.setup.ts` (grava `tests/e2e/.auth/user.json`, ignorado no git), `tests/e2e/case-flow-fundamental.spec.ts`, `tests/e2e/helpers/intake-form-e2e.ts`, `tests/e2e/helpers/case-materialization.ts`, `playwright.config.ts` (projetos `setup` + `chromium` + `chromium-auth` quando há credenciais), `tests/e2e/05-api-auth-required.spec.ts` (POST recommend/pin → **401** + `SESSION_REQUIRED`), `tests/e2e/07-cases.spec.ts` (intake sem auth → `SESSION_REQUIRED`).
+- **Variáveis:** `E2E_BASE_URL` (opcional; senão `next dev` na porta `E2E_PORT` ou 3000), **`E2E_USER_EMAIL` + `E2E_USER_PASSWORD`** (obrigatórias para correr o spec fundamental; sem elas o `playwright.config` **não** regista o projeto `chromium-auth` e o spec é ignorado), **`DATABASE_URL`** no mesmo processo que executa Playwright para contagens Prisma após estruturação, **`DEEPSEEK_API_KEY`** (ou `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `OPENROUTER_API_KEY` conforme `AI_CHAT_PROVIDER`) para estruturar com Lex AI e passos pesquisa/estratégia/minuta que dependem do motor.
+- **Cenários no spec (serial):** (1) rascunho em `/cases/new` + 201 + lista em `/cases`; (2) `?continue=` reabre título; (3) estruturar + redirect + toast; (4) Prisma: `CaseParty`/`CaseFact`/`CaseRequest`/`CaseRisk` + `metadataJson.intakeStructuredAt` + `intakeForm`; (5) segundo POST `structure` → **409** sem duplicar contagens; (6) `/partes-fatos` com `Partes·`/`Fatos·`/`Pedidos·` ≥ 1; (7) `/entrevista` pós-estruturação + `scrollWidth` ≤ `innerWidth`; (8) pesquisa: POST recommend ≠ 401 + POST pin sintético ≠ 401; (9) POST `/api/cases/[id]/strategy` e `/draft` ≠ 401 (aceita 4xx/5xx reais documentados na anotação do teste). **Limpeza:** `afterAll` apaga o caso se o título começa por `E2E Case Flow` (best-effort).
+- **Skips:** passos 3–9 usam `test.skip` quando falta modelo de IA ou `DATABASE_URL`; mensagens indicam o env em falta.
+- **Comandos (rodar localmente com credenciais):** `npm run test:e2e -- --project=chromium-auth` (implica `setup` + app acessível). Sem credenciais: `npm run test:e2e -- --project=chromium` continua a correr os outros specs (o fluxo fundamental fica de fora).
+- **Comandos (agente, 2026-05-14 — continuação):** `npm run lint` — OK após corrigir script (`eslint .`), ignores em `eslint.config.mjs` (`.next`, `public`, `scripts`, `codigos de leis`) e pequenos fixes em `tailwind.config.ts` / testes. `npm run typecheck` — OK (`maxOutputTokens` em chamadas `generateText`/`streamText`, rota `api/chat` com `createUIMessageStream`, `embedMany` com `EmbeddingModel`, `JSONValue` de `@ai-sdk/ui-utils` no processo). `npm test` — **677** OK. `npx playwright test tests/e2e/05-api-auth-required.spec.ts --project=chromium` — **14** OK (recommend/pin com `SESSION_REQUIRED`). `npm run build:clean` (`.next` limpo, sem `next dev`) — OK (~32s). **`chromium-auth` / `case-flow-fundamental.spec.ts`:** não executado neste ambiente (sem `E2E_USER_EMAIL` / `E2E_USER_PASSWORD` nem `DATABASE_URL` de teste expostos ao agente); contagens Prisma antes/depois — N/D. **Commit atómico P0.1:** não feito pelo agente (working tree mistura A e B; requer `git add` só dos ficheiros da lista P0.1 + eventual commit separado para gates AI/lint). **Push:** não executado.
+- **CI:** sem `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, o projeto autenticado não existe — não quebra o job; para prova P0.1 completa configure secrets no CI ou rode manualmente.
+- **Commit/push:** feitos nesta rodada apenas se o utilizador integrar o diff; caso contrário manter pendência explícita no git.
+
+## Atualização (2026-05-14) — P0 Case Flow QA (validação ponta a ponta)
+
+- **QA manual autenticado** (rascunho → estruturar → `/cases` → partes-fatos → entrevista embutida → pesquisa → estratégia → minuta; erros sessão/IA; idempotência; caso legado): continua recomendado como complemento visual; **P0.1** cobre automatizado autenticado + DB quando envs existem.
+- **Automatizado (contratos no repo):** `tests/cases/p0-case-flow-qa-contracts.test.ts` — middleware (`getSession` + `SESSION_REQUIRED`), POST checklist **409** em fluxo fundamental, `credentials: "include"` na pesquisa do caso, ordem **persist → 409 gate → DeepSeek** no ramo `caseId` existente, dedupe de partes em `applyFundamentalStructure`, `mode="embedded"` na entrevista, `router.refresh()` após intake. Mantém-se `tests/cases/fundamental-intake-route-order.test.ts` (novo caso: IA antes de persistir).
+- **Comandos (esta rodada):** `npm run lint`, `npm run typecheck`, `npm test` (**665**), `npx prisma migrate status` (up to date), `npm run build:clean` — OK.
+- **Materialização:** lógica existente em `applyFundamentalStructure`; partes com `partyKeys` anti-duplicado no mesmo `caseId`; segunda estruturação devolvida **409** antes de nova chamada DeepSeek quando `intakeStructuredAt` já existe. **P0.1** adiciona contagens Prisma e segundo POST no mesmo `caseId`.
+- **Pesquisa / estratégia / minuta:** P0.1 valida rotas autenticadas e códigos HTTP reais; sucesso 2xx depende de corpus/chaves e é anotado no teste quando não ocorre.
+- **Commit/push:** ver secção P0.1 acima.
+
 ## Atualização (2026-05-14) — QA layout foundation (validação final checklist)
 
 - **Automático (fecho P1.1 layout):** `npm run lint`, `npm run typecheck`, `npm test` (654) — OK. **`npm run build:clean` passou** com `next dev` parado (`pkill -f "next dev"`), `.next` removido, e build de produção concluído (2026-05-14; duas corridas seguidas após suíte). Com dev a escrever no mesmo `.next`, o build pode falhar (ver `docs/LEX_LAYOUT_FOUNDATION.md`).
@@ -19,6 +57,16 @@
 3. **Rails:** agenda (laterais), caso (copiloto desktop): devem crescer/recolher dentro do chrome, sem empurrar o viewport além da largura da janela.
 
 **Dashboard — esqueleto:** `dashboard/loading.tsx` passou a usar os mesmos `col-span-*` que a página dentro de `LexCenterGrid` (alinhado aos cartões de calendário); regressão visual de loading a validar manualmente.
+
+## Atualização (2026-05-14) — P1 UX fluxo do caso (cockpit / copiloto / visão geral)
+
+- **Objetivo:** primeira dobra mais visual e menos textual, sem alterar `LexPageFrame`, grelha nem regras de negócio.
+- **Cockpit (`CaseCockpitHeader`):** resumo longo removido do topo; métricas de linha única viraram `CockpitHealthChips` (até 3: docs travados, riscos, prontidão); bloqueios em **uma** linha “Bloqueio: …”; fase atual como badge; “Próxima ação” sem parágrafo de descrição (detalhe no `title` do botão em `CaseCockpitActions`).
+- **Chips (`CaseCockpitMetricChips`):** pendências da entrevista + Docs / Fatos n/m / Pesquisa / Peças (sem duplicar “Sem CNJ” do badge).
+- **Fluxo (`CaseWorkflowRail`):** legenda textual removida; critérios só em `title` das fases.
+- **Copiloto (`CaseCopilotPanel`):** estrutura curta (Agora / Atenção máx. 3 / risco com link para Partes e fatos / atalhos 4); removidos critérios longos, bloqueadores duplicados e descrição da ação primária; prop `workflow` deixou de ser necessária.
+- **Visão geral:** `page.tsx` sem bloco introdutório longo; `CaseOverviewTab` — cartão entrevista fundamental truncado; removido `ReadinessCard` duplicado; cartão pré-processual compacto; processo + próximos passos corrigidos na ordem JSX.
+- **QA local (esta rodada):** `npm run lint`, `npm run typecheck`, `npm test` (654) — OK. `npm run build:clean` falhou neste ambiente com `PageNotFoundError: /_document` durante “Collecting page data” (artefacto conhecido quando o build corre em paralelo com dev ou cache inconsistente; repetir com dev parado).
 
 ## Atualização (2026-05-14) — Chrome: toggle da sidebar no rodapé
 
@@ -85,7 +133,7 @@
 Ordem fixa na subnavegação persistente (`CaseSubnav`):
 
 1. **Visão geral** — `/cases/[id]` — progresso, narrativa, próximos passos, **atividades** (linha do tempo + colaboração).
-2. **Entrevista guiada** — `/cases/[id]/entrevista` — `CaseChecklistTab` (API `/api/cases/[id]/checklist`, Lane B).
+2. **Entrevista** — `/cases/[id]/entrevista` — **fluxo fundamental:** `FundamentalIntakeFormContent` (continuação de `/cases/new`, `metadataJson.intakeForm`); **legado (casos antigos):** `CaseChecklistTab` + `GET/POST /api/cases/[id]/checklist` (Lane B).
 3. **Partes e fatos** — `/cases/[id]/partes-fatos` — `CaseFactsPartiesTab` (CRUD inline existente: facts, parties, requests, risks via rotas `/api/cases/[id]/*`).
 4. **Documentos** — `/cases/[id]/documentos` — `CaseDocumentsTab` (upload, status, texto extraído em diálogo, atalhos para estratégia/partes).
 5. **Pesquisa jurídica** — `/cases/[id]/pesquisa-juridica` — `CaseResearchTab` em `src/components/cases/research/case-research-tab.tsx` (Case Brain resumido + recomendações + `LegalSearchPanel`).
@@ -136,8 +184,12 @@ Ordem fixa na subnavegação persistente (`CaseSubnav`):
 - `src/components/cases/case-subnav.tsx`, `case-legacy-query-redirect.tsx`, `estrategia-lazy.tsx`, `global-pesquisa-workbench.tsx`
 - `src/components/cases/case-cockpit-header.tsx`, `case-cockpit-progress.tsx` (P1 cockpit)
 - `src/lib/cases/case-legal-workflow.ts`, `case-workflow-rail.tsx`
-- `src/components/cases/research/case-research-tab.tsx`
-- `src/components/cases/case-research-tab.tsx` (re-export)
+- `src/components/cases/research/case-research-tab.tsx` (+ `credentials: "include"` na rodada P0 integrity)
+- `src/middleware.ts`, `src/middleware.test.ts`
+- `playwright.config.ts`, `tests/e2e/auth.setup.ts`, `tests/e2e/case-flow-fundamental.spec.ts`, `tests/e2e/helpers/intake-form-e2e.ts`, `tests/e2e/helpers/case-materialization.ts`, `tests/e2e/05-api-auth-required.spec.ts`, `tests/e2e/07-cases.spec.ts`
+- `src/app/api/cases/fundamental-intake/route.ts`, `tests/cases/fundamental-intake-route-order.test.ts`, `tests/cases/p0-case-flow-qa-contracts.test.ts`
+- `src/components/cases/fundamental-intake-form.tsx`, `src/app/(app)/cases/[id]/entrevista/page.tsx`, `src/app/(app)/cases/new/page.tsx`, `src/components/cases/case-checklist-tab.tsx`
+- `src/lib/cases/case-intake-source.ts`, `case-checklist-state.ts`, `src/app/api/cases/[id]/checklist/route.ts`
 - `src/components/cases/case-overview-tab.tsx`, `case-documents-tab.tsx`, `case-tabs.tsx`
 - `src/lib/ui/product-terminology.ts`
 - `docs/UX_FLOW_AUDIT.md`
@@ -149,6 +201,6 @@ Ordem fixa na subnavegação persistente (`CaseSubnav`):
 
 ## Confirmações de processo
 
-- **Lint / typecheck / test (2026-05-14):** executados — ver secção “Atualização (2026-05-14)” no topo.
-- **Build produção:** validar com dev server parado (ver topo).
+- **Lint / typecheck / test (2026-05-14):** ver secções “Entrevista fundamental vs checklist”, “P0 Case Flow Integrity” e “P0 Case Flow QA”.
+- **Build produção:** `build:clean` OK nas sub-rodadas P0 integrity e P0 QA (dev parado, `.next` limpo).
 - **Previews HTML:** não foram copiados assets, scripts, marca nem classes proprietárias; apenas padrões (hierarquia, cartões, busca ampla, painel lateral).

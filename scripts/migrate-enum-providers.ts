@@ -17,7 +17,7 @@
  * o `IF NOT EXISTS` apenas pula.
  */
 
-/* eslint-disable no-console */
+ 
 
 import { PrismaClient } from "@prisma/client";
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { prisma } from "@/lib/prisma";
 
 let mockWorkspaceId = "";
-let mockUserId = "test-user";
+const mockUserId = "test-user";
 
 vi.mock("@/lib/auth/session", () => {
   return {

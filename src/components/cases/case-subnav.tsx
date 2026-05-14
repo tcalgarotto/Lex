@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 /** Exportado para testes de regressão (ordem das abas do caso). */
 export const CASE_SUBNAV_ITEMS = [
  { suffix: "", label: "Visão geral" },
- { suffix: "/entrevista", label: "Entrevista guiada" },
+ { suffix: "/entrevista", label: "Entrevista" },
  { suffix: "/partes-fatos", label: "Partes e fatos" },
  { suffix: "/documentos", label: "Documentos" },
  { suffix: "/pesquisa-juridica", label: "Pesquisa jurídica" },

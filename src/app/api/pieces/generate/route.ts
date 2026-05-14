@@ -137,7 +137,7 @@ Gere agora a peça do tipo: ${kind}.`;
     const res = await generateText({
       model: getPieceLanguageModel(),
       temperature: 0.2,
-      maxTokens: 2200,
+      maxOutputTokens: 2200,
       prompt,
     });
     text = res.text;

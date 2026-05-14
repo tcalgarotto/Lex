@@ -1,4 +1,4 @@
-import { StreamData, streamText } from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse, streamText } from "ai";
 import { ChatRole } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -132,7 +132,6 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
     input: messages,
   });
   const tLlm = Date.now();
-  const streamData = new StreamData();
   const citations = chunks.map((c, i) => {
     const docId = c.meta["documentId"];
     const docName = docId ? docsById.get(docId)?.name : undefined;
@@ -166,96 +165,113 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
       href: href ?? null,
     };
   });
-  streamData.appendMessageAnnotation({
-    type: "citations",
-    citations,
-  });
-  streamData.appendMessageAnnotation({
-    type: "confidence",
-    label: confidence.label,
-    score: Number(confidence.score.toFixed(3)),
-    justification: confidence.justification,
-  });
-  streamData.appendMessageAnnotation({
-    type: "source_sufficiency",
-    sufficient: sourceSufficiency.sufficient,
-    level: sourceSufficiency.level,
-    reasons: sourceSufficiency.reasons,
-    warnings: sourceSufficiency.warnings,
-    queryType: classification.queryType,
-    requiresStrongSources: classification.requiresStrongSources,
-  });
 
-  const result = streamText({
-    model: getChatLanguageModel(),
-    system: `${SYSTEM_BASE}\n\n${responseFormat}\n\nSINAIS: ${classification.signals.join(", ") || "(nenhum)"}\n\n${contextual}`,
-    messages: messages.map((m) => ({
-      role: m.role as "user" | "assistant" | "system",
-      content: m.content,
-    })),
-    onFinish: async ({ text, usage }) => {
-      generation?.end({
-        output: text,
-        usage: {
-          promptTokens: usage?.promptTokens,
-          completionTokens: usage?.completionTokens,
-          totalTokens: usage?.totalTokens,
+  const stream = createUIMessageStream({
+    execute: ({ writer }) => {
+      writer.write({
+        type: "message-metadata",
+        messageMetadata: {
+          annotations: [
+            { type: "citations", citations },
+            {
+              type: "confidence",
+              label: confidence.label,
+              score: Number(confidence.score.toFixed(3)),
+              justification: confidence.justification,
+            },
+            {
+              type: "source_sufficiency",
+              sufficient: sourceSufficiency.sufficient,
+              level: sourceSufficiency.level,
+              reasons: sourceSufficiency.reasons,
+              warnings: sourceSufficiency.warnings,
+              queryType: classification.queryType,
+              requiresStrongSources: classification.requiresStrongSources,
+            },
+          ],
         },
       });
-      await lf?.flushAsync();
 
-      recordObservabilityLog({
-        workspaceId,
-        userId: user.id,
-        kind: "llm.chat_stream",
-        name: "chat",
-        latencyMs: Date.now() - tLlm,
-        payloadJson: {
-          model: getChatModelId(),
-          provider: getChatProviderId(),
-          promptTokens: usage?.promptTokens,
-          completionTokens: usage?.completionTokens,
+      const result = streamText({
+        model: getChatLanguageModel(),
+        system: `${SYSTEM_BASE}\n\n${responseFormat}\n\nSINAIS: ${classification.signals.join(", ") || "(nenhum)"}\n\n${contextual}`,
+        messages: messages.map((m) => ({
+          role: m.role as "user" | "assistant" | "system",
+          content: m.content,
+        })),
+        onFinish: async (event) => {
+          const text = event.text;
+          const usage = event.totalUsage;
+          const promptTokens = usage?.inputTokens;
+          const completionTokens = usage?.outputTokens;
+          const totalTokens = usage?.totalTokens;
+
+          generation?.end({
+            output: text,
+            usage: {
+              promptTokens,
+              completionTokens,
+              totalTokens,
+            },
+          });
+          await lf?.flushAsync();
+
+          recordObservabilityLog({
+            workspaceId,
+            userId: user.id,
+            kind: "llm.chat_stream",
+            name: "chat",
+            latencyMs: Date.now() - tLlm,
+            payloadJson: {
+              model: getChatModelId(),
+              provider: getChatProviderId(),
+              promptTokens,
+              completionTokens,
+            },
+            retrievalChunkIds: chunks.map((c) => c.id),
+          });
+
+          recordCostEntry({
+            workspaceId,
+            userId: user.id,
+            category: "CHAT_COMPLETION",
+            provider: getChatProviderId(),
+            model: getChatModelId(),
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            metaJson: { threadId, processId: thread.processId },
+          });
+
+          await pushHotInteraction({
+            workspaceId,
+            processId: thread.processId,
+            userMessage: latestUser?.content ?? "",
+            assistantText: text,
+          });
+
+          await prisma.chatMessage.create({
+            data: {
+              threadId,
+              role: ChatRole.ASSISTANT,
+              content: text,
+              citationsJson: citations,
+            },
+          });
+          await prisma.activity.create({
+            data: {
+              workspaceId,
+              kind: "chat.message",
+              title: "Resposta IA no processo",
+              metaJson: { processId: thread.processId, threadId },
+            },
+          });
         },
-        retrievalChunkIds: chunks.map((c) => c.id),
       });
 
-      recordCostEntry({
-        workspaceId,
-        userId: user.id,
-        category: "CHAT_COMPLETION",
-        provider: getChatProviderId(),
-        model: getChatModelId(),
-        promptTokens: usage?.promptTokens,
-        completionTokens: usage?.completionTokens,
-        totalTokens: usage?.totalTokens,
-        metaJson: { threadId, processId: thread.processId },
-      });
-
-      await pushHotInteraction({
-        workspaceId,
-        processId: thread.processId,
-        userMessage: latestUser?.content ?? "",
-        assistantText: text,
-      });
-
-      await prisma.chatMessage.create({
-        data: {
-          threadId,
-          role: ChatRole.ASSISTANT,
-          content: text,
-          citationsJson: citations,
-        },
-      });
-      await prisma.activity.create({
-        data: {
-          workspaceId,
-          kind: "chat.message",
-          title: "Resposta IA no processo",
-          metaJson: { processId: thread.processId, threadId },
-        },
-      });
+      writer.merge(result.toUIMessageStream());
     },
   });
 
-  return result.toDataStreamResponse({ data: streamData });
+  return createUIMessageStreamResponse({ stream });
 }

@@ -36,6 +36,8 @@ test.describe("legal workflow automation", () => {
       data: { action: "draft", form: {} },
     });
     expect(res.status()).toBe(401);
+    const body = (await res.json().catch(() => ({}))) as { code?: string };
+    expect(body.code).toBe("SESSION_REQUIRED");
   });
 
   test("GET /api/cases -> 401 sem auth", async ({ request }) => {

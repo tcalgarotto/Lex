@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useUiStore } from "@/stores/ui-store";
+import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
@@ -27,7 +28,9 @@ import {
   SECTION_ANCHOR,
   cnjVisualError,
   interviewProgressPercent,
+  isReadyForLexStructure,
   lacunaLabels,
+  lexStructureBlockedReason,
   nextRecommendedSection,
   pendingRequiredLabels,
   sectionStatuses,
@@ -171,7 +174,20 @@ function sectionReviewFooter(
   );
 }
 
-export default function FundamentalIntakeFormContent() {
+export type FundamentalIntakeFormContentProps = {
+  /** Continuação do mesmo caso (rascunho em `metadataJson.intakeForm`). */
+  seedCaseId?: string | null;
+  seedForm?: FundamentalIntakeForm | null;
+  /**
+   * `embedded` — formulário dentro de `/cases/[id]/entrevista`: sem coluna `fixed` em viewport
+   * (evita sobrepor o rail direito do caso). `standalone` — `/cases/new` com layout completo.
+   */
+  mode?: "standalone" | "embedded";
+};
+
+export default function FundamentalIntakeFormContent(props: FundamentalIntakeFormContentProps = {}) {
+  const { seedCaseId = null, seedForm = null, mode = "standalone" } = props;
+  const isEmbedded = mode === "embedded";
   const router = useRouter();
   const [form, setForm] = React.useState<FundamentalIntakeForm>(() => createDefaultFundamentalIntakeForm());
   const [caseId, setCaseId] = React.useState<string | null>(null);
@@ -187,7 +203,19 @@ export default function FundamentalIntakeFormContent() {
   const nextId = React.useMemo(() => nextRecommendedSection(form), [form]);
   const nextLabel = NEXT_SECTION_LABEL[nextId];
 
+  const structureLocked = React.useMemo(() => !isReadyForLexStructure(form), [form]);
+  const structureLockTitle = React.useMemo(() => lexStructureBlockedReason(form) ?? undefined, [form]);
+
   const cnjErr = cnjVisualError(form.attend.cnj);
+
+  React.useEffect(() => {
+    if (!seedCaseId && !seedForm) return;
+    if (seedCaseId) setCaseId(seedCaseId);
+    if (seedForm) {
+      const parsed = parseFundamentalIntakeForm(seedForm);
+      if (parsed.success) setForm(parsed.data);
+    }
+  }, [seedCaseId, seedForm]);
 
   const updateActiveSection = React.useCallback(() => {
     if (typeof window === "undefined") return;
@@ -232,15 +260,23 @@ export default function FundamentalIntakeFormContent() {
       toast.error("Corrija o número CNJ antes de salvar.");
       return;
     }
+    if (action === "structure" && !isReadyForLexStructure(payload)) {
+      toast.error(
+        lexStructureBlockedReason(form) ?? "Complete o formulário antes de estruturar com a Lex AI.",
+      );
+      return;
+    }
     setLoading(action);
     try {
       const res = await fetch("/api/cases/fundamental-intake", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, caseId: caseId ?? undefined, form: payload }),
       });
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;
+        code?: string;
         issues?: { formErrors?: string[]; fieldErrors?: Record<string, string[] | undefined> };
         case?: { id: string };
       };
@@ -253,9 +289,15 @@ export default function FundamentalIntakeFormContent() {
           }
           setClientErrors(flat);
         }
-        toast.error(body.error ?? `Falha ao salvar (${res.status}).`);
+        const msg =
+          body.error ??
+          (res.status === 401
+            ? "Não foi possível confirmar a sessão. Atualize a página ou entre novamente."
+            : `Falha ao salvar (${res.status}).`);
+        toast.error(msg);
         return;
       }
+      router.refresh();
       const id = body.case?.id;
       if (id) setCaseId(id);
       if (action === "draft") {
@@ -274,19 +316,26 @@ export default function FundamentalIntakeFormContent() {
   const stepperActive = activeScrollSection;
 
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
-  /** Alinha com `ml-[268px]` / `ml-[80px]` do AppChrome. */
+  /** Alinha com `ml-[268px]` / `ml-[80px]` do AppChrome (só modo standalone). */
   const appMainInset = sidebarCollapsed ? "80px" : "268px";
 
   return (
     <div
-      className="w-full min-w-0 pb-28 md:pb-6 lg:pb-10"
+      className={cn("w-full min-w-0", isEmbedded ? "pb-24 md:pb-8" : "pb-28 md:pb-6 lg:pb-10")}
       style={
-        {
-          "--app-main-inset": appMainInset,
-          "--intake-sidebar-w": "320px",
-          "--intake-gap": "24px",
-          "--intake-shell-w": `min(100%, max(0px, calc((100vw - ${appMainInset}) * 0.7)))`,
-        } as React.CSSProperties
+        (isEmbedded
+          ? {
+              "--app-main-inset": "0px",
+              "--intake-sidebar-w": "280px",
+              "--intake-gap": "24px",
+              "--intake-shell-w": "min(100%, 56rem)",
+            }
+          : {
+              "--app-main-inset": appMainInset,
+              "--intake-sidebar-w": "320px",
+              "--intake-gap": "24px",
+              "--intake-shell-w": `min(100%, max(0px, calc((100vw - ${appMainInset}) * 0.7)))`,
+            }) as React.CSSProperties
       }
     >
       {/* Mobile: stepper horizontal sob o topbar (em md+ o menu vai para o card na coluna direita). */}
@@ -315,13 +364,27 @@ export default function FundamentalIntakeFormContent() {
             onDraft={() => {}}
             onStructure={() => {}}
             loading={loading}
-            caseId={caseId}
+            structureLocked={structureLocked}
+            structureLockTitle={structureLocked ? structureLockTitle : undefined}
           />
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 md:block">
-          <div className="min-w-0 flex-1 space-y-6 overflow-x-hidden pb-2 md:mx-auto md:w-[var(--intake-shell-w)] md:min-w-0 md:max-w-[var(--intake-shell-w)] md:pr-[calc(var(--intake-sidebar-w)+var(--intake-gap))] md:pb-4">
+      <div
+        className={cn(
+          "flex flex-col gap-6",
+          !isEmbedded && "md:block",
+          isEmbedded && "md:grid md:grid-cols-[minmax(0,1fr),min(280px,34%)] md:items-start md:gap-6",
+        )}
+      >
+          <div
+            className={cn(
+              "min-w-0 flex-1 space-y-6 overflow-x-hidden pb-2",
+              isEmbedded
+                ? "md:mx-0 md:w-full md:max-w-none md:pr-0 md:pb-4"
+                : "md:mx-auto md:w-[var(--intake-shell-w)] md:min-w-0 md:max-w-[var(--intake-shell-w)] md:pr-[calc(var(--intake-sidebar-w)+var(--intake-gap))] md:pb-4",
+            )}
+          >
           <LegalSectionCard
             id={SECTION_ANCHOR.attend}
             step={1}
@@ -1355,8 +1418,21 @@ export default function FundamentalIntakeFormContent() {
           </LegalSectionCard>
         </div>
 
-        <div className="pointer-events-none hidden md:fixed md:left-[var(--app-main-inset)] md:right-0 md:top-[calc(var(--app-header-h,5.5rem)+1.25rem)] md:bottom-4 md:z-30 md:block">
-          <div className="pointer-events-none mx-auto flex h-full w-[var(--intake-shell-w)] justify-end">
+        {/* Standalone: painel à direita em `fixed` na viewport. Embedded: coluna da grelha, sticky dentro do centro. */}
+        <div
+          className={cn(
+            "pointer-events-none hidden md:block",
+            isEmbedded
+              ? "md:relative md:col-start-2 md:row-start-1 md:self-start md:sticky md:top-4 md:z-10 md:max-h-[min(calc(100vh-6rem),920px)] md:overflow-y-auto md:overscroll-y-contain"
+              : "md:fixed md:left-[var(--app-main-inset)] md:right-0 md:top-[calc(var(--app-header-h,5.5rem)+2rem)] md:bottom-4 md:z-30",
+          )}
+        >
+          <div
+            className={cn(
+              "pointer-events-none mx-auto flex h-full justify-end",
+              isEmbedded ? "w-full" : "w-[var(--intake-shell-w)]",
+            )}
+          >
             <aside className="ml-auto flex h-full min-h-0 w-[var(--intake-sidebar-w)] max-w-full flex-col gap-3 overflow-y-auto overscroll-y-contain pointer-events-auto md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
               <IntakeStepperVertical
                 activeId={stepperActive}
@@ -1371,14 +1447,21 @@ export default function FundamentalIntakeFormContent() {
                 onDraft={() => submit("draft")}
                 onStructure={() => submit("structure")}
                 loading={loading}
-                caseId={caseId}
+                structureLocked={structureLocked}
+                structureLockTitle={structureLocked ? structureLockTitle : undefined}
               />
             </aside>
           </div>
         </div>
       </div>
 
-      <IntakeMobileActionBar onDraft={() => submit("draft")} onStructure={() => submit("structure")} loading={loading} />
+      <IntakeMobileActionBar
+        onDraft={() => submit("draft")}
+        onStructure={() => submit("structure")}
+        loading={loading}
+        structureLocked={structureLocked}
+        structureLockTitle={structureLocked ? structureLockTitle : undefined}
+      />
     </div>
   );
 }

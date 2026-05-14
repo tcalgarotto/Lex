@@ -2,17 +2,20 @@
  * POST /api/cases/fundamental-intake
  *
  * - action=draft: grava rascunho (cria caso ou atualiza `caseId`).
- * - action=structure: grava formulário, chama DeepSeek, persiste partes/fatos/pedidos/riscos/brain.
+ * - action=structure: chama DeepSeek, grava caso (se novo), materializa partes/fatos/pedidos/riscos/brain.
  *
+ * Novo caso sem `caseId`: a IA corre **antes** de criar o registo — falha na estruturação não deixa caso órfão.
  * Não dispara consolidação Inngest (fluxo principal DeepSeek + Postgres).
  */
 
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getCaseById } from "@/lib/cases/repository";
 import { parseFundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
+import { isReadyForLexStructure, lexStructureBlockedReason } from "@/components/cases/fundamental-intake-helpers";
 import { runDeepseekFundamentalStructure } from "@/lib/cases/fundamental-intake/deepseek-structure";
 import { buildIntakeNarrativeForModel } from "@/lib/cases/fundamental-intake/build-narrative";
 import {
@@ -25,6 +28,16 @@ const PostBody = z.object({
   caseId: z.string().cuid().optional(),
   form: z.unknown(),
 });
+
+function revalidateCaseSurface(caseId: string) {
+  revalidatePath("/cases");
+  revalidatePath(`/cases/${caseId}`);
+  revalidatePath(`/cases/${caseId}/entrevista`);
+  revalidatePath(`/cases/${caseId}/partes-fatos`);
+  revalidatePath(`/cases/${caseId}/documentos`);
+  revalidatePath(`/cases/${caseId}/pesquisa-juridica`);
+  revalidatePath(`/cases/${caseId}/estrategia`);
+}
 
 export async function POST(req: Request) {
   const { workspaceId, user } = await getWorkspaceContext();
@@ -47,6 +60,17 @@ export async function POST(req: Request) {
   }
   const form = parsedForm.data;
 
+  if (body.action === "structure" && !isReadyForLexStructure(form)) {
+    return NextResponse.json(
+      {
+        error:
+          lexStructureBlockedReason(form) ??
+          "Complete todas as secções obrigatórias antes de estruturar com a Lex AI.",
+      },
+      { status: 400 },
+    );
+  }
+
   if (body.action === "draft") {
     try {
       const { id } = await persistFundamentalDraft({
@@ -56,6 +80,7 @@ export async function POST(req: Request) {
         form,
       });
       const c = await getCaseById(workspaceId, id);
+      revalidateCaseSurface(id);
       return NextResponse.json({ case: c, mode: "fundamental_draft" }, { status: body.caseId ? 200 : 201 });
     } catch (e) {
       const status = (e as { status?: number }).status ?? 500;
@@ -64,15 +89,25 @@ export async function POST(req: Request) {
   }
 
   let caseId = body.caseId ?? null;
+  const narrative = buildIntakeNarrativeForModel(form);
+
   try {
     if (!caseId) {
-      const created = await persistFundamentalDraft({
+      const structured = await runDeepseekFundamentalStructure(narrative);
+      const { id } = await persistFundamentalDraft({
         workspaceId,
         userId: user.id,
         caseId: null,
         form,
       });
-      caseId = created.id;
+      caseId = id;
+      await applyFundamentalStructure({
+        workspaceId,
+        userId: user.id,
+        caseId,
+        form,
+        structured,
+      });
     } else {
       await persistFundamentalDraft({
         workspaceId,
@@ -80,32 +115,34 @@ export async function POST(req: Request) {
         caseId,
         form,
       });
+
+      const row = await prisma.case.findFirst({
+        where: { id: caseId, workspaceId, deletedAt: null },
+        select: { metadataJson: true },
+      });
+      const meta = (row?.metadataJson ?? {}) as Record<string, unknown>;
+      if (meta["intakeStructuredAt"]) {
+        return NextResponse.json(
+          { error: "Este caso já foi estruturado a partir da entrevista fundamental." },
+          { status: 409 },
+        );
+      }
+
+      const structured = await runDeepseekFundamentalStructure(narrative);
+      await applyFundamentalStructure({
+        workspaceId,
+        userId: user.id,
+        caseId,
+        form,
+        structured,
+      });
     }
-
-    const row = await prisma.case.findFirst({
-      where: { id: caseId, workspaceId, deletedAt: null },
-      select: { metadataJson: true },
-    });
-    const meta = (row?.metadataJson ?? {}) as Record<string, unknown>;
-    if (meta["intakeStructuredAt"]) {
-      return NextResponse.json(
-        { error: "Este caso já foi estruturado a partir da entrevista fundamental." },
-        { status: 409 },
-      );
-    }
-
-    const narrative = buildIntakeNarrativeForModel(form);
-    const structured = await runDeepseekFundamentalStructure(narrative);
-
-    await applyFundamentalStructure({
-      workspaceId,
-      userId: user.id,
-      caseId,
-      form,
-      structured,
-    });
 
     const c = await getCaseById(workspaceId, caseId);
+    if (!c) {
+      return NextResponse.json({ error: "Caso não encontrado após estruturar." }, { status: 500 });
+    }
+    revalidateCaseSurface(caseId);
     return NextResponse.json({ case: c, mode: "fundamental_structured" }, { status: 200 });
   } catch (e) {
     const msg = (e as Error).message;

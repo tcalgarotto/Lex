@@ -133,8 +133,9 @@ export function IntakeSidebarPanel({
   onDraft,
   onStructure,
   loading,
-  caseId,
   hideActions,
+  structureLocked,
+  structureLockTitle,
 }: {
   progress: number;
   pending: string[];
@@ -143,9 +144,12 @@ export function IntakeSidebarPanel({
   onDraft: () => void;
   onStructure: () => void;
   loading: "draft" | "structure" | "hydrate" | null;
-  caseId: string | null;
   /** Mobile: só resumo; botões ficam na barra inferior. */
   hideActions?: boolean;
+  /** Quando true, desativa só o botão "Estruturar com Lex AI" até o formulário estar completo. */
+  structureLocked?: boolean;
+  /** Texto para `title` / acessibilidade quando Lex está bloqueada. */
+  structureLockTitle?: string;
 }) {
   return (
     <Card className="space-y-4 p-4 shadow-none md:p-5">
@@ -209,18 +213,14 @@ export function IntakeSidebarPanel({
           <Button
             type="button"
             className="h-auto min-h-[44px] w-full bg-violet-600 py-2.5 text-control font-semibold text-white hover:bg-violet-500"
-            disabled={loading !== null}
+            disabled={loading !== null || Boolean(structureLocked)}
+            title={structureLocked ? structureLockTitle : undefined}
             onClick={onStructure}
             data-testid="save-structure-sidebar"
           >
             {loading === "structure" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
             Salvar e estruturar com Lex AI
           </Button>
-          {!caseId ? (
-            <p className="text-center text-sm leading-relaxed text-[color:var(--text-muted)]">
-              Salve o rascunho uma vez para receber o ID do caso e anexar documentos.
-            </p>
-          ) : null}
         </div>
       ) : null}
     </Card>
@@ -231,10 +231,14 @@ export function IntakeMobileActionBar({
   onDraft,
   onStructure,
   loading,
+  structureLocked,
+  structureLockTitle,
 }: {
   onDraft: () => void;
   onStructure: () => void;
   loading: "draft" | "structure" | "hydrate" | null;
+  structureLocked?: boolean;
+  structureLockTitle?: string;
 }) {
   return (
     <div
@@ -256,7 +260,8 @@ export function IntakeMobileActionBar({
         <Button
           type="button"
           className="h-11 min-h-[44px] flex-[1.35] text-[14px] font-semibold"
-          disabled={loading !== null}
+          disabled={loading !== null || Boolean(structureLocked)}
+          title={structureLocked ? structureLockTitle : undefined}
           onClick={onStructure}
           data-testid="save-structure-mobile"
         >

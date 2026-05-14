@@ -23,6 +23,7 @@ import {
   loadCaseChecklistStateForBootstrap,
   resolveCaseChecklistTemplate,
 } from "@/lib/cases/case-checklist-state";
+import { usesFundamentalIntakeFlow } from "@/lib/cases/case-intake-source";
 
 
 const PostBody = z.object({
@@ -79,6 +80,17 @@ export async function POST(
   }
 
   const meta = (c.metadataJson ?? {}) as Record<string, unknown>;
+
+  if (usesFundamentalIntakeFlow(meta)) {
+    return NextResponse.json(
+      {
+        error:
+          "Este caso usa a entrevista fundamental. Continue em /cases/new ou na aba Entrevista do caso — o checklist legado não se aplica.",
+      },
+      { status: 409 },
+    );
+  }
+
   const previousBrain = (meta["brain"] as Record<string, unknown>) ?? {};
   const previousChecklist = previousBrain["checklistResponses"] as
     | { templateId: string; version: number; answers: Record<string, unknown>; answeredAt: string }

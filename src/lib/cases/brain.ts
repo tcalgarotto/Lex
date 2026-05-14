@@ -520,7 +520,7 @@ async function callLlmForBrain(
           model: getChatLanguageModel(),
           prompt,
           temperature: 0.1,
-          maxTokens: 3500,
+          maxOutputTokens: 3500,
         }),
         new Promise<never>((_, reject) =>
           setTimeout(

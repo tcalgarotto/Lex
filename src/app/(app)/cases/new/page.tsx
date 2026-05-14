@@ -1,10 +1,44 @@
 import FundamentalIntakeFormContent from "@/components/cases/fundamental-intake-form";
 import { LexPageFrame } from "@/components/layout/lex-page-frame";
+import { getWorkspaceContext } from "@/lib/auth/session";
+import type { FundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
+import {
+  isFundamentalIntakeStructured,
+  parseFundamentalIntakeFromMetadata,
+} from "@/lib/cases/case-intake-source";
+import { loadCaseForWorkspace } from "../[id]/_load-case";
 
-export default function NewCasePage() {
+type PageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function NewCasePage({ searchParams }: PageProps) {
+  const sp = (await searchParams) ?? {};
+  const raw = sp["continue"];
+  const continueId =
+    typeof raw === "string" ? raw.trim() : Array.isArray(raw) && typeof raw[0] === "string" ? raw[0].trim() : "";
+
+  let seedCaseId: string | null = null;
+  let seedForm: FundamentalIntakeForm | null = null;
+
+  if (continueId.length > 0) {
+    const { workspaceId } = await getWorkspaceContext();
+    const c = await loadCaseForWorkspace(workspaceId, continueId);
+    if (c) {
+      const meta = c.metadataJson;
+      if (!isFundamentalIntakeStructured(meta)) {
+        const parsed = parseFundamentalIntakeFromMetadata(meta);
+        if (parsed) {
+          seedCaseId = c.id;
+          seedForm = parsed;
+        }
+      }
+    }
+  }
+
   return (
     <LexPageFrame centerWidth="wide">
-      <FundamentalIntakeFormContent />
+      <FundamentalIntakeFormContent seedCaseId={seedCaseId} seedForm={seedForm} />
     </LexPageFrame>
   );
 }

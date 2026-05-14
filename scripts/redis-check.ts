@@ -29,7 +29,7 @@
  *     errorMessage: ping timeout 4000ms
  */
 
-/* eslint-disable no-console */
+ 
 
 import { describeRedisUrl, pingRedis, isRedisRequired } from "../src/lib/redis";
 

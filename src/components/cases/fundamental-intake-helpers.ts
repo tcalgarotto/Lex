@@ -1,4 +1,5 @@
 import type { FundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
+import { parseFundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
 import { digitsOnly } from "@/lib/forms/legal-input-masks";
 
 export type IntakeSectionId =
@@ -142,6 +143,54 @@ export function nextRecommendedSection(form: FundamentalIntakeForm): IntakeSecti
     if (st[id] !== "complete") return id;
   }
   return "communication";
+}
+
+/**
+ * Campos com asterisco vermelho (`requirement="required"`) em
+ * `fundamental-intake-form.tsx`: atendimento (título, fase, cidade, UF),
+ * cliente (nome ou razão social), relato (\"O que aconteceu?\" ou relato livre).
+ */
+export function fundamentalIntakeUiRequiredLabels(form: FundamentalIntakeForm): string[] {
+  const out: string[] = [];
+  if ((form.attend.suggestedTitle ?? "").trim().length < 2) out.push("Título sugerido do caso");
+  if (!form.attend.preOrProcess) out.push("Fase");
+  if ((form.attend.city ?? "").trim().length < 1) out.push("Cidade do caso");
+  if ((form.attend.uf ?? "").trim().length < 2) out.push("UF");
+  if (form.clientKind === "PERSON") {
+    if ((form.clientPerson?.fullName ?? "").trim().length < 2) out.push("Nome completo");
+  } else if ((form.clientCompany?.legalName ?? "").trim().length < 2) {
+    out.push("Razão social");
+  }
+  if (form.freeNarrativeOnly) {
+    if ((form.narrative.freeText ?? "").trim().length < 20) out.push("Relato livre (texto contínuo)");
+  } else if ((form.narrative.whatHappened ?? "").trim().length < 10) {
+    out.push("O que aconteceu?");
+  }
+  return out;
+}
+
+/**
+ * Habilita "Salvar e estruturar com Lex AI" quando os campos com * na UI estão
+ * ok, o CNJ (se preenchido) é válido e o restante do formulário passa no Zod.
+ */
+export function isReadyForLexStructure(form: FundamentalIntakeForm): boolean {
+  if (cnjVisualError(form.attend.cnj)) return false;
+  if (fundamentalIntakeUiRequiredLabels(form).length > 0) return false;
+  return parseFundamentalIntakeForm(form).success;
+}
+
+/** Mensagem curta para tooltip quando o botão Lex está desativado. */
+export function lexStructureBlockedReason(form: FundamentalIntakeForm): string | null {
+  const cnjErr = cnjVisualError(form.attend.cnj);
+  if (cnjErr) return cnjErr;
+  const ui = fundamentalIntakeUiRequiredLabels(form);
+  if (ui.length > 0) {
+    return `Preencha os campos obrigatórios (*): ${ui.slice(0, 6).join(", ")}${ui.length > 6 ? "…" : ""}.`;
+  }
+  if (!parseFundamentalIntakeForm(form).success) {
+    return "Corrija os erros destacados no formulário.";
+  }
+  return null;
 }
 
 export function toggleSectionConfirmed(

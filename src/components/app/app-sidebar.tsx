@@ -12,12 +12,15 @@ import {
   Library,
   FolderKanban,
   Home,
+  PanelLeft,
+  PanelLeftClose,
   Search,
   ScrollText,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useUiStore } from "@/stores/ui-store";
 import { useWorkspaceContext } from "@/components/app/workspace-context";
 import { SidebarAccountFooter } from "@/components/app/sidebar-account-footer";
@@ -163,6 +166,7 @@ SidebarFooter.displayName = "SidebarFooter";
 
 export const AppSidebar = memo(function AppSidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   return (
     <aside
@@ -175,6 +179,28 @@ export const AppSidebar = memo(function AppSidebar() {
     >
       <SidebarMainNav collapsed={collapsed} />
       <SidebarFooter collapsed={collapsed} />
+      <div
+        className={cn(
+          "shrink-0 border-t border-[color:var(--border-subtle)] p-2",
+          collapsed ? "flex justify-center" : "flex justify-end",
+        )}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 shrink-0 text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[color:var(--brand-border)]"
+          onClick={() => toggleSidebar()}
+          aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+          title={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+        >
+          {collapsed ? (
+            <PanelLeft className="size-6 stroke-2" aria-hidden />
+          ) : (
+            <PanelLeftClose className="size-6 stroke-2" aria-hidden />
+          )}
+        </Button>
+      </div>
     </aside>
   );
 });

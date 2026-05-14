@@ -185,54 +185,59 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  });
  }
 
- return (
- <div className="space-y-4">
+  return (
+    <div className="space-y-4">
+      {narrative ? (
+        <Card className="p-4 text-sm leading-relaxed">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Narrativa do caso</p>
+          <p className="text-foreground/90">{narrative}</p>
+        </Card>
+      ) : c.summary && c.summary.replace(/\s+/g, " ").trim().length > 200 ? (
+        <Card className="p-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Descrição completa</p>
+          <p>{c.summary}</p>
+        </Card>
+      ) : null}
 
- {narrative ? (
- <Card className="p-4 text-sm leading-relaxed">
- <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
- Narrativa do caso
- </p>
- <p className="text-foreground/90">{narrative}</p>
- </Card>
- ) : c.summary && c.summary.replace(/\s+/g, " ").trim().length > 200 ? (
- <Card className="p-4 text-sm leading-relaxed text-muted-foreground">
- <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
- Descrição completa
- </p>
- <p>{c.summary}</p>
- </Card>
- ) : null}
+      {readiness ? <ReadinessCard readiness={readiness} /> : null}
 
- {readiness ? <ReadinessCard readiness={readiness} /> : null}
-
- {intakeFundamental ? (
- <Card className="border-violet-500/25 bg-violet-500/[0.04] p-4">
- <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
- Próximas ações e lacunas (entrevista fundamental)
- </p>
- {intakeFundamental.nextSteps.length > 0 ? (
- <ul className="mb-3 space-y-1.5 text-sm text-foreground/90">
- {intakeFundamental.nextSteps.slice(0, 10).map((s, i) => (
- <li key={`ns-${i}`} className="flex gap-2 leading-snug">
- <span className="font-mono text-[10px] text-violet-300/90">{i + 1}.</span>
- <span>{s}</span>
- </li>
- ))}
- </ul>
- ) : null}
- {intakeFundamental.missingQuestions.length > 0 ? (
- <div className="text-xs text-muted-foreground">
- <p className="mb-1 font-medium text-foreground/80">Perguntas sugeridas ao cliente</p>
- <ul className="list-disc space-y-1 pl-4">
- {intakeFundamental.missingQuestions.slice(0, 8).map((q, i) => (
- <li key={`mq-${i}`}>{q}</li>
- ))}
- </ul>
- </div>
- ) : null}
- </Card>
- ) : null}
+      {intakeFundamental ? (
+        <Card className="border-violet-500/25 bg-violet-500/[0.04] p-4">
+          <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+            Entrevista fundamental
+          </p>
+          {intakeFundamental.nextSteps.length > 0 ? (
+            <ul className="mb-3 space-y-1.5 text-sm text-foreground/90">
+              {intakeFundamental.nextSteps.slice(0, 3).map((s, i) => (
+                <li key={`ns-${i}`} className="flex gap-2 leading-snug">
+                  <span className="font-mono text-[10px] text-violet-300/90">{i + 1}.</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {intakeFundamental.nextSteps.length > 3 ? (
+            <p className="mb-3 text-caption text-muted-foreground">
+              +{intakeFundamental.nextSteps.length - 3} próximo(s) passo(s) na entrevista
+            </p>
+          ) : null}
+          {intakeFundamental.missingQuestions.length > 0 ? (
+            <div className="text-xs text-muted-foreground">
+              <p className="mb-1 font-medium text-foreground/80">Perguntas sugeridas</p>
+              <ul className="list-disc space-y-1 pl-4">
+                {intakeFundamental.missingQuestions.slice(0, 4).map((q, i) => (
+                  <li key={`mq-${i}`}>{q}</li>
+                ))}
+              </ul>
+              {intakeFundamental.missingQuestions.length > 4 ? (
+                <p className="mt-2 text-caption text-muted-foreground">
+                  +{intakeFundamental.missingQuestions.length - 4} sugestões
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
 
  {docInconsistencyRisks.length > 0 || inconsistencies.length > 0 ? (
  <Card className="border-amber-500/40 bg-amber-500/5 p-3">
@@ -256,14 +261,11 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  </li>
  ))}
  </ul>
- <p className="mt-2 text-[11px] text-amber-200/70">
- Revise antes de gerar a peça — divergências de nome, CPF, data ou número de processo
- podem invalidar a minuta.
+ <p className="mt-2 text-caption leading-snug text-amber-200/80">
+ Revise antes de gerar a peça (dados divergentes).
  </p>
  </Card>
  ) : null}
-
- {readiness ? <ReadinessCard readiness={readiness} /> : null}
 
  {c.process ? (
  <Card className="p-4">
@@ -297,17 +299,12 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  </div>
  </Card>
  ) : preProcessual ? (
- <Card className="p-4 text-xs text-muted-foreground">
+ <Card className="p-3 text-sm text-muted-foreground">
  <div className="flex flex-wrap items-center justify-between gap-2">
- <p className="leading-relaxed">
- Este caso ainda é pré-processual.{" "}
- <span className="text-foreground/70">
- Vincule um processo existente ou marque como protocolado quando o protocolo sair.
- </span>
- </p>
- <Button asChild variant="ghost" size="sm">
+ <p className="min-w-0 leading-snug">Pré-processual — vincule o CNJ quando houver número.</p>
+ <Button asChild variant="outline" size="sm" className="shrink-0">
  <Link href={`/processos?returnCase=${c.id}`}>
- <Hash className="mr-1 size-3" /> Vincular processo existente
+ <Hash className="mr-1 size-3" /> Importar CNJ
  </Link>
  </Button>
  </div>

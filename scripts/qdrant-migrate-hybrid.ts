@@ -36,8 +36,6 @@ import { QdrantClient } from "@qdrant/js-client-rest";
 import { prisma } from "../src/lib/prisma";
 import {
   CORPUS_COLLECTIONS,
-  CORPUS_DISTANCE,
-  CORPUS_VECTOR_SIZE,
   DENSE_VECTOR_NAME,
   ensureCorpusCollections,
   SPARSE_VECTOR_NAME,

@@ -145,7 +145,7 @@ Nome sugerido da parte autora: ${authorLine}
   const { text } = await generateText({
     model: getPieceLanguageModel(),
     temperature: 0.2,
-    maxTokens: 6000,
+    maxOutputTokens: 6000,
     prompt,
   });
 

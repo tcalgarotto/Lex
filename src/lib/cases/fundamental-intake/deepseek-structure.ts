@@ -27,7 +27,7 @@ export async function runDeepseekFundamentalStructure(
       narrative.slice(0, 48_000) +
       "\n\nDevolva o JSON com as chaves: parties, facts, requests, risks, timeline, missing_documents, missing_questions, next_steps, case_summary, legal_area_suggestion, urgency_score, readiness_score.",
     temperature: 0.1,
-    maxTokens: 4500,
+    maxOutputTokens: 4500,
   });
   const cleaned = stripMarkdownJson(text);
   let raw: unknown;

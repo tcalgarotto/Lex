@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
   const { text: outlineRaw } = await generateText({
     model: getPieceLanguageModel(),
-    maxTokens: 800,
+    maxOutputTokens: 800,
     temperature: 0.2,
     prompt: `${SYSTEM_BASE}\n\nPeça: ${kind}\nProcesso: ${proc.number}. Cliente: ${proc.client?.name ?? "N/I"}.\nMemória:\n${memory}\n${styleBlock}\n\n${grounding}\n\n${PIECE_OUTLINE}`,
   });
@@ -89,5 +89,5 @@ export async function POST(req: Request) {
     prompt: `Redija a peça completa: ${kind}. Inclua cabeçalho com qualificação básica quando faltar dado use [●].`,
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }

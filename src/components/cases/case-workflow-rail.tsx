@@ -17,14 +17,9 @@ function phaseClasses(p: WorkflowPhaseUi): string {
 export function CaseWorkflowRail({ workflow }: { workflow: CaseLegalWorkflowView }) {
   return (
     <div className="space-y-2 border-t border-[color:var(--border-subtle)] pt-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-caption font-semibold uppercase tracking-widest text-[color:var(--text-secondary)]">
-          Fluxo do caso
-        </p>
-        <span className="text-caption text-[color:var(--text-muted)]">
-          Fase atual: <span className="font-medium text-[color:var(--text-primary)]">{workflow.currentPhaseLabel}</span>
-        </span>
-      </div>
+      <p className="text-caption font-semibold uppercase tracking-widest text-[color:var(--text-secondary)]">
+        Fluxo do caso
+      </p>
       <div
         className="flex w-full flex-nowrap items-center gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="list"
@@ -50,10 +45,6 @@ export function CaseWorkflowRail({ workflow }: { workflow: CaseLegalWorkflowView
           </div>
         ))}
       </div>
-      <p className="text-caption leading-relaxed text-[color:var(--text-muted)]">
-        Concluída · atual · bloqueada · pendente — passe o cursor sobre cada fase para ver critérios de saída (Definition of
-        Done).
-      </p>
     </div>
   );
 }

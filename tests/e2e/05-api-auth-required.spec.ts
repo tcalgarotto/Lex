@@ -24,4 +24,42 @@ test.describe("api auth required", () => {
       expect(res.status()).toBe(401);
     });
   }
+
+  test("POST /api/legal-research/recommend-for-case -> 401 SESSION_REQUIRED sem auth", async ({
+    request,
+    baseURL,
+  }) => {
+    const origin = new URL(baseURL!).origin;
+    const res = await request.post("/api/legal-research/recommend-for-case", {
+      data: {
+        caseId: "clq1e2e000000000000000001",
+        query: "ab",
+        resultTypes: ["LAW"],
+      },
+      headers: { Origin: origin },
+    });
+    expect(res.status()).toBe(401);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("SESSION_REQUIRED");
+  });
+
+  test("POST /api/legal-research/pin -> 401 SESSION_REQUIRED sem auth", async ({ request, baseURL }) => {
+    const origin = new URL(baseURL!).origin;
+    const res = await request.post("/api/legal-research/pin", {
+      data: {
+        caseId: "clq1e2e000000000000000001",
+        foundation: {
+          id: "e2e-x",
+          type: "LAW",
+          title: "Título",
+          citation: "Ref",
+          excerpt: "Trecho mínimo para validação de payload.",
+        },
+      },
+      headers: { Origin: origin },
+    });
+    expect(res.status()).toBe(401);
+    const body = (await res.json()) as { code?: string };
+    expect(body.code).toBe("SESSION_REQUIRED");
+  });
 });

@@ -96,7 +96,7 @@ describe("eventDtoInFetchedRange", () => {
 describe("mergeEventIntoList / removeEventFromList", () => {
   it("insere novo e substitui por id", () => {
     const a = ev({ id: "a", date: "2024-01-01", title: "old" });
-    const b = ev({ id: "b", date: "2024-01-02", title: "x" });
+    const _b = ev({ id: "b", date: "2024-01-02", title: "x" });
     const merged = mergeEventIntoList([a], ev({ id: "b", date: "2024-01-02", title: "new" }));
     expect(merged).toHaveLength(2);
     const again = mergeEventIntoList(merged, ev({ id: "a", date: "2024-01-01", title: "upd" }));

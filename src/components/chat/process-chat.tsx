@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import type { Message } from "ai";
+import type { JSONValue, Message, UIMessage } from "@ai-sdk/ui-utils";
 import { useEffect, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -21,8 +21,16 @@ type Citation = {
  href?: string | null;
 };
 
-function getCitationsFromMessage(m: Message): Citation[] {
- const anns = m.annotations ?? [];
+function messageAnnotations(m: Message | UIMessage): JSONValue[] | undefined {
+  const legacy = (m as Message).annotations;
+  if (Array.isArray(legacy)) return legacy;
+  const meta = (m as { metadata?: { annotations?: JSONValue[] } }).metadata;
+  if (meta && Array.isArray(meta.annotations)) return meta.annotations;
+  return undefined;
+}
+
+function getCitationsFromMessage(m: Message | UIMessage): Citation[] {
+  const anns = messageAnnotations(m) ?? [];
  for (const a of anns) {
  if (!a || typeof a !== "object") continue;
  const obj = a as Record<string, unknown>;
@@ -39,8 +47,8 @@ function getCitationsFromMessage(m: Message): Citation[] {
  return [];
 }
 
-function getConfidenceFromMessage(m: Message): string | null {
- const anns = m.annotations ?? [];
+function getConfidenceFromMessage(m: Message | UIMessage): string | null {
+  const anns = messageAnnotations(m) ?? [];
  for (const a of anns) {
  if (!a || typeof a !== "object") continue;
  const obj = a as Record<string, unknown>;
@@ -50,8 +58,8 @@ function getConfidenceFromMessage(m: Message): string | null {
  return null;
 }
 
-function getConfidenceJustification(m: Message): string | null {
- const anns = m.annotations ?? [];
+function getConfidenceJustification(m: Message | UIMessage): string | null {
+  const anns = messageAnnotations(m) ?? [];
  for (const a of anns) {
  if (!a || typeof a !== "object") continue;
  const obj = a as Record<string, unknown>;
@@ -61,8 +69,8 @@ function getConfidenceJustification(m: Message): string | null {
  return null;
 }
 
-function getBaseInsufficient(m: Message): { level?: string; reasons?: string[]; warnings?: string[] } | null {
- const anns = m.annotations ?? [];
+function getBaseInsufficient(m: Message | UIMessage): { level?: string; reasons?: string[]; warnings?: string[] } | null {
+  const anns = messageAnnotations(m) ?? [];
  for (const a of anns) {
  if (!a || typeof a !== "object") continue;
  const obj = a as Record<string, unknown>;

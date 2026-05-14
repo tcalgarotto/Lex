@@ -46,7 +46,6 @@ import {
 } from "../src/lib/corpus/providers/planalto";
 import {
   parsePlanaltoLawHtml,
-  decodePlanaltoBuffer,
 } from "../src/lib/corpus/providers/planalto-parser";
 
 type Flags = {

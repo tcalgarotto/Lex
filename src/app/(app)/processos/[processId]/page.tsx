@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ProcessDocuments } from "@/components/process/process-documents";
 import { ProcessCalendarTab } from "@/components/calendar/process-calendar-tab";
 import { GeneratePieceDialog } from "@/components/process/generate-piece-dialog";
-import type { JSONValue } from "ai";
+import type { JSONValue } from "@ai-sdk/ui-utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -253,7 +253,7 @@ export default async function ProcessDetailPage({
  {
  type: "citations",
  citations: JSON.parse(JSON.stringify(m.citationsJson)) as JSONValue,
- } as unknown as JSONValue,
+ } as JSONValue,
  ]
  : [],
  }))}

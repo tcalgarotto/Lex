@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { Loader2, ChevronDown, Check, AlertCircle, Copy, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,6 +37,7 @@ import type {
 } from "@/lib/cases/checklists/registry";
 import { listChecklistTemplates } from "@/lib/cases/checklists/registry";
 import { useOptionalCaseBootstrap } from "@/components/cases/case-bootstrap-context";
+import type { CaseChecklistIntakeMode } from "@/lib/cases/case-checklist-state";
 
 type ChecklistApiResponse = {
  template: ChecklistTemplate | null;
@@ -43,6 +45,7 @@ type ChecklistApiResponse = {
  answers: Record<string, unknown>;
  missingFields: ChecklistField[];
  answeredAt: string | null;
+ intakeMode?: CaseChecklistIntakeMode;
 };
 
 type SubmitResponse = {
@@ -100,6 +103,9 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
 
  const template = data?.template ?? null;
  const missingFields = useMemo(() => {
+ if (data?.intakeMode === "fundamental_draft" || data?.intakeMode === "fundamental_done") {
+ return data.missingFields ?? [];
+ }
  if (!template) return [];
  const out: ChecklistField[] = [];
  for (const section of template.sections) {
@@ -109,7 +115,7 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  }
  }
  return out;
- }, [template, answers]);
+ }, [template, answers, data?.intakeMode, data?.missingFields]);
 
  function setAnswer(fieldId: string, value: unknown) {
  setAnswers((prev) => ({ ...prev, [fieldId]: value }));
@@ -127,7 +133,10 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  function copyScript() {
  if (missingFields.length === 0) return;
  const lines = missingFields.map((f, i) => `${i + 1}. ${f.label}${f.helpText ? ` (${f.helpText})` : ""}`);
- const head = `Perguntas para a cliente — ${template?.label ?? ""}\n\n`;
+ const head =
+ template?.label != null
+ ? `Perguntas para a cliente — ${template.label}\n\n`
+ : `Pendências da entrevista fundamental\n\n`;
  void navigator.clipboard.writeText(head + lines.join("\n"));
  }
 
@@ -192,6 +201,31 @@ export function CaseChecklistTab({ caseId, initial }: Props) {
  }
 
  if (!template) {
+ if (data?.intakeMode === "fundamental_done") {
+ return (
+ <Card className="p-4 text-sm text-muted-foreground">
+ <p className="font-medium text-foreground">Entrevista fundamental concluída</p>
+ <p className="mt-2">
+ Os dados deste caso vêm do formulário de criação. Partes, fatos e pedidos já foram
+ estruturados; use a visão geral e as abas do caso para revisar ou complementar.
+ </p>
+ </Card>
+ );
+ }
+ if (data?.intakeMode === "fundamental_draft") {
+ return (
+ <Card className="p-4 text-sm text-muted-foreground">
+ <p className="font-medium text-foreground">Entrevista fundamental em andamento</p>
+ <p className="mt-2">
+ Este caso não usa o checklist antigo. Continue o mesmo formulário da criação do caso para
+ manter uma única fonte de verdade.
+ </p>
+ <Button asChild className="mt-4" variant="default" size="sm">
+ <Link href={`/cases/new?continue=${caseId}`}>Continuar entrevista fundamental</Link>
+ </Button>
+ </Card>
+ );
+ }
  return (
  <Card className="p-4 text-sm text-muted-foreground">
  <p>

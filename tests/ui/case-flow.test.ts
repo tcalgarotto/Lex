@@ -17,7 +17,7 @@ describe("case flow UX (subnav + copy)", () => {
   it("lists the six case sections in the canonical order", () => {
     expect(CASE_SUBNAV_ITEMS.map((i) => i.label)).toEqual([
       "Visão geral",
-      "Entrevista guiada",
+      "Entrevista",
       "Partes e fatos",
       "Documentos",
       "Pesquisa jurídica",

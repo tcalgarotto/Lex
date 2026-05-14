@@ -125,7 +125,7 @@ export function CaseTabs({
  <TabsTrigger value="strategy">
  Estratégia &amp; Peças · {c.drafts.length}
  </TabsTrigger>
- <TabsTrigger value="checklist">Entrevista guiada</TabsTrigger>
+ <TabsTrigger value="checklist">Entrevista</TabsTrigger>
  <TabsTrigger value="activity">Atividade · {c.timeline.length}</TabsTrigger>
  </TabsList>
 

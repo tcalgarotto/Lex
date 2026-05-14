@@ -127,7 +127,7 @@ ${content.slice(0, 45_000)}
   const { text } = await generateText({
     model: getPieceLanguageModel(),
     temperature: 0.15,
-    maxTokens: 3000,
+    maxOutputTokens: 3000,
     prompt,
   });
   return parseLlmIssues(text);

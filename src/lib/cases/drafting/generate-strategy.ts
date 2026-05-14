@@ -129,7 +129,7 @@ ${pinBlock || "(nenhum — descreva lacunas em gaps)"}
   const { text } = await generateText({
     model: getPieceLanguageModel(),
     temperature: 0.25,
-    maxTokens: 2500,
+    maxOutputTokens: 2500,
     prompt,
   });
 

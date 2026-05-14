@@ -84,11 +84,14 @@ export function CaseCockpitActions({ caseId, primary, readiness, archived = fals
           boxShadow: "var(--shadow-violet)",
         }}
       >
-        <Link href={primary.href}>{primary.label}</Link>
+        <Link href={primary.href} title={primary.description}>
+          {primary.label}
+        </Link>
       </Button>
     ) : primary.kind === "post-draft" ? (
       <Button
         size="sm"
+        title={primary.description}
         onClick={() => post("draft")}
         disabled={loading !== null || draftBlocked}
         className="w-full border-[0.5px] border-[color:var(--brand-border)] text-[color:var(--text-inverse)] lex-transition hover:opacity-95 sm:w-auto"
@@ -103,6 +106,7 @@ export function CaseCockpitActions({ caseId, primary, readiness, archived = fals
     ) : (
       <Button
         size="sm"
+        title={primary.description}
         onClick={() => post("review")}
         disabled={loading !== null}
         className="w-full border-[0.5px] border-[color:var(--brand-border)] text-[color:var(--text-inverse)] lex-transition hover:opacity-95 sm:w-auto"

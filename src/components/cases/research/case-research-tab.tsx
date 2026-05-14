@@ -79,7 +79,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  let cancelled = false;
  (async () => {
  try {
- const res = await fetch(`/api/cases/${caseId}/case-brain`);
+ const res = await fetch(`/api/cases/${caseId}/case-brain`, { credentials: "include" });
  if (!res.ok) return;
  const json = (await res.json()) as CaseBrainSnapshot;
  if (!cancelled) setCbSnap(json);
@@ -117,6 +117,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  try {
  const res = await fetch(`/api/legal-research/recommend-for-case`, {
  method: "POST",
+ credentials: "include",
  headers: { "content-type": "application/json" },
  body: JSON.stringify({
  caseId,
@@ -170,6 +171,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  try {
  const res = await fetch(`/api/cases/${caseId}/legal-sources?id=${id}`, {
  method: "DELETE",
+ credentials: "include",
  });
  if (!res.ok) throw new Error(`HTTP ${res.status}`);
  router.refresh();
@@ -184,6 +186,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  try {
  const res = await fetch(`/api/legal-research/pin`, {
  method: "POST",
+ credentials: "include",
  headers: { "content-type": "application/json" },
  body: JSON.stringify(body),
  });
@@ -219,8 +222,8 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  fundamentos alinhados ao relato.
  </p>
  <Button asChild>
- <Link href={`/cases/${caseId}/entrevista`}>
- Comece pela Entrevista guiada <ArrowRight className="ml-2 size-4" aria-hidden />
+          <Link href={`/cases/${caseId}/entrevista`}>
+            Comece pela entrevista <ArrowRight className="ml-2 size-4" aria-hidden />
  </Link>
  </Button>
  </Card>

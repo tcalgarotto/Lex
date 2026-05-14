@@ -257,7 +257,7 @@ function isMacroDivisionHeading(line: string): boolean {
 export function normalizeSemanticLegalMd(input: string, profile: SemanticLegalNormalizeProfile): string {
   const lines = input.split(/\r?\n/);
 
-  let currentContext: ContextKey = "__root__";
+  let _currentContext: ContextKey = "__root__";
   let macroState: MacroState = {};
   let docSegment: DocSegment = profile.includeAdct ? "CF" : "MAIN";
 
@@ -271,7 +271,7 @@ export function normalizeSemanticLegalMd(input: string, profile: SemanticLegalNo
     if (parsedMacro?.kind === "ATO") {
       if (profile.includeAdct) {
         docSegment = "ADCT";
-        currentContext = "2:ATO";
+        _currentContext = "2:ATO";
         macroState = {};
       }
       continue;
@@ -287,13 +287,13 @@ export function normalizeSemanticLegalMd(input: string, profile: SemanticLegalNo
       const parsed = parseMacroHeading(cleaned);
       const normalized = normalizeMacroHeading(cleaned);
       const top = isTopHeading(normalized);
-      if (top) currentContext = `${top.level}:${top.text}`;
+      if (top) _currentContext = `${top.level}:${top.text}`;
       if (parsed) {
         macroState[parsed.kind] = { key: parsed.key, name: parsed.name };
       }
     } else {
       const top = isTopHeading(cleaned);
-      if (top) currentContext = `${top.level}:${top.text}`;
+      if (top) _currentContext = `${top.level}:${top.text}`;
     }
 
     const art = parseArticleLine(cleaned);
@@ -304,7 +304,7 @@ export function normalizeSemanticLegalMd(input: string, profile: SemanticLegalNo
   }
 
   const out: string[] = [profile.documentH1, ""];
-  currentContext = "__root__";
+  _currentContext = "__root__";
   macroState = {};
   let root: DocSegment = profile.includeAdct ? "CF" : "MAIN";
 
@@ -368,7 +368,7 @@ export function normalizeSemanticLegalMd(input: string, profile: SemanticLegalNo
     if (parsedMacro) {
       const normalized = normalizeMacroHeading(line);
       const top = isTopHeading(normalized);
-      if (top) currentContext = `${top.level}:${top.text}`;
+      if (top) _currentContext = `${top.level}:${top.text}`;
 
       const parsed = parsedMacro;
       if (parsed) {
@@ -392,7 +392,7 @@ export function normalizeSemanticLegalMd(input: string, profile: SemanticLegalNo
     }
 
     const top = isTopHeading(line);
-    if (top) currentContext = `${top.level}:${top.text}`;
+    if (top) _currentContext = `${top.level}:${top.text}`;
 
     if (/^#{1,6}\s+/.test(line) && !isMacroDivisionHeading(line)) {
       line = line.replace(/^#{1,6}\s+/, "");

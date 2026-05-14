@@ -32,7 +32,7 @@ export const summarizeProcessMemory = inngest.createFunction(
     const { text } = await step.run("llm-summarize", () =>
       generateText({
         model: getChatLanguageModel(),
-        maxTokens: 600,
+        maxOutputTokens: 600,
         temperature: 0.2,
         prompt: `Extraia fatos jurídicos estáveis e estratégia em bullet points curtos, sem inventar. Se faltar dado, omita.\n\n${transcript}`,
       }),

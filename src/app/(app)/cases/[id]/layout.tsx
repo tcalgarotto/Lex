@@ -12,7 +12,7 @@ import type { ProceduralReadiness } from "@/lib/cases/brain-types";
 import { loadCaseForWorkspace } from "./_load-case";
 import { CaseLegacyQueryRedirect } from "@/components/cases/case-legacy-query-redirect";
 import { SetPageTitle } from "@/components/app/set-page-title";
-import { getWorkspaceContext, getWorkspacesForUser } from "@/lib/auth/session";
+import { getWorkspaceContext } from "@/lib/auth/session";
 import { gatherCaseBootstrap } from "@/lib/cases/case-bootstrap";
 import { CaseBootstrapProvider } from "@/components/cases/case-bootstrap-context";
 import { CaseCockpitHeader } from "@/components/cases/case-cockpit-header";
@@ -24,6 +24,7 @@ import {
   type CaseCockpitActionContext,
 } from "@/lib/cases/case-cockpit-primary-action";
 import { computeCaseLegalWorkflow } from "@/lib/cases/case-legal-workflow";
+import { getCasePrimaryTitle } from "@/lib/cases/case-title-display";
 
 function readReadiness(metadataJson: unknown): ProceduralReadiness | null {
   if (!metadataJson || typeof metadataJson !== "object") return null;
@@ -58,8 +59,6 @@ export default async function CaseDetailLayout({
   if (!c) notFound();
   if (!caseBootstrap) notFound();
 
-  const ws = await getWorkspacesForUser();
-  const workspaceLabel = ws?.current.name ?? "Workspace";
   const readiness = readReadiness(c.metadataJson);
   const checklistMissingCount = caseBootstrap.checklist.missingFields.length;
   const draftBlocked = readiness?.status === "insuficiente";
@@ -107,13 +106,12 @@ export default async function CaseDetailLayout({
       readiness={readiness}
       checklistMissingCount={checklistMissingCount}
       primary={primaryAction}
-      workflow={workflow}
     />
   );
 
   return (
     <>
-      <SetPageTitle title="Detalhe do caso" />
+      <SetPageTitle title={getCasePrimaryTitle(c.title)} />
       <LexPageFrame
         centerWidth="default"
         rightRail={<CaseDetailRightRail>{copilot}</CaseDetailRightRail>}
@@ -121,8 +119,8 @@ export default async function CaseDetailLayout({
         <div className="space-y-6">
           <CaseCockpitHeader
             caseRecord={c}
-            workspaceLabel={workspaceLabel}
             readiness={readiness}
+            checklistMissingCount={checklistMissingCount}
             primaryAction={primaryAction}
             workflow={workflow}
           />

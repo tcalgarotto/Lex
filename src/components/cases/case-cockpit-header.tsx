@@ -1,40 +1,70 @@
 import Link from "next/link";
-import { Calendar, Building2, ChevronRight, Clock, Hash } from "lucide-react";
+import { Building2, ChevronRight, Clock, Hash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CaseCockpitActions } from "@/components/cases/case-cockpit-actions";
 import { CaseCockpitMetricChips } from "@/components/cases/case-cockpit-metric-chips";
 import { CaseCockpitProgress } from "@/components/cases/case-cockpit-progress";
-import { CaseWorkflowRail } from "@/components/cases/case-workflow-rail";
-import { caseStatusLabel, isCasePreProcessual } from "@/lib/cases/labels";
+import { isCasePreProcessual } from "@/lib/cases/labels";
 import { getTribunal } from "@/lib/corpus/tribunals/registry";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
 import type { CaseDetailRecord } from "@/app/(app)/cases/[id]/_load-case";
 import type { CockpitPrimaryAction } from "@/lib/cases/case-cockpit-primary-action";
 import type { CaseLegalWorkflowView } from "@/lib/cases/case-legal-workflow";
+import { splitCaseTitle } from "@/lib/cases/case-title-display";
+import { cn } from "@/lib/utils";
 
-function splitCaseTitle(title: string): { primary: string; secondary: string | null } {
-  const seps = [" — ", " – ", " —", "– ", " - "];
-  for (const sep of seps) {
-    const i = title.indexOf(sep);
-    if (i > 0 && i + sep.length < title.length) {
-      const a = title.slice(0, i).trim();
-      const b = title.slice(i + sep.length).trim();
-      if (a && b) return { primary: a, secondary: b };
-    }
+/** Até 3 chips de saúde operacional (complementam as métricas de navegação). */
+function CockpitHealthChips({ workflow }: { workflow: CaseLegalWorkflowView }) {
+  const items: { key: string; label: string; warn?: boolean }[] = [];
+  if (workflow.flowMetrics.stalledDocuments > 0) {
+    items.push({
+      key: "stalled",
+      label: `Docs travados: ${workflow.flowMetrics.stalledDocuments}`,
+      warn: true,
+    });
   }
-  return { primary: title, secondary: null };
+  if (workflow.flowMetrics.openRisks > 0) {
+    items.push({
+      key: "risks",
+      label: `Riscos: ${workflow.flowMetrics.openRisks}`,
+      warn: true,
+    });
+  }
+  if (workflow.flowMetrics.readinessScore != null) {
+    items.push({
+      key: "ready",
+      label: `Prontidão ${workflow.flowMetrics.readinessScore}%`,
+    });
+  }
+  const shown = items.slice(0, 3);
+  if (shown.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2" aria-label="Saúde do caso">
+      {shown.map((it) => (
+        <span
+          key={it.key}
+          className={cn(
+            "inline-flex rounded-full border-[0.5px] border-[color:var(--border-default)] bg-[color:var(--surface-overlay)] px-2.5 py-1 text-caption font-medium text-[color:var(--text-secondary)]",
+            it.warn && "border-[color:var(--warning-border)]/50 text-[color:var(--warning-text)]",
+          )}
+        >
+          {it.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function CaseCockpitHeader({
   caseRecord: c,
-  workspaceLabel,
   readiness,
+  checklistMissingCount,
   primaryAction,
   workflow,
 }: {
   caseRecord: CaseDetailRecord;
-  workspaceLabel: string;
   readiness: ProceduralReadiness | null;
+  checklistMissingCount: number;
   primaryAction: CockpitPrimaryAction;
   workflow: CaseLegalWorkflowView;
 }) {
@@ -46,7 +76,7 @@ export function CaseCockpitHeader({
     <header className="lex-glass lex-transition space-y-3 rounded-xl p-4 md:space-y-3.5 md:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-2">
         <nav
-          className="flex min-w-0 flex-1 flex-wrap items-center gap-1 text-sm"
+          className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-x-auto text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Navegação do caso"
         >
           <Link
@@ -56,46 +86,37 @@ export function CaseCockpitHeader({
             Casos
           </Link>
           <ChevronRight className="size-3.5 shrink-0 text-[color:var(--text-disabled)]" aria-hidden />
-          <span className="max-w-[140px] truncate text-[color:var(--text-secondary)] md:max-w-xs">
-            {workspaceLabel}
-          </span>
-          <ChevronRight className="size-3.5 shrink-0 text-[color:var(--text-disabled)]" aria-hidden />
           <span
-            className="max-w-[200px] truncate font-medium text-[color:var(--text-primary)] md:max-w-md"
-            title={c.title}
+            className="min-w-0 max-w-[min(100%,42rem)] truncate font-medium text-[color:var(--text-primary)]"
+            title={primary}
           >
-            Detalhe do caso
+            {primary}
           </span>
         </nav>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Badge
-            variant="secondary"
-            className="border-[0.5px] border-[color:var(--border-default)] text-caption uppercase tracking-wide text-[color:var(--text-secondary)]"
+            variant="outline"
+            className="max-w-[min(100%,12rem)] truncate border-[0.5px] border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] text-caption text-[color:var(--brand-text)]"
+            title={workflow.currentPhaseLabel}
           >
-            {caseStatusLabel(c.status)}
+            {workflow.currentPhaseLabel}
           </Badge>
           {preProcessual ? (
             <Badge
               variant="outline"
-              className="border-[0.5px] border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] text-caption text-[color:var(--brand-text)]"
+              className="border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)]"
             >
               <Clock className="mr-1 size-3" aria-hidden /> Pré-processual
             </Badge>
           ) : null}
-          <Badge
-            variant="outline"
-            className="border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)]"
-          >
-            <Calendar className="mr-1 size-3" aria-hidden />
-            {new Date(c.createdAt).toLocaleDateString("pt-BR")}
-          </Badge>
           {tribunal ? (
             <Badge
               variant="outline"
-              className="border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)]"
+              className="hidden max-w-[10rem] truncate border-[0.5px] border-[color:var(--border-default)] text-caption text-[color:var(--text-secondary)] sm:inline-flex"
+              title={`${tribunal.code} · ${tribunal.name}`}
             >
-              <Building2 className="mr-1 size-3" aria-hidden /> {tribunal.code} · {tribunal.name}
+              <Building2 className="mr-1 size-3 shrink-0" aria-hidden /> {tribunal.code}
             </Badge>
           ) : null}
           {c.uf ? (
@@ -136,55 +157,16 @@ export function CaseCockpitHeader({
             <p className="mt-1 text-sm font-medium leading-snug text-[color:var(--text-secondary)]">{secondary}</p>
           ) : null}
         </div>
-        {c.summary ? (
-          <p
-            className="max-w-3xl text-sm leading-relaxed text-[color:var(--text-secondary)] line-clamp-2"
-            title={c.summary}
-          >
-            {c.summary}
-          </p>
-        ) : null}
-        <CaseCockpitMetricChips caseId={c.id} caseRecord={c} />
+        <CaseCockpitMetricChips caseId={c.id} caseRecord={c} checklistMissingCount={checklistMissingCount} />
+        <CockpitHealthChips workflow={workflow} />
       </div>
 
-      <p className="flex flex-wrap gap-x-3 gap-y-1 text-caption text-[color:var(--text-muted)]">
-        <span>Criado em {workflow.flowMetrics.createdLabel}</span>
-        <span>Última atividade {workflow.flowMetrics.updatedLabel}</span>
-        {workflow.flowMetrics.readinessScore != null ? (
-          <span>Prontidão {workflow.flowMetrics.readinessScore}%</span>
-        ) : null}
-        {workflow.flowMetrics.stalledDocuments > 0 ? (
-          <span className="text-[color:var(--warning-text)]">
-            Docs travados: {workflow.flowMetrics.stalledDocuments}
-          </span>
-        ) : null}
-        {workflow.flowMetrics.openRisks > 0 ? (
-          <span>Riscos em aberto: {workflow.flowMetrics.openRisks}</span>
-        ) : null}
-      </p>
-
-      {workflow.blockerMessages.length > 0 ? (
-        <ul
-          className="rounded-lg border border-[color:var(--warning-border)]/40 bg-[color:var(--warning-bg)]/15 px-3 py-2 text-caption text-[color:var(--warning-text)]"
-          aria-label="Políticas e bloqueios do fluxo"
-        >
-          {workflow.blockerMessages.slice(0, 2).map((msg) => (
-            <li key={msg} className="leading-snug">
-              {msg}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      <CaseWorkflowRail workflow={workflow} />
-
-      <div className="flex flex-col gap-3 border-t border-[color:var(--border-subtle)] pt-3 md:flex-row md:items-start md:justify-between md:gap-4">
-        <div className="min-w-0 flex-1 space-y-1">
+      <div className="flex flex-col gap-3 border-t border-[color:var(--border-subtle)] pt-3 md:flex-row md:items-center md:justify-between md:gap-4">
+        <div className="min-w-0 flex-1">
           <p className="text-caption font-semibold uppercase tracking-widest text-[color:var(--text-secondary)]">
-            Próximo passo
+            Próxima ação
           </p>
-          <p className="text-base font-semibold text-[color:var(--text-primary)]">{primaryAction.label}</p>
-          <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{primaryAction.description}</p>
+          <p className="mt-0.5 text-base font-semibold text-[color:var(--text-primary)]">{primaryAction.label}</p>
         </div>
         <CaseCockpitActions
           caseId={c.id}

@@ -6,7 +6,7 @@ export { getChatLanguageModel, getPieceLanguageModel, getChatModelId, getPieceMo
 export async function expandQuery(userQuery: string): Promise<string> {
   const { text } = await generateText({
     model: getChatLanguageModel(),
-    maxTokens: 120,
+    maxOutputTokens: 120,
     temperature: 0.2,
     prompt: `Reescreva a pergunta abaixo em 1-2 frases curtas otimizadas para busca jurídica brasileira (termos processuais, legislação). Não invente fatos.\n\nPergunta: ${userQuery}`,
   });

@@ -10,6 +10,18 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  {
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "dist/**",
+      "coverage/**",
+      "playwright-report/**",
+      "test-results/**",
+      "public/**",
+      "codigos de leis/**",
+    ],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {
@@ -18,6 +30,13 @@ const eslintConfig = [
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
+  {
+    files: ["scripts/**/*.ts"],
+    rules: {
+      "@typescript-eslint/ban-ts-comment": "off",
+      "no-console": "off",
     },
   },
 ];
