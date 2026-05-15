@@ -22,6 +22,11 @@ import {
   applyFundamentalStructure,
   persistFundamentalDraft,
 } from "@/lib/cases/fundamental-intake/fundamental-intake-service";
+import { assertDeepSeekConfigured } from "@/lib/ai/deepseek-provider";
+import { normalizeAiProviderError } from "@/lib/ai/normalize-ai-error";
+import { getLogger } from "@/lib/logger";
+
+const log = getLogger("lex.api.cases.fundamental-intake");
 
 const PostBody = z.object({
   action: z.enum(["draft", "structure"]),
@@ -92,6 +97,7 @@ export async function POST(req: Request) {
   const narrative = buildIntakeNarrativeForModel(form);
 
   try {
+    assertDeepSeekConfigured();
     if (!caseId) {
       const structured = await runDeepseekFundamentalStructure(narrative);
       const { id } = await persistFundamentalDraft({
@@ -145,8 +151,20 @@ export async function POST(req: Request) {
     revalidateCaseSurface(caseId);
     return NextResponse.json({ case: c, mode: "fundamental_structured" }, { status: 200 });
   } catch (e) {
-    const msg = (e as Error).message;
-    const status = msg.includes("Modelo") || msg.includes("JSON") ? 502 : 500;
-    return NextResponse.json({ error: msg }, { status });
+    const normalized = normalizeAiProviderError(e);
+    log.warn("structure_failed", {
+      code: normalized.code,
+      hint: normalized.technicalHint,
+    });
+    const status =
+      normalized.code === "missing_api_key"
+        ? 503
+        : normalized.code === "invalid_json"
+          ? 502
+          : 502;
+    return NextResponse.json(
+      { error: normalized.userMessage, code: normalized.code },
+      { status },
+    );
   }
 }

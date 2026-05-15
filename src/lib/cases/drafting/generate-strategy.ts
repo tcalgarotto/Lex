@@ -7,7 +7,7 @@
  */
 
 import { generateText } from "ai";
-import { getPieceLanguageModel } from "@/lib/ai/llm";
+import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import { getCaseBrainSnapshot, listPinnedFoundations } from "@/lib/cases/drafting/case-brain-shim";
 import type { StrategyResult } from "@/lib/cases/drafting/drafting-types";
 
@@ -127,7 +127,8 @@ ${pinBlock || "(nenhum — descreva lacunas em gaps)"}
 `;
 
   const { text } = await generateText({
-    model: getPieceLanguageModel(),
+    model: getLanguageModelForLexTask("strategy"),
+    providerOptions: getProviderOptionsForLexTask("strategy"),
     temperature: 0.25,
     maxOutputTokens: 2500,
     prompt,

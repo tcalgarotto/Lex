@@ -8,7 +8,7 @@
 
 import { generateText } from "ai";
 import { CasePartyRole } from "@prisma/client";
-import { getPieceLanguageModel } from "@/lib/ai/llm";
+import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import { prisma } from "@/lib/prisma";
 import {
   getCaseBrainSnapshot,
@@ -143,7 +143,8 @@ Nome sugerido da parte autora: ${authorLine}
 `;
 
   const { text } = await generateText({
-    model: getPieceLanguageModel(),
+    model: getLanguageModelForLexTask("draft_generation"),
+    providerOptions: getProviderOptionsForLexTask("draft_generation"),
     temperature: 0.2,
     maxOutputTokens: 6000,
     prompt,

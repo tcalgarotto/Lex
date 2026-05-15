@@ -1,5 +1,6 @@
 import { generateText } from "ai";
-import { getPieceLanguageModel } from "@/lib/ai/llm";
+import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
+import { normalizeAiProviderError } from "@/lib/ai/normalize-ai-error";
 import {
   deepseekStructureResponseSchema,
   stripMarkdownJson,
@@ -19,26 +20,40 @@ REGRAS OBRIGATÓRIAS:
 export async function runDeepseekFundamentalStructure(
   narrative: string,
 ): Promise<DeepseekStructureResponse> {
-  const { text } = await generateText({
-    model: getPieceLanguageModel(),
-    system: SYSTEM,
-    prompt:
-      "Entrada da entrevista fundamental:\n\n" +
-      narrative.slice(0, 48_000) +
-      "\n\nDevolva o JSON com as chaves: parties, facts, requests, risks, timeline, missing_documents, missing_questions, next_steps, case_summary, legal_area_suggestion, urgency_score, readiness_score.",
-    temperature: 0.1,
-    maxOutputTokens: 4500,
-  });
+  let text: string;
+  try {
+    const result = await generateText({
+      model: getLanguageModelForLexTask("intake_structuring"),
+      providerOptions: getProviderOptionsForLexTask("intake_structuring"),
+      system: SYSTEM,
+      prompt:
+        "Entrada da entrevista fundamental:\n\n" +
+        narrative.slice(0, 48_000) +
+        "\n\nDevolva o JSON com as chaves: parties, facts, requests, risks, timeline, missing_documents, missing_questions, next_steps, case_summary, legal_area_suggestion, urgency_score, readiness_score.",
+      temperature: 0.1,
+      maxOutputTokens: 4500,
+    });
+    text = result.text;
+  } catch (e) {
+    const normalized = normalizeAiProviderError(e);
+    throw new Error(normalized.userMessage, { cause: e });
+  }
+
   const cleaned = stripMarkdownJson(text);
   let raw: unknown;
   try {
     raw = JSON.parse(cleaned) as unknown;
   } catch {
-    throw new Error("Modelo não retornou JSON válido.");
+    throw new Error(
+      normalizeAiProviderError(new Error("Modelo não retornou JSON válido.")).userMessage,
+    );
   }
   const parsed = deepseekStructureResponseSchema.safeParse(raw);
   if (!parsed.success) {
-    throw new Error(`JSON estrutural inválido: ${parsed.error.message}`);
+    throw new Error(
+      normalizeAiProviderError(new Error(`JSON estrutural inválido: ${parsed.error.message}`))
+        .userMessage,
+    );
   }
   return parsed.data;
 }

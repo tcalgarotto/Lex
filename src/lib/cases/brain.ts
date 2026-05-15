@@ -24,7 +24,7 @@ import {
   CaseRiskSeverity,
   Prisma,
 } from "@prisma/client";
-import { getChatLanguageModel } from "@/lib/ai/llm";
+import { getLanguageModelForLexTask } from "@/lib/ai/llm";
 import { cacheGet, cacheSet } from "@/lib/redis";
 import { getLogger } from "@/lib/logger";
 import { runIntake } from "./intake";
@@ -517,7 +517,7 @@ async function callLlmForBrain(
     try {
       const result = await Promise.race([
         generateText({
-          model: getChatLanguageModel(),
+          model: getLanguageModelForLexTask("case_brain"),
           prompt,
           temperature: 0.1,
           maxOutputTokens: 3500,

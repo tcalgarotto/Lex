@@ -28,11 +28,11 @@ function deepSeekBaseUrl(): string {
 }
 
 function modelId(): string {
-  const m = process.env["DEEPSEEK_MODEL"]?.trim();
-  if (!m) {
-    throw new Error("DEEPSEEK_MODEL não configurado.");
-  }
-  return m;
+  const legacy = process.env["DEEPSEEK_MODEL"]?.trim();
+  if (legacy) return legacy;
+  const fast = process.env["DEEPSEEK_MODEL_FAST"]?.trim();
+  if (fast) return fast;
+  return "deepseek-v4-flash";
 }
 
 function enabled(): boolean {

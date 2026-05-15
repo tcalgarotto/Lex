@@ -3,7 +3,7 @@
  */
 
 import { generateText } from "ai";
-import { getPieceLanguageModel } from "@/lib/ai/llm";
+import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import type { ReviewIssue, ReviewIssueSeverity, ReviewResult } from "@/lib/cases/drafting/drafting-types";
 
 const CRIT = "critico" as const;
@@ -125,7 +125,8 @@ ${content.slice(0, 45_000)}
 `;
 
   const { text } = await generateText({
-    model: getPieceLanguageModel(),
+    model: getLanguageModelForLexTask("draft_review"),
+    providerOptions: getProviderOptionsForLexTask("draft_review"),
     temperature: 0.15,
     maxOutputTokens: 3000,
     prompt,
