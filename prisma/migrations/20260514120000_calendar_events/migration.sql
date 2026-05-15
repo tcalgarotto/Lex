@@ -17,6 +17,7 @@ CREATE TABLE "CalendarEvent" (
     "documentId" TEXT,
     "title" TEXT NOT NULL,
     "description" TEXT,
+    "location" TEXT,
     "eventType" "CalendarEventType" NOT NULL DEFAULT 'OTHER',
     "status" "CalendarEventStatus" NOT NULL DEFAULT 'PENDING',
     "startsAt" TIMESTAMP(3) NOT NULL,
