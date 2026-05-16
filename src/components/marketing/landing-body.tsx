@@ -2,6 +2,9 @@
 
 import {
   AlertTriangle,
+  CheckCircle2,
+  FileSearch,
+  Gavel,
   BookMarked,
   Briefcase,
   Calendar,
@@ -44,6 +47,13 @@ const FEATURE_ICONS = {
   biblioteca: History,
 } as const;
 
+const SOLUTION_ICONS = [FileSearch, Cloud, Scale, Gavel, FileText, CheckCircle2] as const;
+
+const FEATURE_BENTO: Partial<Record<string, string>> = {
+  "native-ai": "sm:col-span-2 lg:col-span-2 lg:row-span-2",
+  casos: "sm:col-span-2",
+};
+
 export function LandingBody() {
   return (
     <>
@@ -51,11 +61,11 @@ export function LandingBody() {
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-14">
           <LandingReveal>
             <LandingSectionHeader align="left" eyebrow="O problema" title={LANDING_PROBLEM.title} />
-            <ul className="space-y-3.5">
+            <ul className="space-y-2.5">
               {LANDING_PROBLEM.items.map((item) => (
                 <li
                   key={item}
-                  className="flex gap-3 text-[14px] leading-relaxed text-[color:var(--text-secondary)]"
+                  className="landing-problem-item flex gap-3 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/50 px-4 py-3.5 text-[14px] leading-relaxed text-[color:var(--text-secondary)] transition-colors hover:border-[color:var(--warning-border)]/40"
                 >
                   <AlertTriangle
                     className="mt-0.5 size-4 shrink-0 text-[color:var(--warning-text)]"
@@ -70,24 +80,25 @@ export function LandingBody() {
           <LandingReveal delay={0.1}>
             <div
               id="solucao"
-              className="lex-glass rounded-2xl border border-[color:var(--border-default)] p-6 shadow-[var(--shadow-lg),var(--glass-shadow)] md:p-8"
+              className="landing-solution-panel lex-glass rounded-2xl border border-[color:var(--border-default)] p-6 shadow-[var(--shadow-lg),var(--glass-shadow)] md:p-8"
             >
               <LandingSectionHeader align="left" eyebrow="A solução" title={LANDING_SOLUTION.title} />
               <ul className="grid gap-3 sm:grid-cols-2">
-                {LANDING_SOLUTION.cards.map((card, i) => (
-                  <li
-                    key={card.title}
-                    className="landing-live-card rounded-xl border border-[color:var(--border-subtle)] p-4"
-                    style={{
-                      background: i % 2 === 0 ? "var(--surface-card)" : "var(--surface-overlay)",
-                    }}
-                  >
-                    <p className="text-sm font-semibold text-[color:var(--text-primary)]">{card.title}</p>
-                    <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
-                      {card.desc}
-                    </p>
-                  </li>
-                ))}
+                {LANDING_SOLUTION.cards.map((card, i) => {
+                  const SolIcon = SOLUTION_ICONS[i] ?? CheckCircle2;
+                  return (
+                    <li key={card.title} className="landing-solution-tile group">
+                      <span className="landing-solution-tile__num">{i + 1}</span>
+                      <div className="landing-solution-tile__icon">
+                        <SolIcon className="size-4 text-[color:var(--brand-text)]" aria-hidden />
+                      </div>
+                      <p className="text-sm font-semibold text-[color:var(--text-primary)]">{card.title}</p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+                        {card.desc}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </LandingReveal>
@@ -102,20 +113,25 @@ export function LandingBody() {
             description="Exemplos reais de uso: do primeiro documento à minuta revisada, com o caso sempre no centro."
           />
         </LandingReveal>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="landing-bento grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {LANDING_FEATURES.map((feat, i) => {
             const Icon = FEATURE_ICONS[feat.id as keyof typeof FEATURE_ICONS] ?? Briefcase;
             return (
-              <LandingLiveCard
+              <div
                 key={feat.id}
-                icon={Icon}
-                title={feat.title}
-                description={feat.description}
-                example={feat.example}
-                tag={feat.tag}
-                delay={i * 0.04}
-                className={feat.id === "native-ai" ? "sm:col-span-2" : undefined}
-              />
+                data-feature={feat.id}
+                className={FEATURE_BENTO[feat.id] ?? undefined}
+              >
+                <LandingLiveCard
+                  icon={Icon}
+                  title={feat.title}
+                  description={feat.description}
+                  example={feat.example}
+                  tag={feat.tag}
+                  delay={i * 0.04}
+                  featured={feat.id === "native-ai"}
+                />
+              </div>
             );
           })}
         </div>

@@ -645,6 +645,194 @@
     }
   }
 
+  .landing-showcase__glow {
+    position: absolute;
+    inset: -12% -8% -20%;
+    background: radial-gradient(
+      ellipse 70% 55% at 50% 30%,
+      color-mix(in srgb, var(--brand-primary) 28%, transparent),
+      transparent 68%
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .landing-showcase__frame {
+    position: relative;
+    z-index: 1;
+  }
+
+  .landing-showcase__frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--brand-primary) 45%, transparent),
+      transparent 40%,
+      color-mix(in srgb, var(--brand-primary) 20%, transparent)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .landing-showcase__metric {
+    background: var(--surface-card);
+    transition:
+      transform 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .landing-showcase__metric:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--brand-border) 70%, var(--border-subtle));
+    box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  }
+
+  .landing-hero-stat {
+    background: color-mix(in srgb, var(--surface-card) 85%, transparent);
+    transition:
+      border-color 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  .landing-hero-stat:hover {
+    border-color: color-mix(in srgb, var(--brand-border) 50%, var(--border-subtle));
+    box-shadow: 0 6px 20px -10px color-mix(in srgb, var(--brand-primary) 30%, transparent);
+  }
+
+  .landing-hero-proof {
+    transition:
+      border-color 0.25s ease,
+      background-color 0.25s ease;
+  }
+
+  .landing-hero-proof:hover {
+    border-color: color-mix(in srgb, var(--brand-border) 45%, var(--border-subtle));
+    background: color-mix(in srgb, var(--brand-subtle) 25%, var(--surface-card));
+  }
+
+  .landing-problem-item:hover {
+    background: color-mix(in srgb, var(--surface-overlay) 80%, var(--surface-card));
+  }
+
+  .landing-solution-panel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .landing-solution-panel::after {
+    content: "";
+    position: absolute;
+    top: -40%;
+    right: -20%;
+    width: 50%;
+    height: 80%;
+    background: radial-gradient(circle, var(--brand-subtle), transparent 70%);
+    pointer-events: none;
+  }
+
+  .landing-solution-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1rem 1rem 2.75rem;
+    border-radius: var(--r-lg, 0.75rem);
+    border: 1px solid var(--border-subtle);
+    background: color-mix(in srgb, var(--surface-card) 90%, transparent);
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.35s ease,
+      box-shadow 0.35s ease;
+  }
+
+  .landing-solution-tile:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--brand-border) 55%, var(--border-default));
+    box-shadow:
+      var(--shadow-md),
+      0 12px 32px -16px color-mix(in srgb, var(--brand-primary) 30%, transparent);
+  }
+
+  .landing-solution-tile__num {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.85rem;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--brand-text);
+    opacity: 0.7;
+  }
+
+  .landing-solution-tile__icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.75rem;
+    display: flex;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px solid var(--brand-border);
+    background: var(--brand-subtle);
+    transition: transform 0.3s ease;
+  }
+
+  .landing-solution-tile:hover .landing-solution-tile__icon {
+    transform: scale(1.08);
+  }
+
+  .landing-live-card--featured {
+    background:
+      radial-gradient(ellipse 120% 80% at 100% -20%, var(--brand-subtle), transparent 55%),
+      linear-gradient(
+        155deg,
+        color-mix(in srgb, var(--surface-card) 95%, transparent),
+        color-mix(in srgb, var(--surface-overlay) 75%, transparent)
+      );
+    box-shadow:
+      var(--shadow-lg),
+      0 0 0 1px color-mix(in srgb, var(--brand-primary) 15%, transparent),
+      0 24px 48px -20px color-mix(in srgb, var(--brand-primary) 35%, transparent);
+  }
+
+  .landing-live-card__shine {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--brand-primary) 65%, transparent),
+      transparent
+    );
+    opacity: 0.85;
+  }
+
+  .landing-live-card--featured .landing-live-card__shine {
+    animation: landing-shimmer 4s ease-in-out infinite;
+    background-size: 200% 100%;
+  }
+
+  .landing-bento {
+    grid-auto-rows: minmax(140px, auto);
+  }
+
+  @media (min-width: 1024px) {
+    .landing-bento > [data-feature="native-ai"] {
+      grid-row: span 2;
+    }
+  }
+
   /**
    * Coluna de conteúdo do AppShell: mesma largura máxima que a faixa central do header
    * (`--lex-app-central-well-max`). O max-width não muda ao recolher a barra (80px) — o bloco

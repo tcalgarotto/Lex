@@ -5,12 +5,12 @@
 /** Header e footer: largura total da viewport. */
 export const LANDING_SHELL_FULL = "w-full";
 
-/** Conteúdo da página: ~80% da tela, centralizado. */
+/** Conteúdo central (~80% da tela), alinhado com header/footer interno. */
 export const LANDING_CONTENT =
-  "mx-auto w-[min(100%,80vw)] max-w-[1180px] px-4 sm:px-5 md:px-6";
+  "mx-auto w-full max-w-[min(1180px,80vw)] px-6 sm:px-8 lg:px-10";
 
-/** Barra interna do header/footer (edge-to-edge com padding generoso). */
-export const LANDING_BAR_INNER = "mx-auto w-full px-4 sm:px-8 lg:px-12 xl:px-16";
+/** Mesma coluna do conteúdo — logo e CTAs alinhados ao hero. */
+export const LANDING_BAR_INNER = LANDING_CONTENT;
 
 export const LANDING_NAV = [
   { href: "#inicio", label: "Início" },
@@ -24,12 +24,18 @@ export const LANDING_HERO = {
   badge: "Plataforma jurídica inteligente",
   title: "Organize seus casos, encontre fundamentos e produza peças com mais segurança.",
   subtitle:
-    "O Lex ajuda advogados e escritórios a transformar documentos, relatos e pesquisa jurídica em estratégia, minutas e decisões melhor fundamentadas.",
+    "O Lex reúne documentos, pesquisa, agenda, e-mail e minutas no fluxo do caso — com assistente nativo e revisão sempre nas suas mãos.",
   microcopy:
-    "Feito para a rotina real da advocacia: documentos, prazos, fundamentos, clientes e peças no mesmo lugar.",
+    "Do primeiro contato ao protocolo: menos retrabalho, mais clareza para você e para o cliente.",
   ctaPrimary: "Solicitar acesso",
   ctaSecondary: "Ver como funciona",
 } as const;
+
+export const LANDING_HERO_STATS = [
+  { value: "1 lugar", label: "para o caso inteiro" },
+  { value: "Com fontes", label: "pesquisa e fundamentos" },
+  { value: "Você revisa", label: "antes de protocolar" },
+] as const;
 
 export const LANDING_TRUST_STRIP = [
   "Para advogados autônomos",

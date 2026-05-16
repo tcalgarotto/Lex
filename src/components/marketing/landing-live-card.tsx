@@ -13,6 +13,7 @@ type LandingLiveCardProps = {
   tag?: string;
   className?: string;
   delay?: number;
+  featured?: boolean;
   children?: ReactNode;
 };
 
@@ -24,16 +25,23 @@ export function LandingLiveCard({
   tag,
   className,
   delay = 0,
+  featured = false,
 }: LandingLiveCardProps) {
   const reduce = useReducedMotion();
 
   const body = (
     <article
       className={cn(
-        "landing-live-card group relative flex h-full flex-col overflow-hidden rounded-2xl border border-[color:var(--border-default)] p-5 md:p-6",
+        "landing-live-card group relative flex h-full flex-col overflow-hidden rounded-2xl border p-5 md:p-6",
+        featured
+          ? "landing-live-card--featured border-[color:var(--brand-border)]"
+          : "border-[color:var(--border-default)]",
         className,
       )}
     >
+      {featured ? (
+        <div className="landing-live-card__shine pointer-events-none absolute inset-x-0 top-0 h-px" aria-hidden />
+      ) : null}
       <div
         className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
         style={{ background: "var(--brand-subtle)" }}
@@ -76,7 +84,7 @@ export function LandingLiveCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.15 }}
       transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -6 }}
+      whileHover={{ y: featured ? -8 : -6 }}
     >
       {body}
     </motion.div>
