@@ -1,9 +1,16 @@
 /**
- * Copy da landing pública — tom comercial jurídico (sem jargão de produto/infra).
+ * Copy da landing pública — tom comercial jurídico.
  */
 
-export const LANDING_CONTAINER =
-  "mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8";
+/** Header e footer: largura total da viewport. */
+export const LANDING_SHELL_FULL = "w-full";
+
+/** Conteúdo da página: ~80% da tela, centralizado. */
+export const LANDING_CONTENT =
+  "mx-auto w-[min(100%,80vw)] max-w-[1180px] px-4 sm:px-5 md:px-6";
+
+/** Barra interna do header/footer (edge-to-edge com padding generoso). */
+export const LANDING_BAR_INNER = "mx-auto w-full px-4 sm:px-8 lg:px-12 xl:px-16";
 
 export const LANDING_NAV = [
   { href: "#inicio", label: "Início" },
@@ -35,8 +42,8 @@ export const LANDING_TRUST_STRIP = [
 export const LANDING_PROOF_POINTS = [
   "Pesquisa com fontes",
   "Minutas conectadas ao caso",
-  "Organização por cliente e processo",
-  "Biblioteca jurídica do escritório",
+  "Agenda e prazos visíveis",
+  "Acervo de leis e normas",
   "Revisão profissional no centro",
 ] as const;
 
@@ -64,58 +71,99 @@ export const LANDING_SOLUTION = {
   ],
 } as const;
 
-export const LANDING_FEATURES: ReadonlyArray<{
+export type LandingFeature = {
   id: string;
   title: string;
   description: string;
-}> = [
+  example: string;
+  tag?: string;
+};
+
+export const LANDING_FEATURES: readonly LandingFeature[] = [
+  {
+    id: "native-ai",
+    title: "Assistente jurídico no caso",
+    tag: "IA nativa",
+    description:
+      "Converse com o caso aberto: peça resumos, próximos passos e rascunhos sem perder o contexto do cliente.",
+    example: "Ex.: “Quais cláusulas do contrato merecem destaque na contestação?”",
+  },
   {
     id: "casos",
-    title: "Gestão de casos e processos",
+    title: "Fluxo completo do caso",
     description:
-      "Cliente, processo, prazos e histórico reunidos para a equipe enxergar o que fazer em seguida.",
+      "Da entrevista inicial à peça: partes, fatos, pedidos, riscos e linha do tempo em um único painel.",
+    example: "Ex.: caso trabalhista com 14 fatos extraídos e estratégia em revisão.",
   },
   {
     id: "documentos",
-    title: "Análise de documentos",
+    title: "Documentos na nuvem do escritório",
     description:
-      "Leitura orientada ao caso: extraia pontos sensíveis, fatos e trechos úteis sem perder o fio.",
+      "Envie PDFs e anexos com segurança; leia, destaque trechos e use o material direto na minuta.",
+    example: "Ex.: 8 documentos no caso · 3 pontos sensíveis já sinalizados.",
   },
   {
     id: "pesquisa",
     title: "Pesquisa jurídica com fontes",
     description:
-      "Encontre legislação, jurisprudência e fundamentos úteis sem perder o vínculo com a estratégia e a peça.",
+      "Legislação, súmulas e jurisprudência úteis ao caso, com referência para colar na peça.",
+    example: "Ex.: CC art. 186 e Súmula 331 STJ sugeridos para o pedido de danos.",
   },
   {
-    id: "estrategia",
-    title: "Estratégia processual",
+    id: "acervo",
+    title: "Acervo de leis e normas",
     description:
-      "Organize linhas de atuação a partir do que o caso já tem de documentos e fundamentos aprovados.",
+      "Códigos, leis federais e normas consultáveis com trechos citáveis — sem sair do fluxo do caso.",
+    example: "Ex.: busca por “rescisão indireta” com artigos prontos para fundamentar.",
+  },
+  {
+    id: "livros",
+    title: "Livros e leituras recomendadas",
+    description:
+      "Obras e materiais de referência do escritório organizados para apoiar pareceres e estratégias.",
+    example: "Ex.: capítulo sobre responsabilidade civil vinculado ao caso em andamento.",
   },
   {
     id: "pecas",
-    title: "Minutas e peças",
+    title: "Minutas e peças conectadas",
     description:
-      "Rascunhos iniciais conectados ao caso, prontos para você revisar, ajustar e exportar.",
+      "Petições, contestações e pareceres com rascunho inicial ligado aos fatos e fundamentos aprovados.",
+    example: "Ex.: minuta da inicial 80% pronta · aguardando sua revisão final.",
+  },
+  {
+    id: "agenda",
+    title: "Agenda interativa",
+    description:
+      "Audiências, prazos e compromissos do escritório na mesma visão dos casos que exigem ação.",
+    example: "Ex.: audiência na terça · prazo de manifestação em 5 dias úteis.",
+  },
+  {
+    id: "email",
+    title: "E-mail integrado ao caso",
+    description:
+      "Troque mensagens com clientes e equipe sem perder o histórico do que foi combinado.",
+    example: "Ex.: e-mail do cliente anexado ao caso com resumo do que foi pedido.",
+  },
+  {
+    id: "integracoes",
+    title: "Integrações com tribunais",
+    description:
+      "Acompanhe movimentações e documentos oficiais quando o escritório autoriza o acesso.",
+    example: "Ex.: nova publicação no diário vinculada ao processo do cliente.",
+  },
+  {
+    id: "site",
+    title: "Site do escritório",
+    description:
+      "Página institucional alinhada à marca do escritório, pronta para captar contatos e reforçar credibilidade.",
+    example: "Ex.: landing do escritório com formulário de consulta inicial.",
   },
   {
     id: "biblioteca",
-    title: "Biblioteca do escritório",
+    title: "Biblioteca e memória do escritório",
     description:
-      "Leis, códigos, modelos e memória jurídica do escritório sempre à mão para a equipe.",
-  },
-  {
-    id: "equipe",
-    title: "Organização da equipe",
-    description:
-      "Papéis definidos, histórico compartilhado e padrão de entrega mais previsível.",
-  },
-  {
-    id: "historico",
-    title: "Histórico e próximos passos",
-    description:
-      "Veja o que já foi feito no caso e o que ainda precisa de atenção antes do prazo.",
+      "Modelos, fundamentos favoritos e decisões passadas reutilizáveis pela equipe.",
+    example: "Ex.: modelo de petição inicial adaptado ao estilo do sócio.",
   },
 ] as const;
 
@@ -209,3 +257,6 @@ export const LANDING_FINAL_CTA = {
     "Entre na lista de acesso e veja como o Lex pode ajudar sua equipe a trabalhar com mais organização, velocidade e controle.",
   button: "Solicitar acesso",
 } as const;
+
+/** @deprecated use LANDING_CONTENT */
+export const LANDING_CONTAINER = LANDING_CONTENT;

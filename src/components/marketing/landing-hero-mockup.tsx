@@ -1,4 +1,4 @@
-import { BookOpen, FileSearch, Gavel, ScrollText, Shield } from "lucide-react";
+import { BookOpen, FileSearch, Gavel, ScrollText, Sparkles } from "lucide-react";
 
 const FLOATING_CARDS = [
   {
@@ -30,9 +30,9 @@ const FLOATING_CARDS = [
     delay: "0.45s",
   },
   {
-    icon: Shield,
-    label: "Fonte vinculada",
-    detail: "Trecho com referência",
+    icon: Sparkles,
+    label: "Assistente no caso",
+    detail: "Resumo e próximos passos",
     className: "bottom-0 left-1/2 -translate-x-1/2",
     delay: "0.6s",
   },

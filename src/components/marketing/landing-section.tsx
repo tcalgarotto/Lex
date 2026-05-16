@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LANDING_CONTAINER } from "@/lib/marketing/landing-copy";
+import { LANDING_CONTENT } from "@/lib/marketing/landing-copy";
 import { cn } from "@/lib/utils";
 
 type LandingSectionProps = {
@@ -7,22 +7,15 @@ type LandingSectionProps = {
   className?: string;
   children: ReactNode;
   variant?: "default" | "muted" | "accent" | "cta";
-  fullBleed?: boolean;
 };
 
-export function LandingSection({
-  id,
-  className,
-  children,
-  variant = "default",
-  fullBleed = false,
-}: LandingSectionProps) {
+/** Seção com fundo full width; conteúdo interno em ~80% da tela. */
+export function LandingSection({ id, className, children, variant = "default" }: LandingSectionProps) {
   return (
     <section
       id={id}
       className={cn(
-        "scroll-mt-[4.75rem] sm:scroll-mt-[5.25rem]",
-        fullBleed && "w-full",
+        "w-full scroll-mt-[4.75rem] sm:scroll-mt-[5.25rem]",
         variant === "muted" &&
           "border-y border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/50",
         variant === "accent" &&
@@ -34,7 +27,7 @@ export function LandingSection({
     >
       <div
         className={cn(
-          LANDING_CONTAINER,
+          LANDING_CONTENT,
           "py-14 sm:py-16 md:py-20 lg:py-24",
           variant === "cta" && "py-16 md:py-20",
         )}

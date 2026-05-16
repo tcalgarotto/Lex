@@ -1,13 +1,19 @@
+"use client";
+
 import {
   AlertTriangle,
   BookMarked,
   Briefcase,
+  Calendar,
+  Cloud,
   FileText,
+  Globe,
   History,
+  Mail,
   Scale,
   Shield,
   Sparkles,
-  Users,
+  Link2,
 } from "lucide-react";
 import {
   LANDING_AUDIENCE,
@@ -19,30 +25,32 @@ import {
   LANDING_WORKFLOW,
 } from "@/lib/marketing/landing-copy";
 import { LandingBetaCta } from "@/components/marketing/landing-beta-cta";
+import { LandingLiveCard } from "@/components/marketing/landing-live-card";
+import { LandingReveal } from "@/components/marketing/landing-reveal";
 import { LandingSection, LandingSectionHeader } from "@/components/marketing/landing-section";
 
-const FEATURE_ICONS: Record<string, typeof Briefcase> = {
+const FEATURE_ICONS = {
+  "native-ai": Sparkles,
   casos: Briefcase,
-  documentos: FileText,
-  pesquisa: Sparkles,
-  estrategia: Scale,
+  documentos: Cloud,
+  pesquisa: Scale,
+  acervo: BookMarked,
+  livros: BookMarked,
   pecas: FileText,
-  biblioteca: BookMarked,
-  equipe: Users,
-  historico: History,
-};
+  agenda: Calendar,
+  email: Mail,
+  integracoes: Link2,
+  site: Globe,
+  biblioteca: History,
+} as const;
 
 export function LandingBody() {
   return (
     <>
       <LandingSection id="problema">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-16">
-          <div>
-            <LandingSectionHeader
-              align="left"
-              eyebrow="O problema"
-              title={LANDING_PROBLEM.title}
-            />
+        <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-14">
+          <LandingReveal>
+            <LandingSectionHeader align="left" eyebrow="O problema" title={LANDING_PROBLEM.title} />
             <ul className="space-y-3.5">
               {LANDING_PROBLEM.items.map((item) => (
                 <li
@@ -57,139 +65,141 @@ export function LandingBody() {
                 </li>
               ))}
             </ul>
-          </div>
-          <div
-            id="solucao"
-            className="lex-glass rounded-2xl border border-[color:var(--border-default)] p-6 shadow-[var(--shadow-lg),var(--glass-shadow)] md:p-8"
-          >
-            <LandingSectionHeader
-              align="left"
-              eyebrow="A solução"
-              title={LANDING_SOLUTION.title}
-            />
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {LANDING_SOLUTION.cards.map((card, i) => (
-                <li
-                  key={card.title}
-                  className="rounded-xl border border-[color:var(--border-subtle)] p-4 lex-transition hover:border-[color:var(--border-strong)] hover:shadow-md"
-                  style={{ background: i % 2 === 0 ? "var(--surface-card)" : "var(--surface-overlay)" }}
-                >
-                  <p className="text-sm font-semibold text-[color:var(--text-primary)]">{card.title}</p>
-                  <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
-                    {card.desc}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          </LandingReveal>
+
+          <LandingReveal delay={0.1}>
+            <div
+              id="solucao"
+              className="lex-glass rounded-2xl border border-[color:var(--border-default)] p-6 shadow-[var(--shadow-lg),var(--glass-shadow)] md:p-8"
+            >
+              <LandingSectionHeader align="left" eyebrow="A solução" title={LANDING_SOLUTION.title} />
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {LANDING_SOLUTION.cards.map((card, i) => (
+                  <li
+                    key={card.title}
+                    className="landing-live-card rounded-xl border border-[color:var(--border-subtle)] p-4"
+                    style={{
+                      background: i % 2 === 0 ? "var(--surface-card)" : "var(--surface-overlay)",
+                    }}
+                  >
+                    <p className="text-sm font-semibold text-[color:var(--text-primary)]">{card.title}</p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+                      {card.desc}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </LandingReveal>
         </div>
       </LandingSection>
 
       <LandingSection id="recursos" variant="muted">
-        <LandingSectionHeader
-          eyebrow="Recursos"
-          title="Tudo o que a rotina jurídica pede — sem trocar de ferramenta a cada etapa."
-          description="Cada recurso foi pensado para conectar documentos, fundamentos e peças ao caso que você está conduzindo."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {LANDING_FEATURES.map((feat) => {
-            const Icon = FEATURE_ICONS[feat.id] ?? Briefcase;
+        <LandingReveal>
+          <LandingSectionHeader
+            eyebrow="Recursos"
+            title="Tudo o que a rotina jurídica pede — como você já imagina o escritório ideal."
+            description="Exemplos reais de uso: do primeiro documento à minuta revisada, com o caso sempre no centro."
+          />
+        </LandingReveal>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {LANDING_FEATURES.map((feat, i) => {
+            const Icon = FEATURE_ICONS[feat.id as keyof typeof FEATURE_ICONS] ?? Briefcase;
             return (
-              <article
+              <LandingLiveCard
                 key={feat.id}
-                className="group lex-glass flex flex-col rounded-xl p-5 shadow-sm lex-transition hover:-translate-y-0.5 hover:border-[color:var(--border-strong)] hover:shadow-lg"
-              >
-                <div
-                  className="mb-4 flex size-11 items-center justify-center rounded-xl border border-[color:var(--brand-border)]"
-                  style={{ background: "var(--brand-subtle)" }}
-                >
-                  <Icon className="size-5 text-[color:var(--brand-text)]" aria-hidden />
-                </div>
-                <h3 className="text-[15px] font-semibold text-[color:var(--text-primary)]">{feat.title}</h3>
-                <p className="mt-2 flex-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
-                  {feat.description}
-                </p>
-              </article>
+                icon={Icon}
+                title={feat.title}
+                description={feat.description}
+                example={feat.example}
+                tag={feat.tag}
+                delay={i * 0.04}
+                className={feat.id === "native-ai" ? "sm:col-span-2" : undefined}
+              />
             );
           })}
         </div>
       </LandingSection>
 
       <LandingSection id="como-funciona">
-        <LandingSectionHeader
-          eyebrow="Como funciona"
-          title="Seis passos do primeiro contato à peça revisada."
-          description="Um fluxo natural para quem já vive entre cliente, documento, pesquisa e protocolo."
-        />
-        <ol className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-          {LANDING_WORKFLOW.map((step) => (
-            <li
-              key={step.step}
-              className="flex gap-4 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/30 p-5 lex-transition hover:border-[color:var(--border-default)] hover:shadow-md"
-            >
-              <span
-                className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--brand-border)] text-sm font-bold text-[color:var(--brand-text)]"
-                style={{ background: "var(--brand-subtle)" }}
-              >
-                {step.step}
-              </span>
-              <div>
-                <h3 className="text-[15px] font-semibold text-[color:var(--text-primary)]">{step.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
-                  {step.description}
-                </p>
-              </div>
-            </li>
+        <LandingReveal>
+          <LandingSectionHeader
+            eyebrow="Como funciona"
+            title="Seis passos do primeiro contato à peça revisada."
+            description="Um fluxo natural para quem já vive entre cliente, documento, pesquisa e protocolo."
+          />
+        </LandingReveal>
+        <ol className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {LANDING_WORKFLOW.map((step, i) => (
+            <LandingReveal key={step.step} delay={i * 0.06}>
+              <li className="landing-live-card flex h-full gap-4 rounded-2xl p-5">
+                <span
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--brand-border)] text-sm font-bold text-[color:var(--brand-text)]"
+                  style={{ background: "var(--brand-subtle)" }}
+                >
+                  {step.step}
+                </span>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-[color:var(--text-primary)]">{step.title}</h3>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+                    {step.description}
+                  </p>
+                </div>
+              </li>
+            </LandingReveal>
           ))}
         </ol>
       </LandingSection>
 
       <LandingSection id="para-escritorios" variant="accent">
-        <LandingSectionHeader
-          eyebrow="Para quem é"
-          title="Feito para quem vive a advocacia no dia a dia."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {LANDING_AUDIENCE.map((card) => (
-            <article
-              key={card.title}
-              className="lex-glass rounded-xl p-5 lex-transition hover:shadow-lg"
-            >
-              <h3 className="text-[15px] font-semibold text-[color:var(--text-primary)]">{card.title}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
-                {card.description}
-              </p>
-            </article>
+        <LandingReveal>
+          <LandingSectionHeader eyebrow="Para quem é" title="Feito para quem vive a advocacia no dia a dia." />
+        </LandingReveal>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {LANDING_AUDIENCE.map((card, i) => (
+            <LandingReveal key={card.title} delay={i * 0.08}>
+              <article className="landing-live-card h-full rounded-2xl p-6">
+                <h3 className="text-[16px] font-semibold text-[color:var(--text-primary)]">{card.title}</h3>
+                <p className="mt-2 text-[14px] leading-relaxed text-[color:var(--text-secondary)]">
+                  {card.description}
+                </p>
+              </article>
+            </LandingReveal>
           ))}
         </div>
       </LandingSection>
 
       <LandingSection id="seguranca" variant="muted">
-        <LandingSectionHeader
-          eyebrow="Segurança e responsabilidade"
-          title={LANDING_SECURITY.title}
-          description={LANDING_SECURITY.description}
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {LANDING_SECURITY.points.map((item) => (
-            <article
-              key={item.title}
-              className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/40 p-5"
-            >
-              <Shield className="mb-3 size-5 text-[color:var(--brand-text)]" aria-hidden />
-              <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">{item.title}</h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">{item.desc}</p>
-            </article>
+        <LandingReveal>
+          <LandingSectionHeader
+            eyebrow="Segurança e responsabilidade"
+            title={LANDING_SECURITY.title}
+            description={LANDING_SECURITY.description}
+          />
+        </LandingReveal>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {LANDING_SECURITY.points.map((item, i) => (
+            <LandingReveal key={item.title} delay={i * 0.06}>
+              <article className="landing-live-card rounded-2xl p-5">
+                <Shield className="mb-3 size-5 text-[color:var(--brand-text)]" aria-hidden />
+                <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">{item.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">{item.desc}</p>
+              </article>
+            </LandingReveal>
           ))}
         </div>
       </LandingSection>
 
-      <LandingSection id="beta" variant="cta" fullBleed>
-        <LandingSectionHeader
-          title={LANDING_FINAL_CTA.title}
-          description={LANDING_FINAL_CTA.description}
-        />
-        <LandingBetaCta />
+      <LandingSection id="beta" variant="cta">
+        <LandingReveal>
+          <LandingSectionHeader
+            title={LANDING_FINAL_CTA.title}
+            description={LANDING_FINAL_CTA.description}
+          />
+        </LandingReveal>
+        <LandingReveal delay={0.1}>
+          <LandingBetaCta />
+        </LandingReveal>
       </LandingSection>
     </>
   );

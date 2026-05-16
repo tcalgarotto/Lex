@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LexThemeToggle } from "@/components/ui/theme-toggle";
-import { LANDING_CONTAINER, LANDING_NAV } from "@/lib/marketing/landing-copy";
+import { LANDING_BAR_INNER, LANDING_NAV, LANDING_SHELL_FULL } from "@/lib/marketing/landing-copy";
 import { cn } from "@/lib/utils";
 
 export function LandingHeader() {
@@ -31,13 +31,13 @@ export function LandingHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b transition-[background-color,backdrop-filter,box-shadow] duration-300",
+        `${LANDING_SHELL_FULL} sticky top-0 z-50 border-b transition-[background-color,backdrop-filter,box-shadow] duration-300`,
         scrolled
           ? "border-[color:var(--glass-border)] bg-[color:var(--glass-bg)]/90 shadow-sm backdrop-blur-xl"
           : "border-transparent bg-[color:var(--surface-base)]/40 backdrop-blur-md",
       )}
     >
-      <div className={cn(LANDING_CONTAINER, "flex items-center justify-between gap-3 py-3.5 md:py-4")}>
+      <div className={cn(LANDING_BAR_INNER, "flex items-center justify-between gap-3 py-3.5 md:py-4")}>
         <Link
           href="/#inicio"
           className="flex items-center gap-2.5 font-semibold tracking-tight text-[color:var(--text-primary)] lex-transition hover:opacity-90"
@@ -107,7 +107,7 @@ export function LandingHeader() {
           id="landing-mobile-nav"
           className="w-full border-t border-[color:var(--border-subtle)] bg-[color:var(--glass-bg)]/98 backdrop-blur-xl xl:hidden"
         >
-          <nav className={cn(LANDING_CONTAINER, "flex flex-col gap-1 py-4")} aria-label="Principal mobile">
+          <nav className={cn(LANDING_BAR_INNER, "flex flex-col gap-1 py-4")} aria-label="Principal mobile">
             {LANDING_NAV.map((item) => (
               <a
                 key={item.href}

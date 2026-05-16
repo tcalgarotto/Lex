@@ -571,6 +571,80 @@
       var(--surface-base);
   }
 
+  @keyframes landing-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  .landing-float-card {
+    animation: landing-float 5s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-float-card {
+      animation: none;
+    }
+  }
+
+  .landing-live-card {
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--surface-card) 92%, transparent),
+      color-mix(in srgb, var(--surface-overlay) 70%, transparent)
+    );
+    box-shadow: var(--shadow-md), var(--glass-shadow);
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease,
+      border-color 0.35s ease;
+  }
+
+  .landing-live-card:hover {
+    border-color: color-mix(in srgb, var(--brand-border) 55%, var(--border-default));
+    box-shadow:
+      var(--shadow-lg),
+      0 0 0 1px color-mix(in srgb, var(--brand-primary) 12%, transparent),
+      0 20px 40px -16px color-mix(in srgb, var(--brand-primary) 25%, transparent);
+  }
+
+  @keyframes landing-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .landing-hero-glow {
+    animation: landing-hero-pulse 8s ease-in-out infinite;
+  }
+
+  @keyframes landing-hero-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-live-card,
+    .landing-live-card:hover {
+      transition: none;
+    }
+    .landing-hero-glow {
+      animation: none;
+    }
+  }
+
   /**
    * Coluna de conteúdo do AppShell: mesma largura máxima que a faixa central do header
    * (`--lex-app-central-well-max`). O max-width não muda ao recolher a barra (80px) — o bloco
