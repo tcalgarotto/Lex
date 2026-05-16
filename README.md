@@ -42,6 +42,8 @@ Criar caso (/cases/new — entrevista fundamental)  →  Documentos do caso  →
 
 **Configurações (`/settings/…`):** `perfil`, `estilo`, `team`, `integracoes` (conectores judiciais oficiais / pontes), `jobs`, `readiness`, `admin` (custos/observabilidade para quem tem permissão).
 
+**Landing pública:** `/` (formulário beta/demo), `/termos`, `/privacidade`. Painel de leads: `/settings/admin/beta-leads`. Checklist de deploy: [`docs/marketing/LAUNCH_CHECKLIST.md`](docs/marketing/LAUNCH_CHECKLIST.md).
+
 **Avançado / produto & marketing (conforme flags e permissões):** `/cockpit`, `/strategy`, `/test-guide` (guia de primeiro teste), `/demo`, `/apresentacao`, `/busca`.
 
 Documentação de fluxo UX e auditorias: [`docs/UX_FLOW_AUDIT.md`](docs/UX_FLOW_AUDIT.md). Pipeline Case Brain: [`docs/CASE_BRAIN.md`](docs/CASE_BRAIN.md). Métodos de trabalho no dashboard: [`docs/features/DASHBOARD_WORK_METHODS.md`](docs/features/DASHBOARD_WORK_METHODS.md). Arquitetura do motor interno de busca no corpus: [`docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md`](docs/CORPUS_INDEXED_RETRIEVAL_ARCHITECTURE.md). **Fase futura** (busca reunificada + Wiki LLM): [`docs/features/FUTURE_BUSCA_INDEXADA_WIKI_LLM.md`](docs/features/FUTURE_BUSCA_INDEXADA_WIKI_LLM.md).

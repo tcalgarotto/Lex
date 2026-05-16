@@ -75,3 +75,6 @@ tests/e2e/.auth/
 /preview.html
 /preview(1).html
 /docs/model design/
+
+# Livros recomendados (material local; não versionar)
+/docs/Livros recomendados/

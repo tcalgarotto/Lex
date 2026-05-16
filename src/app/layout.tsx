@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Script from "next/script";
+import { headers } from "next/headers";
 import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
@@ -14,11 +14,13 @@ export const metadata: Metadata = {
 
 const themeInitScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem("lex-theme");var r="dark";if(t==="light")r="light";else if(t==="dark")r="dark";else if(t==="auto"&&typeof matchMedia!=="undefined")r=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.setAttribute("data-theme",r);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();`;
 
-export default function RootLayout({
+export default async function RootLayout({
  children,
 }: Readonly<{
  children: React.ReactNode;
 }>) {
+ const nonce = (await headers()).get("x-nonce") ?? undefined;
+
  return (
  <html
  lang="pt-BR"
@@ -27,9 +29,13 @@ export default function RootLayout({
  className={GeistMono.variable}
  >
  <body className="min-h-screen font-sans antialiased">
- <Script id="lex-theme-init" strategy="beforeInteractive">
- {themeInitScript}
- </Script>
+ {/* Script nativo (não next/script): evita mismatch nonce SSR vs cliente; CSP usa x-nonce do proxy. */}
+ <script
+ id="lex-theme-init"
+ nonce={nonce}
+ suppressHydrationWarning
+ dangerouslySetInnerHTML={{ __html: themeInitScript }}
+ />
  <Providers>{children}</Providers>
  <Toaster richColors position="top-center" />
  <Analytics />

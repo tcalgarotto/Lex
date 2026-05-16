@@ -21,6 +21,19 @@ const log = getLogger("lex.inngest.ingest-document");
 
 const BATCH = 16;
 
+/** Valida tenant do evento Inngest vs documento carregado (anti-ingest cross-workspace). */
+export function assertDocumentIngestTenant(
+  doc: { workspaceId: string },
+  eventWorkspaceId: string | undefined,
+): void {
+  const expected = eventWorkspaceId?.trim() ?? "";
+  if (expected && doc.workspaceId !== expected) {
+    throw new Error(
+      "Documento não pertence ao workspace do evento (possível evento adulterado).",
+    );
+  }
+}
+
 /**
  * Marca o Document como FAILED com mensagem de usuário e devolve
  * um `NonRetriableError` para o Inngest parar o pipeline. Sem esse
@@ -59,10 +72,18 @@ export const ingestDocument = inngest.createFunction(
   { event: "lex/document.ingest" },
   async ({ event, step }) => {
     const documentId = event.data.documentId;
+    const eventWorkspaceId = event.data.workspaceId?.trim() ?? "";
 
     const doc = await step.run("load-document", async () => {
-      const d = await prisma.document.findUnique({ where: { id: documentId } });
+      const d = await prisma.document.findFirst({
+        where: { id: documentId, deletedAt: null },
+      });
       if (!d) throw new NonRetriableError("Documento não encontrado");
+      try {
+        assertDocumentIngestTenant(d, eventWorkspaceId);
+      } catch (e) {
+        throw new NonRetriableError(e instanceof Error ? e.message : String(e));
+      }
       return d;
     });
 

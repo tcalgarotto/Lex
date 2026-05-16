@@ -39,7 +39,10 @@ export async function POST(
     },
   });
   try {
-    await inngest.send({ name: "lex/document.ingest", data: { documentId: docId } });
+    await inngest.send({
+      name: "lex/document.ingest",
+      data: { documentId: docId, workspaceId },
+    });
   } catch {
     return NextResponse.json({ error: "Não foi possível enfileirar nova tentativa." }, { status: 503 });
   }

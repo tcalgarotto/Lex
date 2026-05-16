@@ -20,9 +20,12 @@ export default async function PerfilPage() {
  </CardHeader>
  <CardContent className="space-y-2 text-sm">
  {role === MembershipRole.OWNER ? (
- <div className="pb-2">
+ <div className="flex flex-wrap gap-2 pb-2">
  <Button asChild variant="secondary" size="sm" className="border-[color:var(--border-default)] bg-white/5">
  <Link href="/settings/admin">Admin — custos e observabilidade</Link>
+ </Button>
+ <Button asChild variant="outline" size="sm">
+ <Link href="/settings/admin/beta-leads">Leads beta / demo</Link>
  </Button>
  </div>
  ) : null}

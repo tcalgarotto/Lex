@@ -4,6 +4,7 @@
  */
 const PREFIX_TITLES: { prefix: string; title: string }[] = [
   { prefix: "/settings/readiness", title: "Prontidão do ambiente" },
+  { prefix: "/settings/admin/beta-leads", title: "Leads beta e demo" },
   { prefix: "/settings/admin", title: "Admin — custos e observabilidade" },
   { prefix: "/settings/estilo", title: "Perfil de escrita" },
   { prefix: "/settings/perfil", title: "Perfil" },

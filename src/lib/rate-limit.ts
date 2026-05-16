@@ -2,30 +2,45 @@
  * Rate limiter por janela fixa.
  *
  * - Apoiado em Redis quando disponível (`tryRedisCall` jamais propaga erro).
- * - **Fail-open silencioso**: se Redis estiver offline (dev sem cluster, ou
- *   queda transitória), o limiter libera a request — `getRedis()` já loga
- *   uma única vez via `warnOnce`. Não há mais spam.
- * - Em produção, `REDIS_REQUIRED=true` faz `/api/health` retornar 503 se
- *   Redis cair; o limiter continua liberando para não derrubar a UX.
+ * - Rotas **leves** (`tier: "default"`): fail-open se Redis offline (dev UX).
+ * - Rotas **caras** (`tier: "expensive"`): fail-closed quando Redis offline e
+ *   `REDIS_REQUIRED`, `RATE_LIMIT_FAIL_CLOSED` ou `NODE_ENV=production`.
+ * - `RATE_LIMIT_FAIL_OPEN_DEV=1` força fail-open em dev mesmo para rotas caras
+ *   (testes locais sem Redis).
  */
 
 import { isRedisAvailable, tryRedisCall } from "@/lib/redis";
+
+export type RateLimitTier = "default" | "expensive";
 
 export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
   resetAt: number;
   limit: number;
-  /** "redis" quando contou via Redis; "fail-open" quando Redis offline. */
-  source: "redis" | "fail-open";
+  /** redis | fail-open (leve) | fail-closed (cara sem Redis) */
+  source: "redis" | "fail-open" | "fail-closed";
 };
+
+/** Rotas caras devem bloquear sem Redis em prod ou quando env exige. */
+export function isRateLimitFailClosedActive(): boolean {
+  const forceOpen =
+    process.env["RATE_LIMIT_FAIL_OPEN_DEV"] === "1" ||
+    process.env["RATE_LIMIT_FAIL_OPEN_DEV"] === "true";
+  if (forceOpen) return false;
+  if (process.env["RATE_LIMIT_FAIL_CLOSED"] === "1") return true;
+  if (process.env["RATE_LIMIT_FAIL_CLOSED"] === "true") return true;
+  if (process.env["REDIS_REQUIRED"] === "true") return true;
+  return process.env["NODE_ENV"] === "production";
+}
 
 export async function rateLimit(params: {
   key: string;
   limit: number;
   windowSeconds: number;
+  tier?: RateLimitTier;
 }): Promise<RateLimitResult> {
-  const { key, limit, windowSeconds } = params;
+  const { key, limit, windowSeconds, tier = "default" } = params;
   const now = Math.floor(Date.now() / 1000);
   const bucket = Math.floor(now / windowSeconds);
   const ns = (process.env["REDIS_NAMESPACE"] ?? "lex").trim();
@@ -33,6 +48,9 @@ export async function rateLimit(params: {
   const resetAt = (bucket + 1) * windowSeconds;
 
   if (!(await isRedisAvailable())) {
+    if (tier === "expensive" && isRateLimitFailClosedActive()) {
+      return { allowed: false, remaining: 0, resetAt, limit, source: "fail-closed" };
+    }
     return { allowed: true, remaining: limit, resetAt, limit, source: "fail-open" };
   }
 
@@ -52,6 +70,9 @@ export async function rateLimit(params: {
   );
 
   if (count < 0) {
+    if (tier === "expensive" && isRateLimitFailClosedActive()) {
+      return { allowed: false, remaining: 0, resetAt, limit, source: "fail-closed" };
+    }
     return { allowed: true, remaining: limit, resetAt, limit, source: "fail-open" };
   }
 
@@ -86,4 +107,10 @@ export function rateLimitHeaders(result: RateLimitResult): Record<string, string
     "X-RateLimit-Reset": String(result.resetAt),
     "X-RateLimit-Source": result.source,
   };
+}
+
+/** Status HTTP quando rate limit bloqueia (fail-closed sem Redis → 503). */
+export function rateLimitHttpStatus(result: RateLimitResult): number {
+  if (result.allowed) return 200;
+  return result.source === "fail-closed" ? 503 : 429;
 }

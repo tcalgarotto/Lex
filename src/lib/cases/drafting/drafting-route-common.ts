@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { rateLimit, rateLimitHeaders, getRequestIp } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders, rateLimitHttpStatus, getRequestIp } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 
 export async function loadCaseScoped(workspaceId: string, caseId: string) {
@@ -29,11 +29,16 @@ export async function enforceDraftingRateLimit(args: {
 }): Promise<NextResponse | null> {
   const ip = getRequestIp(args.req.headers);
   const key = `lex:drafting:${args.bucket}:${args.userId}:${ip}`;
-  const rl = await rateLimit({ key, limit: 12, windowSeconds: 60 });
+  const rl = await rateLimit({ key, limit: 12, windowSeconds: 60, tier: "expensive" });
   if (!rl.allowed) {
     return NextResponse.json(
-      { error: "Muitas solicitações. Aguarde um instante e tente novamente." },
-      { status: 429, headers: rateLimitHeaders(rl) },
+      {
+        error:
+          rateLimitHttpStatus(rl) === 503
+            ? "Serviço temporariamente indisponível. Tente novamente em instantes."
+            : "Muitas solicitações. Aguarde um instante e tente novamente.",
+      },
+      { status: rateLimitHttpStatus(rl), headers: rateLimitHeaders(rl) },
     );
   }
   return null;

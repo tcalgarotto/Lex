@@ -63,7 +63,7 @@ export const inngest = new Inngest({ id: INNGEST_APP_ID, name: "Lex" });
 
 export type IngestDocumentEvent = {
   name: "lex/document.ingest";
-  data: { documentId: string };
+  data: { documentId: string; workspaceId: string };
 };
 
 export type RecomputeStyleEvent = {

@@ -6,9 +6,10 @@ import { getWorkspaceContextWithRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, removeDocumentBuffer, uploadDocumentBuffer } from "@/lib/storage";
 import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
-import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders, rateLimitHttpStatus } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 import { ALLOWED_DOCUMENT_UPLOAD_MIME_TYPES, getMaxUploadFileSizeBytes } from "@/lib/documents/upload-constraints";
+import { validateLegalDocumentUploadBuffer } from "@/lib/documents/validate-upload-buffer";
 import {
   assertCanUploadFileToWorkspace,
   recalculateWorkspaceStorageUsage,
@@ -23,14 +24,20 @@ export async function POST(req: Request) {
   const { workspaceId, user } = await getWorkspaceContextWithRole();
 
   const rl = await rateLimit({
-    key: `upload:${user.id}`,
+    key: `upload:${workspaceId}:${user.id}`,
     limit: 20,
     windowSeconds: 60,
+    tier: "expensive",
   });
   if (!rl.allowed) {
     return NextResponse.json(
-      { error: "Too many uploads. Tente novamente em alguns instantes." },
-      { status: 429, headers: rateLimitHeaders(rl) },
+      {
+        error:
+          rateLimitHttpStatus(rl) === 503
+            ? "Upload temporariamente indisponível. Tente novamente em instantes."
+            : "Too many uploads. Tente novamente em alguns instantes.",
+      },
+      { status: rateLimitHttpStatus(rl), headers: rateLimitHeaders(rl) },
     );
   }
 
@@ -115,6 +122,12 @@ export async function POST(req: Request) {
     throw e;
   }
 
+  const signature = validateLegalDocumentUploadBuffer(buffer, file.name, mime);
+  if (!signature.ok) {
+    return NextResponse.json({ error: signature.message }, { status: 415 });
+  }
+  const canonicalMime = signature.canonicalMime;
+
   const documentId = nanoid();
   const path = documentStoragePath(workspaceId, documentId, file.name);
 
@@ -122,7 +135,7 @@ export async function POST(req: Request) {
     await uploadDocumentBuffer({
       path,
       buffer,
-      contentType: file.type || "application/octet-stream",
+      contentType: canonicalMime,
     });
   } catch (e) {
     log.warn("storage upload failed", {
@@ -142,7 +155,7 @@ export async function POST(req: Request) {
         uploadedByUserId: user.id,
         libraryShelf,
         originalName: file.name,
-        mimeType: file.type || "application/octet-stream",
+        mimeType: canonicalMime,
         sizeBytes: buffer.length,
         storagePath: path,
         status: DocumentStatus.UPLOADED,
@@ -150,7 +163,10 @@ export async function POST(req: Request) {
     });
 
     try {
-      await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
+      await inngest.send({
+        name: "lex/document.ingest",
+        data: { documentId: doc.id, workspaceId },
+      });
     } catch (e) {
       log.warn("inngest send failed (non-fatal)", {
         workspaceId,
@@ -159,7 +175,7 @@ export async function POST(req: Request) {
       });
     }
 
-    if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+    if (signature.kind === "pdf") {
       scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
     }
 

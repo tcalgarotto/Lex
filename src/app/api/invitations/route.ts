@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createOrRefreshInvitation } from "@/lib/auth/invitations";
 import { WorkspaceSeatLimitReachedError } from "@/lib/auth/workspace-seats";
-import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders, rateLimitHttpStatus } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,11 +20,17 @@ export async function POST(req: Request) {
     key: `invite:${workspaceId}`,
     limit: 30,
     windowSeconds: 60,
+    tier: "expensive",
   });
   if (!rl.allowed) {
     return NextResponse.json(
-      { error: "Muitos convites em pouco tempo. Aguarde um instante." },
-      { status: 429, headers: rateLimitHeaders(rl) },
+      {
+        error:
+          rateLimitHttpStatus(rl) === 503
+            ? "Convites temporariamente indisponíveis."
+            : "Muitos convites em pouco tempo. Aguarde um instante.",
+      },
+      { status: rateLimitHttpStatus(rl), headers: rateLimitHeaders(rl) },
     );
   }
 

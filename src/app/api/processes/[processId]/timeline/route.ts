@@ -11,7 +11,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ processId: stri
     where: { workspaceId, OR: [{ id: processId }, { processId }] },
     select: { id: true },
   });
-  if (!legalProcess) return NextResponse.json({ movements: [] });
+  if (!legalProcess) {
+    return NextResponse.json({ error: "Processo não encontrado." }, { status: 404 });
+  }
 
   const movements = await prisma.legalProcessMovement.findMany({
     where: { workspaceId, legalProcessId: legalProcess.id },

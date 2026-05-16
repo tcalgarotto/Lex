@@ -98,7 +98,10 @@ export async function POST(
   }
 
   try {
-    await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
+    await inngest.send({
+      name: "lex/document.ingest",
+      data: { documentId: doc.id, workspaceId: doc.workspaceId },
+    });
   } catch (e) {
     log.warn("inngest send failed (non-fatal)", {
       workspaceId,

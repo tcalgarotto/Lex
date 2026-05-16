@@ -7,7 +7,7 @@ type CookieToSet = {
   options?: Record<string, unknown>;
 };
 
-const PUBLIC_PREFIXES = ["/", "/pricing", "/manifesto", "/docs"];
+const PUBLIC_PREFIXES = ["/", "/pricing", "/manifesto", "/termos", "/privacidade", "/docs"];
 const AUTH_ROUTES = [
   "/login",
   "/register",
@@ -185,6 +185,7 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/api/inngest") ||
       pathname.startsWith("/api/health") ||
       pathname.startsWith("/api/ready") ||
+      pathname.startsWith("/api/marketing/") ||
       pathname.startsWith("/api/stripe/webhook");
     if (!isPublicApi && !user) {
       const res = NextResponse.json(

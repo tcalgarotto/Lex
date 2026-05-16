@@ -5,7 +5,7 @@
  * Ver: docs/decisions/ADR_DEEPSEEK_LEGAL_RESEARCH_MODE.md
  */
 
-import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders, rateLimitHttpStatus } from "@/lib/rate-limit";
 import { prisma } from "@/lib/prisma";
 import type { LegalResearchRequest, LegalResearchResponse } from "./types";
 
@@ -38,17 +38,18 @@ export async function enforceLegalResearchRateLimit(
   workspaceId: string,
 ): Promise<
   | { ok: true; headers: Record<string, string> }
-  | { ok: false; headers: Record<string, string>; status: 429 }
+  | { ok: false; headers: Record<string, string>; status: 429 | 503 }
 > {
   const limit = rateLimitPerMinute();
   const result = await rateLimit({
     key: `legal-research:${workspaceId}`,
     limit,
     windowSeconds: 60,
+    tier: "expensive",
   });
   const headers = rateLimitHeaders(result);
   if (!result.allowed) {
-    return { ok: false, headers, status: 429 };
+    return { ok: false, headers, status: rateLimitHttpStatus(result) as 429 | 503 };
   }
   return { ok: true, headers };
 }

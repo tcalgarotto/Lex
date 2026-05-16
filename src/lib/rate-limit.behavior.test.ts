@@ -10,6 +10,29 @@ afterEach(() => {
   vi.doUnmock("@/lib/redis");
 });
 
+describe("rate-limit/rateLimit fail-closed em rotas caras", () => {
+  it("bloqueia com source='fail-closed' em produção sem Redis", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("RATE_LIMIT_FAIL_OPEN_DEV", "");
+    vi.doMock("@/lib/redis", () => ({
+      getRedis: () => null,
+      isRedisAvailable: async () => false,
+      isRedisRequired: () => true,
+      tryRedisCall: async <T,>(_fn: unknown, fallback: T) => fallback,
+    }));
+    const { rateLimit } = await import("./rate-limit");
+    const result = await rateLimit({
+      key: "expensive",
+      limit: 5,
+      windowSeconds: 60,
+      tier: "expensive",
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.source).toBe("fail-closed");
+    vi.unstubAllEnvs();
+  });
+});
+
 describe("rate-limit/rateLimit fail-open quando Redis indisponível", () => {
   it("libera com source='fail-open' quando isRedisAvailable=false", async () => {
     vi.doMock("@/lib/redis", () => ({

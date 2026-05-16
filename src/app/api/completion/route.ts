@@ -1,5 +1,6 @@
 import { streamText } from "ai";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
 import {
   SYSTEM_BASE,
   styleInjection,
@@ -26,6 +27,14 @@ const actionHints: Record<Body["action"], string> = {
 
 export async function POST(req: Request) {
   const { workspaceId, user } = await getWorkspaceContext();
+  const rl = await enforceAiRouteRateLimit({
+    workspaceId,
+    userId: user.id,
+    routeName: "completion",
+    limit: 24,
+  });
+  if (!rl.ok) return rl.response;
+
   const body = (await req.json()) as Body;
   const action = body.action ?? "continue";
   const selection = body.selection ?? "";

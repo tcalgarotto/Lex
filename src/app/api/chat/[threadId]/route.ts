@@ -1,6 +1,7 @@
 import { createUIMessageStream, createUIMessageStreamResponse, streamText } from "ai";
 import { ChatRole } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
 import { prisma } from "@/lib/prisma";
 import { retrieveContext } from "@/lib/retrieval/hybrid-retriever";
 import { loadMemoryBlock } from "@/lib/memory/engine";
@@ -27,6 +28,14 @@ export async function POST(
 ) {
   const { threadId } = await context.params;
   const { workspaceId, user } = await getWorkspaceContext();
+  const rl = await enforceAiRouteRateLimit({
+    workspaceId,
+    userId: user.id,
+    routeName: "chat",
+    limit: 30,
+  });
+  if (!rl.ok) return rl.response;
+
   const body = (await req.json()) as { messages: ChatMessageInput[] };
   const messages = body.messages ?? [];
 

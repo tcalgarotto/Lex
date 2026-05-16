@@ -294,7 +294,10 @@ async function main() {
     });
 
     try {
-      await inngest.send({ name: "lex/document.ingest", data: { documentId } });
+      await inngest.send({
+        name: "lex/document.ingest",
+        data: { documentId, workspaceId },
+      });
     } catch {
       console.warn(`[warn] Inngest ingest não enviado para ${documentId}; pode reprocessar na UI.`);
     }

@@ -32,6 +32,11 @@ export default async function AdminInternoPage() {
  <p className="text-sm text-muted-foreground">
  Visível apenas para OWNER do workspace. Dados dos últimos 30 dias (tenant = workspace).
  </p>
+ <p className="text-sm">
+ <a href="/settings/admin/beta-leads" className="font-medium text-[color:var(--brand-text)] hover:underline">
+ Leads da landing (beta e demonstrações) →
+ </a>
+ </p>
 
  <Card>
  <CardHeader>

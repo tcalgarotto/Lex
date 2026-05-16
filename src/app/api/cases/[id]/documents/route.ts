@@ -13,11 +13,12 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath, removeDocumentBuffer, uploadDocumentBuffer } from "@/lib/storage";
 import { scheduleDocumentThumbnailWork } from "@/lib/documents/thumbnail-schedule";
-import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders, rateLimitHttpStatus } from "@/lib/rate-limit";
 import { getLogger } from "@/lib/logger";
 import { findCaseInWorkspace } from "@/lib/cases/case-brain/api-case-access";
 import { recordCaseMutationActivity } from "@/lib/cases/case-brain/activity-log";
 import { ALLOWED_DOCUMENT_UPLOAD_MIME_TYPES, getMaxUploadFileSizeBytes } from "@/lib/documents/upload-constraints";
+import { validateLegalDocumentUploadBuffer } from "@/lib/documents/validate-upload-buffer";
 import {
   assertCanUploadFileToWorkspace,
   recalculateWorkspaceStorageUsage,
@@ -78,14 +79,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id: caseId } = await params;
 
   const rl = await rateLimit({
-    key: `case-doc:${user.id}`,
+    key: `case-doc:${workspaceId}:${user.id}`,
     limit: 20,
     windowSeconds: 60,
+    tier: "expensive",
   });
   if (!rl.allowed) {
     return NextResponse.json(
-      { error: "Muitos envios. Aguarde um instante." },
-      { status: 429, headers: rateLimitHeaders(rl) },
+      {
+        error:
+          rateLimitHttpStatus(rl) === 503
+            ? "Envio temporariamente indisponível. Tente novamente em instantes."
+            : "Muitos envios. Aguarde um instante.",
+      },
+      { status: rateLimitHttpStatus(rl), headers: rateLimitHeaders(rl) },
     );
   }
 
@@ -141,6 +148,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     throw e;
   }
 
+  const signature = validateLegalDocumentUploadBuffer(buffer, file.name, mime);
+  if (!signature.ok) {
+    return NextResponse.json({ error: signature.message }, { status: 415 });
+  }
+  const canonicalMime = signature.canonicalMime;
+
   const documentId = nanoid();
   const path = documentStoragePath(workspaceId, documentId, file.name);
 
@@ -148,7 +161,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     await uploadDocumentBuffer({
       path,
       buffer,
-      contentType: file.type || "application/octet-stream",
+      contentType: canonicalMime,
     });
   } catch (e) {
     log.warn("storage upload failed", {
@@ -167,7 +180,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         uploadedByUserId: user.id,
         libraryShelf: DocumentLibraryShelf.OFFICE_PRIVATE,
         originalName: file.name,
-        mimeType: file.type || "application/octet-stream",
+        mimeType: canonicalMime,
         sizeBytes: buffer.length,
         storagePath: path,
         status: DocumentStatus.UPLOADED,
@@ -175,7 +188,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     try {
-      await inngest.send({ name: "lex/document.ingest", data: { documentId: doc.id } });
+      await inngest.send({
+        name: "lex/document.ingest",
+        data: { documentId: doc.id, workspaceId },
+      });
     } catch (e) {
       log.warn("inngest send failed (non-fatal)", {
         workspaceId,
@@ -184,7 +200,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
     }
 
-    if (mime.includes("pdf") || file.name.toLowerCase().endsWith(".pdf")) {
+    if (signature.kind === "pdf") {
       scheduleDocumentThumbnailWork(doc.id, { eagerBackground: true });
     }
 
