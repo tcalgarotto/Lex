@@ -2,6 +2,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
+import { useIsClient } from "@/hooks/use-is-client";
+import { cn } from "@/lib/utils";
 
 export function LandingReveal({
   children,
@@ -15,9 +17,10 @@ export function LandingReveal({
   y?: number;
 }) {
   const reduce = useReducedMotion();
+  const isClient = useIsClient();
 
-  if (reduce) {
-    return <div className={className}>{children}</div>;
+  if (!isClient || reduce) {
+    return <div className={cn(className)}>{children}</div>;
   }
 
   return (

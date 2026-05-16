@@ -13,10 +13,12 @@ import {
 } from "@/lib/marketing/landing-copy";
 import { LandingHeroMockup } from "@/components/marketing/landing-hero-mockup";
 import { LandingTrustStrip } from "@/components/marketing/landing-trust-strip";
+import { useIsClient } from "@/hooks/use-is-client";
 import { LandingReveal } from "@/components/marketing/landing-reveal";
 
 export function LandingHero() {
   const reduce = useReducedMotion();
+  const isClient = useIsClient();
 
   return (
     <section id="inicio" className={`${LANDING_SHELL_FULL} relative scroll-mt-[4.75rem] overflow-hidden`}>
@@ -87,16 +89,16 @@ export function LandingHero() {
             </ul>
           </LandingReveal>
           <LandingReveal delay={0.12} className="lg:justify-self-end">
-            {reduce ? (
-              <LandingHeroMockup />
-            ) : (
+            {isClient && !reduce ? (
               <motion.div
-                initial={{ opacity: 0, scale: 0.96 }}
+                initial={false}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
               >
                 <LandingHeroMockup />
               </motion.div>
+            ) : (
+              <LandingHeroMockup />
             )}
           </LandingReveal>
         </div>

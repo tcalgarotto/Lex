@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { useIsClient } from "@/hooks/use-is-client";
 import { cn } from "@/lib/utils";
 
 type LandingLiveCardProps = {
@@ -28,6 +29,7 @@ export function LandingLiveCard({
   featured = false,
 }: LandingLiveCardProps) {
   const reduce = useReducedMotion();
+  const isClient = useIsClient();
 
   const body = (
     <article
@@ -75,7 +77,7 @@ export function LandingLiveCard({
     </article>
   );
 
-  if (reduce) return body;
+  if (!isClient || reduce) return body;
 
   return (
     <motion.div
