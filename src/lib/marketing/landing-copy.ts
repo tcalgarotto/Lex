@@ -5,9 +5,8 @@
 /** Header e footer: largura total da viewport. */
 export const LANDING_SHELL_FULL = "w-full";
 
-/** Conteúdo central (~80% da tela), alinhado com header/footer interno. */
-export const LANDING_CONTENT =
-  "mx-auto w-full max-w-[min(1180px,80vw)] px-6 sm:px-8 lg:px-10";
+/** Conteúdo central (70% da viewport — igual à faixa da plataforma). */
+export const LANDING_CONTENT = "lex-marketing-well";
 
 /** Mesma coluna do conteúdo — logo e CTAs alinhados ao hero. */
 export const LANDING_BAR_INNER = LANDING_CONTENT;

@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-screen overflow-x-hidden lex-hero-gradient">
+    <div className="lex-marketing-page relative min-h-screen overflow-x-hidden lex-hero-gradient">
       <div className="lex-glass-mesh pointer-events-none fixed inset-0 z-0" aria-hidden>
         <span className="lex-glass-mesh__blob lex-glass-mesh__blob--a" />
         <span className="lex-glass-mesh__blob lex-glass-mesh__blob--b" />

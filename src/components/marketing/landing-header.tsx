@@ -37,7 +37,7 @@ export function LandingHeader() {
           : "border-transparent bg-[color:var(--surface-base)]/40 backdrop-blur-md",
       )}
     >
-      <div className={cn(LANDING_BAR_INNER, "flex items-center justify-between gap-3 py-3.5 md:py-4")}>
+      <div className={cn(LANDING_BAR_INNER, "flex items-center justify-between gap-3 py-4 md:py-5")}>
         <Link
           href="/#inicio"
           className="flex items-center gap-2.5 font-semibold tracking-tight text-[color:var(--text-primary)] lex-transition hover:opacity-90"
@@ -52,7 +52,7 @@ export function LandingHeader() {
           >
             L
           </span>
-          <span className="text-[16px] md:text-[17px]">Lex</span>
+          <span className="text-readable md:text-lg">Lex</span>
         </Link>
 
         <nav className="hidden items-center gap-8 xl:flex" aria-label="Principal">
@@ -60,7 +60,7 @@ export function LandingHeader() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[14px] font-medium text-[color:var(--text-secondary)] lex-transition hover:text-[color:var(--text-primary)]"
+              className="text-body font-medium text-[color:var(--text-secondary)] lex-transition hover:text-[color:var(--text-primary)]"
             >
               {item.label}
             </a>
@@ -81,7 +81,7 @@ export function LandingHeader() {
           <Link href="#beta" className="hidden sm:block">
             <Button
               size="sm"
-              className="h-10 rounded-lg border border-[color:var(--brand-border)] px-5 text-[color:var(--text-inverse)] shadow-[var(--shadow-violet)]"
+              className="h-11 rounded-xl text-control border border-[color:var(--brand-border)] px-5 text-[color:var(--text-inverse)] shadow-[var(--shadow-violet)]"
               style={{ background: "var(--brand-primary)" }}
             >
               Solicitar acesso

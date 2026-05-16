@@ -65,7 +65,7 @@ export function LandingBody() {
               {LANDING_PROBLEM.items.map((item) => (
                 <li
                   key={item}
-                  className="landing-problem-item flex gap-3 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/50 px-4 py-3.5 text-[14px] leading-relaxed text-[color:var(--text-secondary)] transition-colors hover:border-[color:var(--warning-border)]/40"
+                  className="landing-problem-item flex gap-3.5 rounded-2xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/50 px-4 py-3.5 lex-marketing-body text-[color:var(--text-secondary)] transition-colors hover:border-[color:var(--warning-border)]/40"
                 >
                   <AlertTriangle
                     className="mt-0.5 size-4 shrink-0 text-[color:var(--warning-text)]"
@@ -92,8 +92,8 @@ export function LandingBody() {
                       <div className="landing-solution-tile__icon">
                         <SolIcon className="size-4 text-[color:var(--brand-text)]" aria-hidden />
                       </div>
-                      <p className="text-sm font-semibold text-[color:var(--text-primary)]">{card.title}</p>
-                      <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+                      <p className="lex-marketing-card-title text-[color:var(--text-primary)]">{card.title}</p>
+                      <p className="lex-marketing-caption mt-1.5 text-[color:var(--text-secondary)]">
                         {card.desc}
                       </p>
                     </li>
@@ -148,7 +148,7 @@ export function LandingBody() {
         <ol className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {LANDING_WORKFLOW.map((step, i) => (
             <LandingReveal key={step.step} delay={i * 0.06}>
-              <li className="landing-live-card flex h-full gap-4 rounded-2xl p-5">
+              <li className="landing-live-card flex h-full gap-4 rounded-3xl p-6">
                 <span
                   className="flex size-11 shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--brand-border)] text-sm font-bold text-[color:var(--brand-text)]"
                   style={{ background: "var(--brand-subtle)" }}
@@ -156,8 +156,8 @@ export function LandingBody() {
                   {step.step}
                 </span>
                 <div>
-                  <h3 className="text-[15px] font-semibold text-[color:var(--text-primary)]">{step.title}</h3>
-                  <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+                  <h3 className="lex-marketing-card-title text-[color:var(--text-primary)]">{step.title}</h3>
+                  <p className="lex-marketing-body mt-2 text-[color:var(--text-secondary)]">
                     {step.description}
                   </p>
                 </div>
@@ -175,8 +175,8 @@ export function LandingBody() {
           {LANDING_AUDIENCE.map((card, i) => (
             <LandingReveal key={card.title} delay={i * 0.08}>
               <article className="landing-live-card h-full rounded-2xl p-6">
-                <h3 className="text-[16px] font-semibold text-[color:var(--text-primary)]">{card.title}</h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-[color:var(--text-secondary)]">
+                <h3 className="lex-marketing-card-title text-lg text-[color:var(--text-primary)]">{card.title}</h3>
+                <p className="mt-2 lex-marketing-body text-[color:var(--text-secondary)]">
                   {card.description}
                 </p>
               </article>
@@ -198,8 +198,8 @@ export function LandingBody() {
             <LandingReveal key={item.title} delay={i * 0.06}>
               <article className="landing-live-card rounded-2xl p-5">
                 <Shield className="mb-3 size-5 text-[color:var(--brand-text)]" aria-hidden />
-                <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">{item.title}</h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">{item.desc}</p>
+                <h3 className="lex-marketing-card-title text-[color:var(--text-primary)]">{item.title}</h3>
+                <p className="lex-marketing-body mt-2 text-[color:var(--text-secondary)]">{item.desc}</p>
               </article>
             </LandingReveal>
           ))}

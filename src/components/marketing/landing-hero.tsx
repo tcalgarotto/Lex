@@ -24,32 +24,32 @@ export function LandingHero() {
         className="landing-hero-glow pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_70%_-10%,var(--brand-subtle),transparent_55%)]"
         aria-hidden
       />
-      <div className={`relative ${LANDING_CONTENT} pb-12 pt-8 sm:pb-16 sm:pt-10 md:pb-20 md:pt-14`}>
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,580px)] lg:items-center lg:gap-14 xl:gap-16">
+      <div className={`relative ${LANDING_CONTENT} pb-14 pt-10 sm:pb-20 sm:pt-12 md:pb-24 md:pt-16`}>
+        <div className="grid gap-12 lg:items-center lg:gap-14 xl:grid-cols-[minmax(0,1fr)_minmax(0,min(100%,520px))] xl:gap-16">
           <LandingReveal className="space-y-5 sm:space-y-6">
             <p
-              className="inline-flex w-fit items-center rounded-full border border-[color:var(--brand-border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--brand-text)]"
+              className="lex-marketing-eyebrow inline-flex w-fit items-center rounded-full border border-[color:var(--brand-border)] px-3.5 py-2 text-[color:var(--brand-text)]"
               style={{ background: "var(--brand-subtle)" }}
             >
               {LANDING_HERO.badge}
             </p>
-            <h1 className="landing-hero-title font-serif text-[2rem] font-normal leading-[1.08] tracking-tight text-[color:var(--text-primary)] sm:text-[2.55rem] lg:text-[3rem] lg:leading-[1.04]">
+            <h1 className="lex-marketing-display landing-hero-title text-[color:var(--text-primary)]">
               {LANDING_HERO.title}
             </h1>
-            <p className="text-[15px] leading-relaxed text-[color:var(--text-secondary)] sm:text-[17px]">
+            <p className="lex-marketing-lead text-[color:var(--text-secondary)]">
               {LANDING_HERO.subtitle}
             </p>
-            <p className="text-[13px] leading-relaxed text-[color:var(--text-muted)]">
+            <p className="lex-marketing-body text-[color:var(--text-muted)]">
               {LANDING_HERO.microcopy}
             </p>
             <div className="grid gap-3 pt-2 sm:grid-cols-3">
               {LANDING_HERO_STATS.map((stat) => (
                 <div
                   key={stat.label}
-                  className="landing-hero-stat rounded-xl border border-[color:var(--border-subtle)] px-3 py-2.5"
+                  className="landing-hero-stat rounded-2xl border border-[color:var(--border-subtle)] px-4 py-3.5"
                 >
-                  <p className="text-sm font-bold text-[color:var(--brand-text)]">{stat.value}</p>
-                  <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--text-muted)]">{stat.label}</p>
+                  <p className="text-control font-bold text-[color:var(--brand-text)]">{stat.value}</p>
+                  <p className="lex-marketing-caption mt-1 text-[color:var(--text-muted)]">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -57,7 +57,7 @@ export function LandingHero() {
               <Link href="#beta" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="h-12 w-full gap-2 rounded-lg border border-[color:var(--brand-border)] px-8 text-[color:var(--text-inverse)] shadow-[var(--shadow-violet)] lex-transition hover:opacity-95 sm:w-auto"
+                  className="h-13 min-h-[3.25rem] w-full gap-2 rounded-xl border border-[color:var(--brand-border)] px-8 text-control text-[color:var(--text-inverse)] shadow-[var(--shadow-violet)] lex-transition hover:opacity-95 sm:w-auto"
                   style={{ background: "var(--brand-primary)" }}
                 >
                   {LANDING_HERO.ctaPrimary}
@@ -68,7 +68,7 @@ export function LandingHero() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-12 w-full rounded-lg border border-[color:var(--border-default)] bg-[color:var(--glass-bg)]/80 px-8 backdrop-blur-xl hover:bg-[color:var(--surface-overlay-strong)] sm:w-auto"
+                  className="h-13 min-h-[3.25rem] w-full rounded-xl border border-[color:var(--border-default)] bg-[color:var(--glass-bg)]/80 px-8 text-control backdrop-blur-xl hover:bg-[color:var(--surface-overlay-strong)] sm:w-auto"
                 >
                   {LANDING_HERO.ctaSecondary}
                 </Button>
@@ -78,9 +78,9 @@ export function LandingHero() {
               {LANDING_PROOF_POINTS.map((point) => (
                 <li
                   key={point}
-                  className="landing-hero-proof flex items-center gap-2 rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/60 px-3 py-2 text-[12px] font-medium text-[color:var(--text-secondary)]"
+                  className="landing-hero-proof flex items-center gap-2.5 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/60 px-3.5 py-2.5 text-caption font-medium text-[color:var(--text-secondary)]"
                 >
-                  <Check className="size-3.5 shrink-0 text-[color:var(--brand-text)]" aria-hidden />
+                  <Check className="size-4 shrink-0 text-[color:var(--brand-text)]" aria-hidden />
                   {point}
                 </li>
               ))}

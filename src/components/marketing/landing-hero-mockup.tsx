@@ -14,12 +14,12 @@ export function LandingHeroMockup() {
   return (
     <div className="landing-showcase relative mx-auto w-full max-w-[600px]" aria-hidden>
       <div className="landing-showcase__glow" aria-hidden />
-      <div className="landing-showcase__frame lex-glass relative overflow-hidden rounded-[1.25rem] border border-[color:var(--border-default)] shadow-[var(--shadow-lg),0_0_80px_-24px_color-mix(in_srgb,var(--brand-primary)_40%,transparent)]">
+      <div className="landing-showcase__frame lex-glass relative overflow-hidden rounded-3xl border border-[color:var(--border-default)] shadow-[var(--shadow-lg),0_0_80px_-24px_color-mix(in_srgb,var(--brand-primary)_40%,transparent)]">
         <div className="landing-showcase__chrome flex items-center gap-2 border-b border-[color:var(--border-subtle)] px-4 py-3">
           <span className="size-2.5 rounded-full bg-[#ff5f57]" />
           <span className="size-2.5 rounded-full bg-[#febc2e]" />
           <span className="size-2.5 rounded-full bg-[#28c840]" />
-          <span className="ml-2 truncate text-[11px] font-medium text-[color:var(--text-muted)]">
+          <span className="ml-2 truncate text-caption font-medium text-[color:var(--text-muted)]">
             Lex · Caso #2847 — Revisão contratual
           </span>
         </div>
@@ -30,8 +30,8 @@ export function LandingHeroMockup() {
                 key={label}
                 className={
                   i === 0
-                    ? "rounded-md border border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] px-2.5 py-1 text-[10px] font-semibold text-[color:var(--brand-text)]"
-                    : "rounded-md px-2.5 py-1 text-[10px] font-medium text-[color:var(--text-muted)]"
+                    ? "rounded-md border border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] px-2.5 py-1 text-micro font-semibold text-[color:var(--brand-text)]"
+                    : "rounded-md px-2.5 py-1 text-micro font-medium text-[color:var(--text-muted)]"
                 }
               >
                 {label}
@@ -43,8 +43,8 @@ export function LandingHeroMockup() {
               <Sparkles className="size-4 text-[color:var(--brand-text)]" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--brand-text)]">IA nativa no caso</p>
-              <p className="mt-0.5 text-[12px] leading-snug text-[color:var(--text-primary)]">
+              <p className="text-micro font-semibold uppercase tracking-wide text-[color:var(--brand-text)]">IA nativa no caso</p>
+              <p className="mt-0.5 text-caption leading-snug text-[color:var(--text-primary)]">
                 “Valide as 3 cláusulas sensíveis e revise a minuta da contestação.”
               </p>
             </div>
@@ -54,7 +54,7 @@ export function LandingHeroMockup() {
               <div key={k} className="landing-showcase__metric rounded-lg border border-[color:var(--border-subtle)] p-2.5 text-center">
                 <Icon className="mx-auto mb-1 size-4 text-[color:var(--brand-text)]" />
                 <p className="text-[9px] font-medium uppercase tracking-wide text-[color:var(--text-muted)]">{k}</p>
-                <p className="text-lg font-bold text-[color:var(--text-primary)]">{v}</p>
+                <p className="text-readable font-bold text-[color:var(--text-primary)]">{v}</p>
               </div>
             ))}
           </div>
@@ -64,21 +64,21 @@ export function LandingHeroMockup() {
                 <span
                   className={
                     i < 3
-                      ? "rounded-full border border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--brand-text)]"
-                      : "rounded-full border border-dashed border-[color:var(--brand-border)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--text-muted)]"
+                      ? "rounded-full border border-[color:var(--brand-border)] bg-[color:var(--brand-subtle)] px-2 py-0.5 text-micro font-semibold text-[color:var(--brand-text)]"
+                      : "rounded-full border border-dashed border-[color:var(--brand-border)] px-2 py-0.5 text-micro font-medium text-[color:var(--text-muted)]"
                   }
                 >
                   {step}
                 </span>
                 {i < PIPELINE.length - 1 ? (
-                  <span className="text-[10px] text-[color:var(--text-muted)]" aria-hidden>
+                  <span className="text-micro text-[color:var(--text-muted)]" aria-hidden>
                     →
                   </span>
                 ) : null}
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-[color:var(--brand-border)]/50 bg-[color:var(--surface-overlay)] px-3 py-2.5 text-[11px] text-[color:var(--text-secondary)]">
+          <div className="flex items-center gap-2 rounded-lg border border-dashed border-[color:var(--brand-border)]/50 bg-[color:var(--surface-overlay)] px-3 py-2.5 text-caption text-[color:var(--text-secondary)]">
             <BookOpen className="size-3.5 shrink-0 text-[color:var(--brand-text)]" />
             Fundamentos com fonte · prontos para a peça
           </div>

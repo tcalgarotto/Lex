@@ -32,7 +32,7 @@ export function LandingLiveCard({
   const body = (
     <article
       className={cn(
-        "landing-live-card group relative flex h-full flex-col overflow-hidden rounded-2xl border p-5 md:p-6",
+        "landing-live-card group relative flex h-full flex-col overflow-hidden rounded-3xl border p-6 md:p-7",
         featured
           ? "landing-live-card--featured border-[color:var(--brand-border)]"
           : "border-[color:var(--border-default)]",
@@ -49,27 +49,27 @@ export function LandingLiveCard({
       />
       <div className="relative flex items-start justify-between gap-2">
         <div
-          className="flex size-12 items-center justify-center rounded-xl border border-[color:var(--brand-border)] shadow-sm transition-transform duration-300 group-hover:scale-105"
+          className="flex size-14 items-center justify-center rounded-xl border border-[color:var(--brand-border)] shadow-sm transition-transform duration-300 group-hover:scale-105"
           style={{ background: "var(--brand-subtle)" }}
         >
-          <Icon className="size-5 text-[color:var(--brand-text)]" aria-hidden />
+          <Icon className="size-6 text-[color:var(--brand-text)]" aria-hidden />
         </div>
         {tag ? (
           <span
-            className="shrink-0 rounded-full border border-[color:var(--brand-border)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--brand-text)]"
+            className="shrink-0 rounded-full border border-[color:var(--brand-border)] px-3 py-1.5 text-caption font-semibold uppercase tracking-wide text-[color:var(--brand-text)]"
             style={{ background: "var(--brand-subtle)" }}
           >
             {tag}
           </span>
         ) : null}
       </div>
-      <h3 className="relative mt-4 text-[15px] font-semibold leading-snug text-[color:var(--text-primary)] md:text-base">
+      <h3 className="lex-marketing-card-title relative mt-5 text-[color:var(--text-primary)]">
         {title}
       </h3>
-      <p className="relative mt-2 flex-1 text-[13px] leading-relaxed text-[color:var(--text-secondary)]">
+      <p className="lex-marketing-card-body relative mt-2.5 flex-1 text-[color:var(--text-secondary)]">
         {description}
       </p>
-      <p className="relative mt-4 rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/80 px-3 py-2.5 text-[12px] leading-snug text-[color:var(--text-muted)] transition-colors duration-300 group-hover:border-[color:var(--brand-border)] group-hover:text-[color:var(--text-secondary)]">
+      <p className="lex-marketing-example relative mt-5 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/80 px-3.5 py-3 text-[color:var(--text-muted)] transition-colors duration-300 group-hover:border-[color:var(--brand-border)] group-hover:text-[color:var(--text-secondary)]">
         {example}
       </p>
     </article>

@@ -8,7 +8,7 @@ export function LandingTrustStrip() {
           {LANDING_TRUST_STRIP.map((label) => (
             <li
               key={label}
-              className="rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/70 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)] sm:text-[11px]"
+              className="rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/70 px-3 py-1.5 lex-marketing-eyebrow text-[color:var(--text-muted)] sm:text-[11px]"
             >
               {label}
             </li>

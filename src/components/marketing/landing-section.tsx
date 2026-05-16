@@ -28,7 +28,7 @@ export function LandingSection({ id, className, children, variant = "default" }:
       <div
         className={cn(
           LANDING_CONTENT,
-          "py-14 sm:py-16 md:py-20 lg:py-24",
+          "py-16 sm:py-20 md:py-24 lg:py-28",
           variant === "cta" && "py-16 md:py-20",
         )}
       >
@@ -52,21 +52,26 @@ export function LandingSectionHeader({
   return (
     <header
       className={cn(
-        "mb-8 md:mb-12",
-        align === "center" && "mx-auto max-w-3xl text-center",
+        "mb-10 md:mb-14",
+        align === "center" && "mx-auto max-w-2xl text-center",
         align === "left" && "max-w-2xl",
       )}
     >
       {eyebrow ? (
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-text)]">
+        <p className="lex-marketing-eyebrow mb-4 text-[color:var(--brand-text)]">
           {eyebrow}
         </p>
       ) : null}
-      <h2 className="font-serif text-[1.75rem] font-normal leading-[1.1] tracking-tight text-[color:var(--text-primary)] sm:text-[2rem] md:text-[2.35rem]">
+      <h2 className="lex-marketing-section-title text-[color:var(--text-primary)]">
         {title}
       </h2>
       {description ? (
-        <p className="mt-3 text-[15px] leading-relaxed text-[color:var(--text-secondary)] md:text-base">
+        <p
+          className={cn(
+            "lex-marketing-lead mt-4 text-[color:var(--text-secondary)]",
+            align === "center" && "mx-auto max-w-2xl",
+          )}
+        >
           {description}
         </p>
       ) : null}

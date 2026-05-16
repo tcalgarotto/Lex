@@ -58,7 +58,7 @@ export function LandingFooter() {
           </div>
           {FOOTER_COLUMNS.map((col) => (
             <div key={col.title} className="md:col-span-2">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
+              <p className="text-caption font-semibold uppercase tracking-widest text-[color:var(--text-muted)]">
                 {col.title}
               </p>
               <ul className="mt-4 space-y-2.5 text-[14px]">
@@ -88,11 +88,11 @@ export function LandingFooter() {
       </div>
       <div className="w-full border-t border-[color:var(--border-subtle)]">
         <div className={`${LANDING_CONTENT} py-6`}>
-          <p className="mx-auto max-w-2xl text-center text-[12px] leading-relaxed text-[color:var(--text-muted)]">
+          <p className="mx-auto max-w-2xl text-center text-caption leading-relaxed text-[color:var(--text-muted)]">
             O Lex é uma ferramenta de apoio à atividade jurídica. Toda minuta e orientação deve ser
             revisada por profissional habilitado.
           </p>
-          <p className="mt-4 text-center text-[11px] text-[color:var(--text-muted)]">
+          <p className="mt-4 text-center text-caption text-[color:var(--text-muted)]">
             Lex © {new Date().getFullYear()}
           </p>
         </div>
