@@ -2006,3 +2006,40 @@ model Notification {
   @@index([workspaceId, userId, status])
   @@index([workspaceId, kind, createdAt])
 }
+
+enum BetaLeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DISCARDED
+}
+
+/** Lead público da landing (beta / demonstração) — sem vínculo a workspace. */
+model BetaLeadRequest {
+  id             String         @id @default(cuid())
+  name           String
+  email          String
+  company        String
+  role           String?
+  teamSize       String
+  mainPain       String?        @db.Text
+  intent         String         @default("beta")
+  contactConsent Boolean
+  source         String         @default("landing")
+  status         BetaLeadStatus @default(NEW)
+  utmSource      String?
+  utmMedium      String?
+  utmCampaign    String?
+  utmContent     String?
+  utmTerm        String?
+  referrer       String?        @db.Text
+  notes          String?        @db.Text
+  contactedAt    DateTime?
+  ipHash         String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([email])
+  @@index([createdAt])
+  @@index([status])
+}
