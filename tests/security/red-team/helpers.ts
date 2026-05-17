@@ -1,5 +1,33 @@
-import { MembershipRole } from "@prisma/client";
+import { MembershipRole, Prisma } from "@prisma/client";
+import type { EnvGuardResult } from "../../../scripts/security-audit/env-guard";
+import { prisma } from "@/lib/prisma";
 import { RT, RT_SECRET_MARKER_B } from "./fixture-ids";
+
+function isDatabaseUnreachableError(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) return true;
+  if (error instanceof Error) {
+    return /Can't reach database server|ECONNREFUSED|Connection refused/i.test(error.message);
+  }
+  return false;
+}
+
+/** Evita falha de suite no CI quando DATABASE_URL existe mas Postgres não está no ar. */
+export async function assertRedTeamDatabaseReachable(): Promise<EnvGuardResult> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return { ok: true };
+  } catch (error) {
+    if (isDatabaseUnreachableError(error)) {
+      return {
+        ok: false,
+        reason:
+          "PostgreSQL indisponível — suba o banco (ex.: npm run infra:up) e rode npm run security:red-team:seed",
+      };
+    }
+    const message = error instanceof Error ? error.message.slice(0, 200) : "erro Prisma";
+    return { ok: false, reason: message };
+  }
+}
 
 export type AttackPersona = "commonA" | "adminA" | "commonB" | "none";
 

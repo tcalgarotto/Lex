@@ -14,6 +14,7 @@ import {
   readJson,
   bodyContainsSecretB,
   assertBlockedStatus,
+  assertRedTeamDatabaseReachable,
 } from "./helpers";
 import { prisma } from "@/lib/prisma";
 
@@ -81,8 +82,14 @@ let envOk = false;
 let fixturesOk = false;
 
 async function fixturesPresent(): Promise<boolean> {
-  const c = await prisma.case.findFirst({ where: { id: RT.cases.b.id, workspaceId: RT.workspaces.b.id } });
-  return Boolean(c);
+  try {
+    const c = await prisma.case.findFirst({
+      where: { id: RT.cases.b.id, workspaceId: RT.workspaces.b.id },
+    });
+    return Boolean(c);
+  } catch {
+    return false;
+  }
 }
 
 beforeAll(async () => {
@@ -90,6 +97,12 @@ beforeAll(async () => {
   envOk = guard.ok;
   if (!envOk) {
     report.skip("Ambiente red-team", guard.ok === false ? guard.reason : "desconhecido");
+    return;
+  }
+  const db = await assertRedTeamDatabaseReachable();
+  if (!db.ok) {
+    envOk = false;
+    report.skip("PostgreSQL red-team", db.reason);
     return;
   }
   fixturesOk = await fixturesPresent();

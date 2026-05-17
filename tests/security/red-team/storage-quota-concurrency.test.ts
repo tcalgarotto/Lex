@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { assertRedTeamSafeEnvironment } from "../../../scripts/security-audit/env-guard";
 import { RT } from "./fixture-ids";
-import { RedTeamReport } from "./helpers";
+import { RedTeamReport, assertRedTeamDatabaseReachable } from "./helpers";
 import { prisma } from "@/lib/prisma";
 import {
   assertCanUploadFileToWorkspace,
@@ -25,33 +25,44 @@ beforeAll(async () => {
     report.skip("Ambiente quota", guard.ok === false ? guard.reason : "desconhecido");
     return;
   }
-  await prisma.workspace.upsert({
-    where: { id: QUOTA_WS },
-    create: {
-      id: QUOTA_WS,
-      slug: "redteam-quota-concurrency",
-      name: "[REDTEAM] Quota Concurrency",
-      storageQuotaBytes: 1000n,
-      storageUsedBytes: 900n,
-    },
-    update: {
-      storageQuotaBytes: 1000n,
-      storageUsedBytes: 900n,
-    },
-  });
-  await prisma.document.deleteMany({ where: { workspaceId: QUOTA_WS } });
-  await prisma.document.create({
-    data: {
-      id: "rt_quota_fill_doc",
-      workspaceId: QUOTA_WS,
-      originalName: "fill.bin",
-      mimeType: "text/plain",
-      sizeBytes: 900,
-      storagePath: `${QUOTA_WS}/rt_quota_fill_doc/fill.bin`,
-      status: "UPLOADED",
-    },
-  });
-  await recalculateWorkspaceStorageUsage(QUOTA_WS);
+  const db = await assertRedTeamDatabaseReachable();
+  if (!db.ok) {
+    envOk = false;
+    report.skip("PostgreSQL red-team", db.reason);
+    return;
+  }
+  try {
+    await prisma.workspace.upsert({
+      where: { id: QUOTA_WS },
+      create: {
+        id: QUOTA_WS,
+        slug: "redteam-quota-concurrency",
+        name: "[REDTEAM] Quota Concurrency",
+        storageQuotaBytes: 1000n,
+        storageUsedBytes: 900n,
+      },
+      update: {
+        storageQuotaBytes: 1000n,
+        storageUsedBytes: 900n,
+      },
+    });
+    await prisma.document.deleteMany({ where: { workspaceId: QUOTA_WS } });
+    await prisma.document.create({
+      data: {
+        id: "rt_quota_fill_doc",
+        workspaceId: QUOTA_WS,
+        originalName: "fill.bin",
+        mimeType: "text/plain",
+        sizeBytes: 900,
+        storagePath: `${QUOTA_WS}/rt_quota_fill_doc/fill.bin`,
+        status: "UPLOADED",
+      },
+    });
+    await recalculateWorkspaceStorageUsage(QUOTA_WS);
+  } catch {
+    envOk = false;
+    report.skip("PostgreSQL red-team", "Falha ao preparar workspace de quota");
+  }
 });
 
 afterAll(async () => {
