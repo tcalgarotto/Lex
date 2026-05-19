@@ -5,11 +5,11 @@ Dados **fictícios** apenas. Marque cada item antes de promover release sensíve
 | Campo | Valor |
 |-------|--------|
 | **Data** | 2026-05-19 |
-| **Responsável** | Cursor Agent (FASE 5.4) + validação humana recomendada |
-| **Ambiente** | local/dev — Postgres + Supabase Auth + Playwright |
+| **Responsável** | Thales (PO) + Cursor Agent (FASE 5.7) |
+| **Ambiente** | local/dev + Vercel (gate); Playwright + red-team |
 | **Comando assistido** | `npm run security:legal-qa` |
 | **Comando browser** | `set -a && . ./.env && set +a && npx playwright test tests/e2e/security-qa-staging.spec.ts` |
-| **Logs externos** | `docs/security/EXTERNAL_LOGS_REVIEW.md` |
+| **Logs externos** | `docs/security/EXTERNAL_LOGS_REVIEW.md` — **PASSOU** (FASE 5.6) |
 
 ---
 
@@ -17,8 +17,10 @@ Dados **fictícios** apenas. Marque cada item antes de promover release sensíve
 
 | Resultado | Detalhe |
 |-----------|---------|
-| **Aprovado com ressalvas** | LQA + Playwright + CE.R*; painéis externos pendentes; peça minuta PARCIAL |
-| **Bloqueadores produção** | Assinatura Vercel/Sentry/Langfuse em `EXTERNAL_LOGS_REVIEW.md` |
+| **Aprovado para RC** | LQA + Playwright + CE.R* + painéis externos **PASSOU** |
+| **Ressalvas** | Peça minuta **PARCIAL** (409/guardas drafting); reamostrar Langfuse após tráfego real |
+
+**Bloqueadores produção sensível:** nenhum (painéis assinados FASE 5.6).
 
 **Não declarar sistema seguro.**
 
@@ -60,17 +62,19 @@ Dados **fictícios** apenas. Marque cada item antes de promover release sensíve
 ## Erros e privacidade
 
 - [x] **14. Erro compreensível** — LQA (**PASSOU**).
-- [x] **15. Logs DevTools** — Playwright UI.4 + estático LQA.15 (**PASSOU** parcial). Painéis externos: **PENDENTE** `EXTERNAL_LOGS_REVIEW.md`.
+- [x] **15. Logs DevTools** — Playwright UI.4 + estático LQA.15 (**PASSOU**). Painéis externos: **PASSOU** — `EXTERNAL_LOGS_REVIEW.md` (Vercel, Sentry teste controlado, Langfuse smoke).
 
 ---
 
 ## Pós-teste
 
 - [x] Fixtures red-team no DB dev/staging.
-- [x] Gate em `RELEASE_SECURITY_GATE.md` e `RED_TEAM_AUDIT_REPORT.md` (FASE 5.4).
+- [x] Gate em `RELEASE_SECURITY_GATE.md` e `RED_TEAM_AUDIT_REPORT.md` (FASE 5.7).
 
-**Resultado:** ☑ **Aprovado com ressalvas**  
+**Resultado:** ☑ **Aprovado para Release Candidate**  
 ☐ Bloqueado
+
+> _Histórico resolvido em FASE 5.6:_ versões anteriores listavam painéis externos como bloqueador — **não aplicam**.
 
 ---
 
@@ -80,7 +84,6 @@ Dados **fictícios** apenas. Marque cada item antes de promover release sensíve
 npm run security:legal-qa
 npm run security:logs:review
 npm run security:sample-observability-logs
+set -a && . ./.env && set +a && npm run security:red-team:test
 set -a && . ./.env && set +a && npx playwright test tests/e2e/security-qa-staging.spec.ts
-# CE.R* (requer DEEPSEEK_API_KEY com valor no .env):
-# npm run security:red-team:test -- tests/security/red-team/completion-e2e-provider.integration.test.ts
 ```

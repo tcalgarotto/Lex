@@ -70,7 +70,9 @@ Revisão anterior sem acesso aos painéis (host local sem keys) — **substituí
 
 ---
 
-## Classificação final (FASE 5.6)
+## Classificação final (FASE 5.6 — revalidada FASE 5.7)
+
+_Fonte da verdade para painéis externos. Sem alteração de status em 5.7._
 
 | Item | Status |
 |------|--------|

@@ -2,7 +2,7 @@
 
 Checklist objetiva antes de promover build para produção. **Não substitui** revisão humana nem auditoria legal.
 
-Última atualização: **2026-05-19** (FASE 5.6 — painéis externos assinados + produção sensível RC).
+Última atualização: **2026-05-19** (FASE 5.7 — limpeza documental + RC controlado).
 
 ---
 
@@ -71,7 +71,22 @@ Execução isolada e suíte geral **passam** quando a key está carregada via `.
 
 ---
 
-## Verificação final (FASE 5.6 — 2026-05-19)
+## Release Candidate controlado (FASE 5.7)
+
+**Decisão:** promover build com monitoramento pós-deploy — **não** declarar sistema seguro.
+
+| Etapa | Ação |
+|-------|------|
+| Pré-deploy | Confirmar envs prod: `DATABASE_URL`, Redis, `DEEPSEEK_*`, `LANGFUSE_*`, `NEXT_PUBLIC_SENTRY_DSN`, sem secrets em logs |
+| Deploy | Vercel production/preview aprovado; migrations `prisma migrate deploy` se aplicável |
+| T+0–1h | Vercel Runtime Logs — sem P0/P1; Sentry — sem eventos reais com dados sensíveis |
+| T+0–1h | Langfuse — amostrar traces de chat/minuta (não só smoke); arquivar issues Sentry de `/sentry-example-page` |
+| T+24h | Reexecutar `security:logs:review` + amostra DB; reamostrar painéis se houver tráfego de usuários |
+| Rollback | Runbook documentado; reverter deploy Vercel se P0 em produção |
+
+---
+
+## Verificação final (FASE 5.7 — 2026-05-19)
 
 ```bash
 npm run security:storage:hardening-check
@@ -83,18 +98,18 @@ npm run lint && npm run typecheck && npm test && npm audit --json
 set -a && . ./.env && set +a && npx playwright test tests/e2e/security-qa-staging.spec.ts
 ```
 
-| Comando | Resultado |
-|---------|-----------|
+| Comando | Resultado (rodada 5.7) |
+|---------|------------------------|
 | `security:storage:hardening-check` | PASSOU |
-| `security:logs:review` | PASSOU |
+| `security:logs:review` | PASSOU (P0=0 P1=0) |
 | `security:sample-observability-logs` | PASSOU |
-| `security:red-team:test` | **113 passed**, 0 skipped (com `DEEPSEEK_API_KEY`) |
-| `security:legal-qa` | 11 passed |
-| `npm test` | 872 passed (B3.3 pode falhar intermitente em suite paralela) |
-| `lint` / `typecheck` | OK |
-| `npm audit` | 0 vulnerabilities |
+| `security:red-team:test` | **113 passed**, 0 skipped |
+| `security:legal-qa` | **11 passed** |
+| `npm test` | **871/872** — B3.3 intermitente em suite paralela (passa isolado) |
+| `lint` / `typecheck` | OK (3 warnings lint) |
+| `npm audit` | **0** vulnerabilities |
 | Playwright staging | **13 passed** |
-| Painéis externos | **PASSOU** (FASE 5.6) |
+| Painéis externos | **PASSOU** (FASE 5.6, revalidado 5.7) |
 
 ---
 

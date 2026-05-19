@@ -2,11 +2,11 @@
 
 **Projeto:** Lex (staff adv)  
 **Ambiente:** local/dev (Supabase pooler via `DATABASE_URL`; `npm run dev` ativo)  
-**Data:** 2026-05-19 (FASE 5.1 consolidação final)  
-**Fases concluídas:** FASE 0–3, 3.1, 3.4, 5, **5.1**, 10 parcial  
+**Data:** 2026-05-19 (FASE 5.7 — RC documental)  
+**Fases concluídas:** FASE 0–3, 3.1, 3.4, 5, **5.1–5.7**, 10 parcial  
 **Correções aplicadas (FASE 10):** rate limit fail-closed seletivo, RL em rotas IA, ingest tenant guard, timeline 404
 
-> **Histórico:** seções abaixo com datas 2026-05-16 podem dizer “NÃO EXECUTADO” para SR.* — **resolvido na FASE 3.4**. Resultado atual: ver **Estado final consolidado**.
+> **Histórico:** seções datadas abaixo podem dizer “NÃO EXECUTADO”, “PENDENTE” ou “Gate não final” — **resultado atual: ver Estado final consolidado**. SR.* → resolvido FASE 3.4; CE.R* / painéis externos / produção sensível → resolvido FASE 5.4–5.6.
 
 ---
 
@@ -24,6 +24,7 @@
 | CSP (script nonce, object-src, frame-ancestors) | **PASSOU**; `style-src unsafe-inline` **P2 aceito** |
 | QA manual jurídico (assistido LQA.* + Playwright) | **PASSOU** (peça minuta **PARCIAL** — guardas 409) |
 | Logs produção (painéis) | **PASSOU** — `EXTERNAL_LOGS_REVIEW.md` FASE 5.6 |
+| Produção sensível | **APROVADA PARA RELEASE CANDIDATE** (FASE 5.6–5.7) |
 | Backup / rollback runbook | **PASSOU** (documentado) |
 
 **Suítes (rodada final):**
@@ -48,9 +49,11 @@
 | **P1 após FASE 10** | **Mitigados** — ver seção FASE 10; Redis em prod continua obrigatório |
 | **P0 FASE 3 (storage cross-tenant)** | **0** — download/upload bloqueados antes de `service_role` |
 | **Storage/Auth/Upload (fixtures)** | **PASSOU** — SR.1–SR.6, hardening-check, magic bytes, service_role server-side |
-| **RAG/LLM (fixtures)** | **PASSOU** (escopo PI.*) — 0 P0; completion E2E provider **NÃO EXECUTADO** sem API key |
-| **Risco de lançamento** | **Gate não final** — QA manual, logs prod, completion real pendente |
-| **Recomendação** | Manter Redis + fail-closed em prod; não remover validação magic bytes |
+| **RAG/LLM (fixtures)** | **PASSOU** — PI.* + **CE.R* PASSOU** (provider real) |
+| **Risco de lançamento** | **RC aprovado** — produção sensível **APROVADA PARA RELEASE CANDIDATE** |
+| **Recomendação** | Deploy monitorado (FASE 5.7); manter Redis + fail-closed; reamostrar painéis após tráfego real |
+
+> _Histórico resolvido em FASE 5.6:_ este resumo foi redigido antes de CE.R* e painéis externos; linhas antigas citavam “completion E2E NÃO EXECUTADO” e “Gate não final” — **não aplicam ao estado atual**.
 
 Riscos remanescentes: quota QC.3b (assert paralelo); `application/octet-stream` no painel (P3); CSP `style-src 'unsafe-inline'` (P2); ILIKE em chunks (perf, não segurança).
 
@@ -111,9 +114,11 @@ npm test                      # 726 passed
 
 ## Resumo
 
+> _Histórico resolvido em FASE 5.4–5.6:_ “1 NÃO EXECUTADO” em completion — **CE.R* PASSOU** com `DEEPSEEK_API_KEY`. Ver Estado final consolidado.
+
 - **22 testes PASSOU** (integração real: Prisma + route handlers + `retrieveContext`)
 - **0 FALHOU P0** em ataques dinâmicos
-- **1 NÃO EXECUTADO** — `POST /api/completion` (falta `DEEPSEEK_API_KEY` no ambiente do teste)
+- **Completion provider real** — **PASSOU** na suíte atual (CE.R1–CE.R2; histórico: pendente sem key)
 - **Achados estáticos / rate limit:** 3 itens **P1** documentados (não abortam CI; reportados na suíte)
 
 ## Fixtures criadas
@@ -879,4 +884,16 @@ Comandos de evidência: ver `RELEASE_SECURITY_GATE.md` seção Verificação fin
 
 ---
 
-_Status: RC **não-IA** e RC **IA** aprovados; **produção sensível aprovada para release candidate** (painéis externos FASE 5.6); **não** declarar sistema seguro._
+# FASE 5.7 — Limpeza documental + RC controlado (2026-05-19)
+
+| Item | Resultado |
+|------|-----------|
+| Contradições doc (resumo / pendências antigas) | **CORRIGIDAS** — histórico marcado; Estado final = fonte da verdade |
+| `EXTERNAL_LOGS_REVIEW.md` | **ASSINADO** — Vercel, Sentry, Langfuse, DB, estático **PASSOU** |
+| `RELEASE_SECURITY_GATE.md` | RC não-IA / RC IA / produção sensível **APROVADOS** |
+| `LEGAL_QA_MANUAL_CHECKLIST.md` | Atualizado — sem bloqueador de painéis |
+| Deploy monitorado | Ver checklist em `RELEASE_SECURITY_GATE.md` § RC controlado |
+
+---
+
+_Status: RC **não-IA** e RC **IA** aprovados; **produção sensível aprovada para release candidate**; documentação alinhada FASE 5.7; **não** declarar sistema seguro._
