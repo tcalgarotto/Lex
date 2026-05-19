@@ -45,6 +45,7 @@
     "tests/**/*",
     "vitest.config.ts",
     "vitest.integration.config.ts",
+    "vitest.security.config.ts",
     "playwright.config.ts",
     "scripts/**/*"
   ]
