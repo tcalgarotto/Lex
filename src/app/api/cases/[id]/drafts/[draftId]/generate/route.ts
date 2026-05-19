@@ -7,7 +7,12 @@
  */
 
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { z } from "zod";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { CaseDraftStatus, CaseTimelineKind, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -51,9 +56,23 @@ export async function POST(
   });
   if (!existing) return NextResponse.json({ error: "Minuta não encontrada" }, { status: 404 });
 
-  const out = await generateDraft(caseId, workspaceId, {
-    confirmUnverifiedFoundations: parsed.data.confirmUnverifiedFoundations === true,
+  after(async () => {
+    await flushLangfuseTraces();
   });
+
+  const out = await withLangfuseRouteContext(
+    {
+      traceName: "draft-regenerate",
+      userId: user.id,
+      workspaceId,
+      caseId,
+      inputSummary: JSON.stringify({ caseId, draftId }),
+    },
+    () =>
+      generateDraft(caseId, workspaceId, {
+        confirmUnverifiedFoundations: parsed.data.confirmUnverifiedFoundations === true,
+      }),
+  );
 
   if (out.status === "blocked") {
     return NextResponse.json({ status: "blocked", reasons: out.reasons }, { status: 409 });

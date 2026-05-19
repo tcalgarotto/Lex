@@ -6,7 +6,12 @@
  */
 
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { CaseTimelineKind, Prisma } from "@prisma/client";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getCaseById } from "@/lib/cases/repository";
@@ -55,7 +60,20 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const draftingStrategy = await generateStrategy(id, workspaceId);
+    after(async () => {
+      await flushLangfuseTraces();
+    });
+
+    const draftingStrategy = await withLangfuseRouteContext(
+      {
+        traceName: "strategy-generation",
+        userId: user.id,
+        workspaceId,
+        caseId: id,
+        inputSummary: JSON.stringify({ caseId: id }),
+      },
+      () => generateStrategy(id, workspaceId),
+    );
     const existingMeta = (c.metadataJson ?? {}) as Record<string, unknown>;
     const fundLines =
       draftingStrategy.suggestedLegalFoundations?.length

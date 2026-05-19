@@ -17,6 +17,7 @@
 
 import { createHash } from "node:crypto";
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import {
   CasePartyRole,
   CaseRequestKind,
@@ -521,6 +522,9 @@ async function callLlmForBrain(
           prompt,
           temperature: 0.1,
           maxOutputTokens: 3500,
+          experimental_telemetry: aiTelemetry({
+            functionId: "case-brain",
+          }),
         }),
         new Promise<never>((_, reject) =>
           setTimeout(

@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import { getDeepSeekProviderOptionsForTask } from "@/lib/ai/deepseek-provider";
 import { getChatProviderId, getLanguageModelForLexTask } from "@/lib/ai/providers/factory";
 
@@ -30,6 +31,10 @@ export async function expandQuery(userQuery: string): Promise<string> {
     maxOutputTokens: 120,
     temperature: 0.2,
     prompt: `Reescreva a pergunta abaixo em 1-2 frases curtas otimizadas para busca jurídica brasileira (termos processuais, legislação). Não invente fatos.\n\nPergunta: ${userQuery}`,
+    experimental_telemetry: aiTelemetry({
+      functionId: "query-expand",
+      metadata: { queryLen: userQuery.length },
+    }),
   });
   return text.trim() || userQuery;
 }

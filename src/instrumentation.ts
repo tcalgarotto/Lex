@@ -11,8 +11,10 @@ import * as Sentry from "@sentry/nextjs";
  */
 export async function register() {
   if (process.env["NEXT_RUNTIME"] === "nodejs") {
-    await import("./sentry.server.config");
     await import("@/lib/env-normalize");
+    const { registerLangfuseOtel } = await import("@/lib/observability/langfuse-otel");
+    registerLangfuseOtel();
+    await import("./sentry.server.config");
     const { assertCriticalEnv } = await import("@/lib/env");
     assertCriticalEnv();
   }

@@ -7,7 +7,12 @@
  */
 
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { CaseTimelineKind, Prisma } from "@prisma/client";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { generateStrategy } from "@/lib/cases/drafting/generate-strategy";
@@ -32,7 +37,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!c) return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
 
   try {
-    const draftingStrategy = await generateStrategy(id, workspaceId);
+    after(async () => {
+      await flushLangfuseTraces();
+    });
+
+    const draftingStrategy = await withLangfuseRouteContext(
+      {
+        traceName: "strategy-generation",
+        userId: user.id,
+        workspaceId,
+        caseId: id,
+        inputSummary: JSON.stringify({ caseId: id }),
+      },
+      () => generateStrategy(id, workspaceId),
+    );
     const meta = (c.metadataJson ?? {}) as Record<string, unknown>;
     const updated: Record<string, unknown> = {
       ...meta,

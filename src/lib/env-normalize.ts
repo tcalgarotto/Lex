@@ -83,6 +83,11 @@ export function normalizeVercelSupabaseEnv(): NormalizeReport {
     report.unusedAliases.push("POSTGRES_URL_NON_POOLING");
   }
 
+  // Langfuse SDK lê LANGFUSE_HOST; painel US usa LANGFUSE_BASE_URL em alguns setups.
+  if (!isSet("LANGFUSE_HOST") && isSet("LANGFUSE_BASE_URL")) {
+    copy("LANGFUSE_BASE_URL", "LANGFUSE_HOST");
+  }
+
   cached = report;
 
   if (process.env["NODE_ENV"] !== "test" && (report.appliedDatabaseUrl || report.appliedDirectUrl)) {

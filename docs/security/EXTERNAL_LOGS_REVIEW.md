@@ -20,9 +20,9 @@
 | Vercel — Runtime Logs | ☐ painel | **PENDENTE** | `VERCEL_TOKEN` ausente; MCP Vercel sem `projectId`/`teamId` no repo |
 | Vercel — rotas API (upload, completion, RAG, drafts) | ☐ painel | **PENDENTE** | Mesmo bloqueio; ver procedimento abaixo para assinatura humana |
 | Sentry — Issues / breadcrumbs | ☐ painel | **PENDENTE** | `SENTRY_DSN` / `SENTRY_AUTH_TOKEN` ausentes no `.env` local |
-| Langfuse — Traces / generations | ☐ painel | **PENDENTE** | `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` ausentes → `getLangfuse()` retorna `null`; **nenhum trace exportado** no host de gate |
+| Langfuse — Traces / generations | ☐ painel | **PENDENTE** | `LANGFUSE_*` ausentes no host de gate → OTEL desligado; ver `docs/observability/LANGFUSE.md` |
 | ObservabilityLog (Postgres) | ☑ script | **PASSOU** | `npm run security:sample-observability-logs` — 200 registros, 0 padrões P0/P1 |
-| Código (sinks + Langfuse input) | ☑ estático | **PASSOU** | `security:logs:review` P0=0 P1=0; chat usa `contentLen` / output redigido |
+| Código (sinks + Langfuse input) | ☑ estático | **PASSOU** | `security:logs:review` P0=0 P1=0; rotas usam `inputSummary` (len/count), não prompt integral |
 
 ---
 

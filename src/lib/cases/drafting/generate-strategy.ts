@@ -7,6 +7,7 @@
  */
 
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import {
   buildCaseTaskContext,
@@ -115,6 +116,10 @@ ${pinBlock || "(nenhum — descreva lacunas em gaps)"}
     temperature: 0.25,
     maxOutputTokens: 2500,
     prompt,
+    experimental_telemetry: aiTelemetry({
+      functionId: "strategy-generation",
+      metadata: { workspaceId, caseId },
+    }),
   });
 
   const parsed = safeJsonParse(text);

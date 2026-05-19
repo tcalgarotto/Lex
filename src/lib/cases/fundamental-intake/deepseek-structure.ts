@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import { normalizeAiProviderError } from "@/lib/ai/normalize-ai-error";
 import {
@@ -19,6 +20,7 @@ REGRAS OBRIGATÓRIAS:
 
 export async function runDeepseekFundamentalStructure(
   narrative: string,
+  telemetry?: { workspaceId?: string; caseId?: string },
 ): Promise<DeepseekStructureResponse> {
   let text: string;
   try {
@@ -32,6 +34,14 @@ export async function runDeepseekFundamentalStructure(
         "\n\nDevolva o JSON com as chaves: parties, facts, requests, risks, timeline, missing_documents, missing_questions, next_steps, case_summary, legal_area_suggestion, urgency_score, readiness_score.",
       temperature: 0.1,
       maxOutputTokens: 4500,
+      experimental_telemetry: aiTelemetry({
+        functionId: "intake-structuring",
+        metadata: {
+          workspaceId: telemetry?.workspaceId ?? "",
+          caseId: telemetry?.caseId ?? "",
+          narrativeLen: narrative.length,
+        },
+      }),
     });
     text = result.text;
   } catch (e) {

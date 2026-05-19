@@ -3,6 +3,7 @@ import { MemoryKind } from "@prisma/client";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import { getChatLanguageModel } from "@/lib/ai/llm";
 
 export const summarizeProcessMemory = inngest.createFunction(
@@ -35,6 +36,10 @@ export const summarizeProcessMemory = inngest.createFunction(
         maxOutputTokens: 600,
         temperature: 0.2,
         prompt: `Extraia fatos jurídicos estáveis e estratégia em bullet points curtos, sem inventar. Se faltar dado, omita.\n\n${transcript}`,
+        experimental_telemetry: aiTelemetry({
+          functionId: "memory-summarize",
+          metadata: { workspaceId, processId },
+        }),
       }),
     );
 

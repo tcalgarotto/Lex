@@ -1,4 +1,5 @@
 import { createUIMessageStream, createUIMessageStreamResponse, streamText } from "ai";
+import { after } from "next/server";
 import { ChatRole } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
@@ -15,7 +16,11 @@ import { getChatLanguageModel, getChatModelId, getChatProviderId } from "@/lib/a
 import { pushHotInteraction } from "@/lib/memory/hot-cache";
 import { recordCostEntry } from "@/lib/cost/record";
 import { recordObservabilityLog } from "@/lib/observability/record";
-import { getLangfuse } from "@/lib/observability/langfuse";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { classifyLegalQuery } from "@/lib/legal/query-classifier";
 import { evaluateSourceSufficiency } from "@/lib/legal/source-sufficiency";
 import { computeConfidence } from "@/lib/legal/confidence";
@@ -128,21 +133,10 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
     });
   }
 
-  const lf = getLangfuse();
-  const trace = lf?.trace({
-    name: "chat",
-    userId: user.id,
-    sessionId: threadId,
-    metadata: { workspaceId, processId: thread.processId },
+  after(async () => {
+    await flushLangfuseTraces();
   });
-  const generation = trace?.generation({
-    name: "stream",
-    model: getChatModelId(),
-    input: messages.map((m) => ({
-      role: m.role,
-      contentLen: m.content.length,
-    })),
-  });
+
   const tLlm = Date.now();
   const citations = chunks.map((c, i) => {
     const docId = c.meta["documentId"];
@@ -178,6 +172,18 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
     };
   });
 
+  return await withLangfuseRouteContext(
+    {
+      traceName: "chat",
+      userId: user.id,
+      sessionId: threadId,
+      workspaceId,
+      processId: thread.processId ?? undefined,
+      inputSummary: latestUser?.content
+        ? JSON.stringify({ queryLen: latestUser.content.length, messageCount: messages.length })
+        : undefined,
+    },
+    async () => {
   const stream = createUIMessageStream({
     execute: ({ writer }) => {
       writer.write({
@@ -211,22 +217,20 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
           role: m.role as "user" | "assistant" | "system",
           content: m.content,
         })),
+        experimental_telemetry: aiTelemetry({
+          functionId: "chat-stream",
+          metadata: {
+            workspaceId,
+            threadId,
+            processId: thread.processId ?? "",
+          },
+        }),
         onFinish: async (event) => {
           const text = event.text;
           const usage = event.totalUsage;
           const promptTokens = usage?.inputTokens;
           const completionTokens = usage?.outputTokens;
           const totalTokens = usage?.totalTokens;
-
-          generation?.end({
-            output: `(redacted; len=${text.length})`,
-            usage: {
-              promptTokens,
-              completionTokens,
-              totalTokens,
-            },
-          });
-          await lf?.flushAsync();
 
           recordObservabilityLog({
             workspaceId,
@@ -286,4 +290,6 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
   });
 
   return createUIMessageStreamResponse({ stream });
+    },
+  );
 }

@@ -1,5 +1,11 @@
 import { generateText, streamText } from "ai";
+import { after } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
 import { prisma } from "@/lib/prisma";
 import { retrieveContext } from "@/lib/retrieval/hybrid-retriever";
@@ -85,18 +91,41 @@ export async function POST(req: Request) {
     return new Response(diagnostic, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }
 
-  const { text: outlineRaw } = await generateText({
-    model: getPieceLanguageModel(),
-    maxOutputTokens: 800,
-    temperature: 0.2,
-    prompt: `${SYSTEM_BASE}\n\nPeça: ${kind}\nProcesso: ${proc.number}. Cliente: ${proc.client?.name ?? "N/I"}.\nMemória:\n${memory}\n${styleBlock}\n\n${grounding}\n\n${PIECE_OUTLINE}`,
+  after(async () => {
+    await flushLangfuseTraces();
   });
 
-  const result = streamText({
-    model: getPieceLanguageModel(),
-    system: `${SYSTEM_BASE}\n${styleBlock}\n\n${grounding}\n\nOutline sugerido:\n${outlineRaw}\n\n${PIECE_SECTION}`,
-    prompt: `Redija a peça completa: ${kind}. Inclua cabeçalho com qualificação básica quando faltar dado use [●].`,
-  });
+  return await withLangfuseRouteContext(
+    {
+      traceName: "generate-piece-stream",
+      userId: user.id,
+      workspaceId,
+      processId,
+      inputSummary: JSON.stringify({ kind }),
+    },
+    async () => {
+      const { text: outlineRaw } = await generateText({
+        model: getPieceLanguageModel(),
+        maxOutputTokens: 800,
+        temperature: 0.2,
+        prompt: `${SYSTEM_BASE}\n\nPeça: ${kind}\nProcesso: ${proc.number}. Cliente: ${proc.client?.name ?? "N/I"}.\nMemória:\n${memory}\n${styleBlock}\n\n${grounding}\n\n${PIECE_OUTLINE}`,
+        experimental_telemetry: aiTelemetry({
+          functionId: "piece-outline",
+          metadata: { workspaceId, processId, kind },
+        }),
+      });
 
-  return result.toTextStreamResponse();
+      const result = streamText({
+        model: getPieceLanguageModel(),
+        system: `${SYSTEM_BASE}\n${styleBlock}\n\n${grounding}\n\nOutline sugerido:\n${outlineRaw}\n\n${PIECE_SECTION}`,
+        prompt: `Redija a peça completa: ${kind}. Inclua cabeçalho com qualificação básica quando faltar dado use [●].`,
+        experimental_telemetry: aiTelemetry({
+          functionId: "piece-stream",
+          metadata: { workspaceId, processId, kind },
+        }),
+      });
+
+      return result.toTextStreamResponse();
+    },
+  );
 }

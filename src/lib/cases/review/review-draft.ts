@@ -3,6 +3,7 @@
  */
 
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import type { ReviewIssue, ReviewIssueSeverity, ReviewResult } from "@/lib/cases/drafting/drafting-types";
 
@@ -130,6 +131,9 @@ ${content.slice(0, 45_000)}
     temperature: 0.15,
     maxOutputTokens: 3000,
     prompt,
+    experimental_telemetry: aiTelemetry({
+      functionId: "draft-review",
+    }),
   });
   return parseLlmIssues(text);
 }

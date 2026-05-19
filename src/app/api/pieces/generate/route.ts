@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
+import { after } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { prisma } from "@/lib/prisma";
 import { retrieveContext } from "@/lib/retrieval/hybrid-retriever";
 import { loadMemoryBlock } from "@/lib/memory/engine";
@@ -48,6 +54,15 @@ export async function POST(req: Request) {
   const styleBlock = styleInjection(style?.profileJson ?? null);
   const memory = await loadMemoryBlock(workspaceId, processId);
 
+  return await withLangfuseRouteContext(
+    {
+      traceName: "piece-generate",
+      userId: user.id,
+      workspaceId,
+      processId,
+      inputSummary: JSON.stringify({ kind, objectiveLen: objective.length }),
+    },
+    async () => {
   const query = `${kind} ${objective} ${proc.number} ${proc.title ?? ""}`.slice(0, 800);
   const { chunks } = await retrieveContext({
     workspaceId,
@@ -133,12 +148,20 @@ Gere agora a peça do tipo: ${kind}.`;
       "- Requerimentos finais",
     ].join("\n");
   } else {
+    after(async () => {
+      await flushLangfuseTraces();
+    });
+
     const tLlm = Date.now();
     const res = await generateText({
       model: getPieceLanguageModel(),
       temperature: 0.2,
       maxOutputTokens: 2200,
       prompt,
+      experimental_telemetry: aiTelemetry({
+        functionId: "piece-generate",
+        metadata: { workspaceId, processId, kind },
+      }),
     });
     text = res.text;
     usage = res.usage;
@@ -200,5 +223,7 @@ Gere agora a peça do tipo: ${kind}.`;
   });
 
   return NextResponse.json({ pieceId: piece.id });
+    },
+  );
 }
 

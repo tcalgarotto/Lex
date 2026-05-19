@@ -7,6 +7,7 @@
  */
 
 import { generateText } from "ai";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import { prisma } from "@/lib/prisma";
 import {
@@ -142,6 +143,10 @@ Nome sugerido da parte autora: ${authorLine}
     temperature: 0.2,
     maxOutputTokens: 6000,
     prompt,
+    experimental_telemetry: aiTelemetry({
+      functionId: "draft-generation",
+      metadata: { workspaceId, caseId },
+    }),
   });
 
   const inlineNotes: string[] = [];

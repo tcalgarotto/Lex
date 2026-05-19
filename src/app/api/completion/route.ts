@@ -1,5 +1,11 @@
 import { streamText } from "ai";
+import { after } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
+import { aiTelemetry } from "@/lib/ai/ai-telemetry";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
 import {
   SYSTEM_BASE,
@@ -51,11 +57,33 @@ export async function POST(req: Request) {
   const styleBlock = styleInjection(style?.profileJson ?? null);
   const grounding = groundingFromChunks(chunks);
 
-  const result = streamText({
-    model: getChatLanguageModel(),
-    system: `${SYSTEM_BASE}\n${styleBlock}\n\n${grounding}\n\nTarefa: ${actionHints[action]}`,
-    prompt: `Trecho do documento:\n\n${selection}`,
+  after(async () => {
+    await flushLangfuseTraces();
   });
 
-  return result.toTextStreamResponse();
+  return await withLangfuseRouteContext(
+    {
+      traceName: "completion",
+      userId: user.id,
+      workspaceId,
+      processId: body.processId,
+      inputSummary: JSON.stringify({
+        action,
+        selectionLen: selection.length,
+      }),
+    },
+    async () => {
+      const result = streamText({
+        model: getChatLanguageModel(),
+        system: `${SYSTEM_BASE}\n${styleBlock}\n\n${grounding}\n\nTarefa: ${actionHints[action]}`,
+        prompt: `Trecho do documento:\n\n${selection}`,
+        experimental_telemetry: aiTelemetry({
+          functionId: "completion-stream",
+          metadata: { workspaceId, action, processId: body.processId ?? "" },
+        }),
+      });
+
+      return result.toTextStreamResponse();
+    },
+  );
 }

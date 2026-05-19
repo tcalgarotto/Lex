@@ -5,7 +5,12 @@
  */
 
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { z } from "zod";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { CaseDraftStatus, CaseTimelineKind, Prisma } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -59,9 +64,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Body inválido", detail: parsed.error.message }, { status: 400 });
   }
 
-  const out = await generateDraft(id, workspaceId, {
-    confirmUnverifiedFoundations: parsed.data.confirmUnverifiedFoundations === true,
+  after(async () => {
+    await flushLangfuseTraces();
   });
+
+  const out = await withLangfuseRouteContext(
+    {
+      traceName: "draft-generation",
+      userId: user.id,
+      workspaceId,
+      caseId: id,
+      inputSummary: JSON.stringify({ caseId: id }),
+    },
+    () =>
+      generateDraft(id, workspaceId, {
+        confirmUnverifiedFoundations: parsed.data.confirmUnverifiedFoundations === true,
+      }),
+  );
 
   if (out.status === "blocked") {
     return NextResponse.json({ status: "blocked", reasons: out.reasons }, { status: 409 });

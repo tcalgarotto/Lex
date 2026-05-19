@@ -10,7 +10,12 @@
  */
 
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
+import {
+  flushLangfuseTraces,
+  withLangfuseRouteContext,
+} from "@/lib/observability/langfuse-tracing";
 import { z } from "zod";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -141,7 +146,24 @@ export async function POST(req: Request) {
     }
 
     assertDeepSeekConfigured();
-    const structured = await runDeepseekFundamentalStructure(narrative);
+    after(async () => {
+      await flushLangfuseTraces();
+    });
+
+    const structured = await withLangfuseRouteContext(
+      {
+        traceName: "intake-structuring",
+        userId: user.id,
+        workspaceId,
+        caseId: caseId ?? undefined,
+        inputSummary: JSON.stringify({ narrativeLen: narrative.length }),
+      },
+      () =>
+        runDeepseekFundamentalStructure(narrative, {
+          workspaceId,
+          caseId: caseId ?? undefined,
+        }),
+    );
     await applyFundamentalStructure({
       workspaceId,
       userId: user.id,
