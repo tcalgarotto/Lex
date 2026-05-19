@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LANDING_BAR_INNER, LANDING_CONTENT, LANDING_SHELL_FULL } from "@/lib/marketing/landing-copy";
+import { LANDING_BAR_INNER, LANDING_SHELL_FULL } from "@/lib/marketing/landing-copy";
 
 const FOOTER_COLUMNS = [
   {
@@ -87,7 +87,7 @@ export function LandingFooter() {
         </div>
       </div>
       <div className="w-full border-t border-[color:var(--border-subtle)]">
-        <div className={`${LANDING_CONTENT} py-6`}>
+        <div className={`${LANDING_BAR_INNER} py-6`}>
           <p className="mx-auto max-w-2xl text-center text-caption leading-relaxed text-[color:var(--text-muted)]">
             O Lex é uma ferramenta de apoio à atividade jurídica. Toda minuta e orientação deve ser
             revisada por profissional habilitado.

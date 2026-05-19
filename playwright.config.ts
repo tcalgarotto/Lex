@@ -5,9 +5,11 @@ const PORT = Number(process.env["E2E_PORT"] ?? 3000);
 const BASE_URL = process.env["E2E_BASE_URL"] ?? `http://localhost:${PORT}`;
 const isCI = !!process.env["CI"];
 const authFile = path.join(__dirname, "tests/e2e/.auth/user.json");
-const authE2eSpecs = /(case-flow-fundamental|lazy-intake-p02)\.spec\.ts/;
+const authE2eSpecs = /(case-flow-fundamental|lazy-intake-p02|security-qa-staging)\.spec\.ts/;
 const hasE2eAuthCreds =
-  !!process.env["E2E_USER_EMAIL"]?.trim() && !!process.env["E2E_USER_PASSWORD"]?.trim();
+  (!!process.env["E2E_USER_EMAIL"]?.trim() && !!process.env["E2E_USER_PASSWORD"]?.trim()) ||
+  (!!process.env["SUPABASE_TEST_USER_A_EMAIL"]?.trim() &&
+    !!process.env["SUPABASE_TEST_USER_A_PASSWORD"]?.trim());
 
 /**
  * Convenções:

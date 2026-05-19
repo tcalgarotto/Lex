@@ -75,8 +75,9 @@
     --lex-app-central-well-calc: max(0px, calc((100vw - 268px) * 0.7));
     --lex-app-central-well-max: min(100%, var(--lex-app-central-well-calc));
 
-    /** Landing pública: mesma proporção central (70% da viewport, sem sidebar). */
+    /** Landing: conteúdo da página 70%; header/footer internos 90%. */
     --lex-marketing-well-max: min(100%, max(0px, 70vw));
+    --lex-marketing-bar-max: min(100%, max(0px, 90vw));
 
     /**
      * Layout P1 — faixa central e rails (base = Agenda; 268px = sidebar expandida no cálculo do centro).
@@ -567,11 +568,20 @@
     border-top: 0.5px solid var(--border-subtle);
   }
 
-  /** Poço central da landing — 70vw, alinhado a `--lex-app-central-well-max` na app. */
+  /** Poço central da landing — 70vw (hero, seções, formulário). */
   .lex-marketing-well {
     box-sizing: border-box;
-    width: 100%;
+    width: min(100%, 70vw);
     max-width: var(--lex-marketing-well-max);
+    margin-inline: auto;
+    padding-inline: max(1.25rem, var(--lex-page-gap));
+  }
+
+  /** Faixa header/footer — 90vw (nav + CTAs). */
+  .lex-marketing-bar {
+    box-sizing: border-box;
+    width: min(100%, 90vw);
+    max-width: var(--lex-marketing-bar-max);
     margin-inline: auto;
     padding-inline: max(1.25rem, var(--lex-page-gap));
   }

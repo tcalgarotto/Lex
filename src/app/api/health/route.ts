@@ -280,7 +280,7 @@ export async function GET() {
         if (!process.env["DATABASE_URL"]?.trim()) {
           throw new Error("Environment variable not found: DATABASE_URL");
         }
-        await prisma.$queryRawUnsafe("SELECT 1");
+        await prisma.$queryRaw`SELECT 1`;
       },
       3_000,
     ),

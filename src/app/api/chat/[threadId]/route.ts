@@ -138,7 +138,10 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
   const generation = trace?.generation({
     name: "stream",
     model: getChatModelId(),
-    input: messages,
+    input: messages.map((m) => ({
+      role: m.role,
+      contentLen: m.content.length,
+    })),
   });
   const tLlm = Date.now();
   const citations = chunks.map((c, i) => {
@@ -216,7 +219,7 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
           const totalTokens = usage?.totalTokens;
 
           generation?.end({
-            output: text,
+            output: `(redacted; len=${text.length})`,
             usage: {
               promptTokens,
               completionTokens,

@@ -2,14 +2,31 @@
  * Copy da landing pública — tom comercial jurídico.
  */
 
-/** Header e footer: largura total da viewport. */
+/** Header e footer: faixa de fundo em largura total. */
 export const LANDING_SHELL_FULL = "w-full";
 
-/** Conteúdo central (70% da viewport — igual à faixa da plataforma). */
-export const LANDING_CONTENT = "lex-marketing-well";
+/** Padding horizontal alinhado ao app (`--lex-page-gap`). */
+const MARKETING_GUTTER = "box-border px-[max(1.25rem,var(--lex-page-gap))]";
 
-/** Mesma coluna do conteúdo — logo e CTAs alinhados ao hero. */
-export const LANDING_BAR_INNER = LANDING_CONTENT;
+/**
+ * Conteúdo da página — 70% da viewport, centralizado.
+ * Utilitários Tailwind + `.lex-marketing-well` (globals) para não depender só de uma camada.
+ */
+export const LANDING_CONTENT = [
+  "lex-marketing-well",
+  "mx-auto w-full min-w-0 max-w-[min(100%,70vw)]",
+  MARKETING_GUTTER,
+].join(" ");
+
+/**
+ * Header / footer (conteúdo interno) — 90% da viewport.
+ * Mais largo que o poço de 70% para nav e CTAs respirarem nas laterais.
+ */
+export const LANDING_BAR_INNER = [
+  "lex-marketing-bar",
+  "mx-auto w-full min-w-0 max-w-[min(100%,90vw)]",
+  MARKETING_GUTTER,
+].join(" ");
 
 export const LANDING_NAV = [
   { href: "#inicio", label: "Início" },

@@ -83,7 +83,16 @@ describe("upload magic bytes (file-signature)", () => {
   });
 
   it("M10 application/msword bloqueado na triagem de MIME declarado", () => {
-    const r = validateDocumentFileSignature(MINIMAL_PDF_BUFFER, "x.pdf", "application/x-msdownload");
+    const r = validateDocumentFileSignature(MINIMAL_PDF_BUFFER, "x.doc", "application/msword");
+    expect(r.ok).toBe(false);
+  });
+
+  it("M11 application/vnd.ms-word bloqueado", () => {
+    const r = validateDocumentFileSignature(
+      MINIMAL_PDF_BUFFER,
+      "legacy.doc",
+      "application/vnd.ms-word",
+    );
     expect(r.ok).toBe(false);
   });
 });

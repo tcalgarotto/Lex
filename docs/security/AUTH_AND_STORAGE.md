@@ -48,7 +48,7 @@ SQL Editor → executar o arquivo inteiro `supabase/storage/documents_policies.s
 
 ## Checklist pós-mudança
 
-- [ ] `lex_auth_workspace_ids` usa `auth.uid()` (não `auth.jwt() ->> 'email'`)
-- [ ] Apenas 4 policies `documents_authenticated_*` no bucket
-- [ ] Bucket `documents` privado
-- [ ] `npm run security:red-team:test` (com env staging, se disponível)
+- [x] `lex_auth_workspace_ids` usa `auth.uid()` (não `auth.jwt() ->> 'email'`) — validado no SQL Editor (2026-05-19)
+- [x] Apenas 4 policies `documents_authenticated_*` no bucket
+- [x] Bucket `documents` privado (painel: Public bucket OFF)
+- [x] `npm run security:red-team:test` — camada app (84 testes); remoto SR.* requer env staging (ver abaixo)

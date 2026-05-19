@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LandingHeader } from "@/components/marketing/landing-header";
 import { LandingFooter } from "@/components/marketing/landing-footer";
+import { LANDING_CONTENT } from "@/lib/marketing/landing-copy";
+import { cn } from "@/lib/utils";
 
 export function LegalDocPage({
   title,
@@ -15,7 +17,8 @@ export function LegalDocPage({
   return (
     <>
       <LandingHeader />
-      <main className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
+      <main className={cn(LANDING_CONTENT, "py-12 md:py-16")}>
+        <article className="mx-auto max-w-3xl">
         <p className="text-[11px] font-medium uppercase tracking-widest text-[color:var(--text-muted)]">
           {updatedLabel}
         </p>
@@ -30,6 +33,7 @@ export function LegalDocPage({
             ← Voltar ao início
           </Link>
         </p>
+        </article>
       </main>
       <LandingFooter />
     </>

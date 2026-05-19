@@ -34,8 +34,8 @@ function isPublicPath(pathname: string): boolean {
 
 /**
  * Headers de segurança aplicados a TODAS as respostas do app.
- * - CSP intencionalmente permite `'unsafe-inline'` em styles (Tailwind/Tiptap) e
- *   `'unsafe-eval'` em dev (Turbopack). Apertar no futuro com nonce.
+ * - CSP: scripts com nonce + strict-dynamic (prod); styles com unsafe-inline (Tailwind/Tiptap).
+ *   Ver docs/security/CSP.md. `'unsafe-eval'` só em dev (Turbopack).
  * - HSTS só em produção (não queremos pinagem em http://localhost).
  */
 function applySecurityHeaders(response: NextResponse, request: NextRequest): void {
@@ -59,6 +59,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest): voi
     "https://*.qdrant.io",
     "https://*.langfuse.com",
     "https://o.ingest.sentry.io",
+    "https://vitals.vercel-insights.com",
   ]
     .filter(Boolean)
     .join(" ");
@@ -66,7 +67,7 @@ function applySecurityHeaders(response: NextResponse, request: NextRequest): voi
   const csp = [
     "default-src 'self'",
     `connect-src ${connectSrc}`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isProd ? "" : " 'unsafe-eval'"}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://va.vercel-scripts.com${isProd ? "" : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",

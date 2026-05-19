@@ -9,7 +9,7 @@ type LandingSectionProps = {
   variant?: "default" | "muted" | "accent" | "cta";
 };
 
-/** Seção com fundo full width; conteúdo interno em ~80% da tela. */
+/** Seção com fundo full width; conteúdo interno em ~70% da viewport. */
 export function LandingSection({ id, className, children, variant = "default" }: LandingSectionProps) {
   return (
     <section

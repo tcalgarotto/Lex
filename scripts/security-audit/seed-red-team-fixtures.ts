@@ -9,7 +9,7 @@ import { CalendarEventType, IntegrationProvider, MembershipRole } from "@prisma/
 import { prisma } from "@/lib/prisma";
 import { documentStoragePath } from "@/lib/storage";
 import { throwIfUnsafeRedTeamEnvironment } from "./env-guard";
-import { RT, RT_SECRET_MARKER_B } from "../../tests/security/red-team/fixture-ids";
+import { RT, RT_SECRET_MARKER_B, redTeamPrismaOnlyEmail } from "../../tests/security/red-team/fixture-ids";
 
 async function upsertUser(id: string, email: string, name: string) {
   return prisma.user.upsert({
@@ -49,8 +49,16 @@ async function main() {
   await upsertWorkspace(RT.workspaces.b.id, RT.workspaces.b.slug, RT.workspaces.b.name);
 
   await upsertUser(RT.users.adminA.id, RT.users.adminA.email, "[REDTEAM] Admin A");
-  await upsertUser(RT.users.commonA.id, RT.users.commonA.email, "[REDTEAM] Comum A");
-  await upsertUser(RT.users.commonB.id, RT.users.commonB.email, "[REDTEAM] Comum B");
+  await upsertUser(
+    RT.users.commonA.id,
+    redTeamPrismaOnlyEmail(RT.users.commonA.id),
+    "[REDTEAM] Comum A",
+  );
+  await upsertUser(
+    RT.users.commonB.id,
+    redTeamPrismaOnlyEmail(RT.users.commonB.id),
+    "[REDTEAM] Comum B",
+  );
 
   await upsertMembership(
     RT.memberships.adminA.id,
@@ -188,6 +196,33 @@ async function main() {
     },
   });
 
+  const pathAMalicious = documentStoragePath(
+    RT.workspaces.a.id,
+    RT.documents.aMalicious.id,
+    RT.documents.aMalicious.name,
+  );
+  await prisma.document.upsert({
+    where: { id: RT.documents.aMalicious.id },
+    create: {
+      id: RT.documents.aMalicious.id,
+      workspaceId: RT.workspaces.a.id,
+      caseId: RT.cases.a.id,
+      processId: RT.processes.a.id,
+      uploadedByUserId: RT.users.commonA.id,
+      originalName: RT.documents.aMalicious.name,
+      mimeType: "text/plain",
+      sizeBytes: 256,
+      storagePath: pathAMalicious,
+      status: "INDEXED",
+      extractedText: RT.documents.aMalicious.marker,
+    },
+    update: {
+      extractedText: RT.documents.aMalicious.marker,
+      storagePath: pathAMalicious,
+      deletedAt: null,
+    },
+  });
+
   await prisma.documentChunk.upsert({
     where: { id: RT.chunks.a.id },
     create: {
@@ -198,6 +233,20 @@ async function main() {
       textPreview: RT.documents.a.marker,
     },
     update: { text: RT.documents.a.marker, textPreview: RT.documents.a.marker },
+  });
+  await prisma.documentChunk.upsert({
+    where: { id: RT.chunks.aMalicious.id },
+    create: {
+      id: RT.chunks.aMalicious.id,
+      documentId: RT.documents.aMalicious.id,
+      chunkIndex: 0,
+      text: RT.documents.aMalicious.marker,
+      textPreview: RT.documents.aMalicious.marker,
+    },
+    update: {
+      text: RT.documents.aMalicious.marker,
+      textPreview: RT.documents.aMalicious.marker,
+    },
   });
   await prisma.documentChunk.upsert({
     where: { id: RT.chunks.b.id },

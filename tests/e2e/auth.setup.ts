@@ -5,12 +5,18 @@ import { test as setup } from "@playwright/test";
 const authDir = path.join(process.cwd(), "tests/e2e/.auth");
 const authFile = path.join(authDir, "user.json");
 
-const email = process.env["E2E_USER_EMAIL"]?.trim() ?? "";
-const password = process.env["E2E_USER_PASSWORD"]?.trim() ?? "";
+const email =
+  process.env["E2E_USER_EMAIL"]?.trim() ||
+  process.env["SUPABASE_TEST_USER_A_EMAIL"]?.trim() ||
+  "";
+const password =
+  process.env["E2E_USER_PASSWORD"]?.trim() ||
+  process.env["SUPABASE_TEST_USER_A_PASSWORD"]?.trim() ||
+  "";
 
 setup.skip(
   !email || !password,
-  "Defina E2E_USER_EMAIL e E2E_USER_PASSWORD no ambiente (ver docs/UX_FLOW_AUDIT.md → P0.1 Case Flow E2E).",
+  "Defina E2E_USER_EMAIL/E2E_USER_PASSWORD ou SUPABASE_TEST_USER_A_* no ambiente.",
 );
 
 setup("gravar storageState autenticado", async ({ page }) => {
