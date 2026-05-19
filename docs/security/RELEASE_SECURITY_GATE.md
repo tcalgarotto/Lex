@@ -2,7 +2,7 @@
 
 Checklist objetiva antes de promover build para produção. **Não substitui** revisão humana nem auditoria legal.
 
-Última atualização: **2026-05-19** (FASE 5.7 — limpeza documental + RC controlado).
+Última atualização: **2026-05-19** (FASE 5.8 — deploy monitorado RC em produção).
 
 ---
 
@@ -75,14 +75,14 @@ Execução isolada e suíte geral **passam** quando a key está carregada via `.
 
 **Decisão:** promover build com monitoramento pós-deploy — **não** declarar sistema seguro.
 
-| Etapa | Ação |
-|-------|------|
-| Pré-deploy | Confirmar envs prod: `DATABASE_URL`, Redis, `DEEPSEEK_*`, `LANGFUSE_*`, `NEXT_PUBLIC_SENTRY_DSN`, sem secrets em logs |
-| Deploy | Vercel production/preview aprovado; migrations `prisma migrate deploy` se aplicável |
-| T+0–1h | Vercel Runtime Logs — sem P0/P1; Sentry — sem eventos reais com dados sensíveis |
-| T+0–1h | Langfuse — amostrar traces de chat/minuta (não só smoke); arquivar issues Sentry de `/sentry-example-page` |
-| T+24h | Reexecutar `security:logs:review` + amostra DB; reamostrar painéis se houver tráfego de usuários |
-| Rollback | Runbook documentado; reverter deploy Vercel se P0 em produção |
+| Etapa | Ação | Status 5.8 |
+|-------|------|------------|
+| Pré-deploy | Confirmar envs prod (ver `POST_RELEASE_MONITORING.md` § A) | **OK** |
+| Deploy | `https://lex-navy.vercel.app` — deploy `lex-8ipwj4r57` Ready | **FEITO** |
+| Smoke | Playwright prod 13/13 | **PASSOU** |
+| T+0–1h | Vercel logs sem P0/P1; Sentry/Langfuse reamostra | Ver `POST_RELEASE_MONITORING.md` § D |
+| T+24h / T+72h | Reamostragem + scripts security | **Agendado** |
+| Rollback | `PRODUCTION_ROLLBACK_RUNBOOK.md` | **Não acionado** |
 
 ---
 
@@ -122,4 +122,4 @@ npm run security:storage:hardening-check
 set -a && . ./.env && set +a && npm run security:red-team:test
 ```
 
-Docs: `EXTERNAL_LOGS_REVIEW.md`, `RED_TEAM_AUDIT_REPORT.md`, `LEGAL_QA_MANUAL_CHECKLIST.md`.
+Docs: `EXTERNAL_LOGS_REVIEW.md`, `RED_TEAM_AUDIT_REPORT.md`, `LEGAL_QA_MANUAL_CHECKLIST.md`, `POST_RELEASE_MONITORING.md`.
