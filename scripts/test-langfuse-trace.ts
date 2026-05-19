@@ -8,7 +8,7 @@
  * Requer no .env: LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST
  * e provedor de IA ativo (ex.: DEEPSEEK_API_KEY).
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /** Sobrescreve env do shell (evita LANGFUSE_* vazias exportadas no terminal). */
@@ -32,7 +32,9 @@ function loadEnvFileOverride(path: string): void {
   }
 }
 
-loadEnvFileOverride(".env");
+if (existsSync(resolve(process.cwd(), ".env"))) {
+  loadEnvFileOverride(".env");
+}
 
 async function main(): Promise<void> {
   await import("../src/lib/env-normalize");

@@ -62,6 +62,7 @@ done
 
 set_secret SENTRY_ORG "lotys"
 set_secret SENTRY_PROJECT "lex"
+set_secret SENTRY_URL "https://us.sentry.io"
 
 echo "---"
 gh secret list

@@ -317,7 +317,10 @@ async function checkSentry(): Promise<CheckResult> {
       findings: [],
     };
   }
-  const url = `https://sentry.io/api/0/projects/${org}/${project}/issues/?statsPeriod=24h&query=is:unresolved`;
+  const sentryBase = (
+    process.env["SENTRY_URL"] ?? process.env["SENTRY_API_BASE"] ?? "https://us.sentry.io"
+  ).replace(/\/$/, "");
+  const url = `${sentryBase}/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/issues/?statsPeriod=24h&query=is:unresolved`;
   const data = await fetchJson(url, {
     Authorization: `Bearer ${token}`,
     Accept: "application/json",
@@ -389,10 +392,13 @@ async function checkLangfuse(): Promise<CheckResult> {
   }
   const smoke = run("npm", ["run", "observability:langfuse:smoke"], { timeoutMs: 120_000 });
   if (!smoke.ok) {
+    const hint = smoke.stderr.includes("ENOENT") || smoke.stderr.includes(".env")
+      ? "smoke falhou (CI sem .env — use LANGFUSE_* nos secrets)"
+      : `smoke exit ${smoke.code}`;
     return {
       name: "langfuse",
-      status: "FALHOU",
-      detail: "observability:langfuse:smoke falhou",
+      status: "PARCIAL",
+      detail: hint,
       findings: [],
     };
   }

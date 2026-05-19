@@ -89,7 +89,7 @@
     "security:red-team:staging-check": "tsx --env-file=.env scripts/security-audit/assert-staging-storage-env.ts",
     "security:storage:hardening-check": "tsx --env-file=.env scripts/security-audit/run-storage-hardening-check.ts",
     "security:logs:review": "tsx scripts/security-audit/review-logs-static.ts",
-    "security:sample-observability-logs": "tsx --env-file=.env scripts/security-audit/sample-observability-db.ts",
+    "security:sample-observability-logs": "tsx scripts/security-audit/sample-observability-db.ts",
     "security:legal-qa": "vitest run --config vitest.security.config.ts tests/security/red-team/legal-qa-assisted.integration.test.ts",
     "security:red-team": "npm run security:red-team:seed && npm run security:red-team:test",
     "test:e2e": "playwright test",
