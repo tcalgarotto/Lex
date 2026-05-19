@@ -26,6 +26,8 @@ function isPublicPath(pathname: string): boolean {
   // (a página em si exige login internamente; só não queremos que o middleware
   // bloqueie antes do componente decidir).
   if (pathname.startsWith("/invite/")) return true;
+  if (pathname.startsWith("/sentry-example-page")) return true;
+  if (pathname.startsWith("/sentry-tunnel")) return true;
   if (PUBLIC_PREFIXES.some((p) => (p === "/" ? pathname === "/" : pathname.startsWith(p))))
     return true;
   if (AUTH_ROUTES.some((p) => pathname.startsWith(p))) return true;
@@ -237,6 +239,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sentry-tunnel|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

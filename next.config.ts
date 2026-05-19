@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   // Habilita compressão Gzip/Brotli (padrão em Vercel, mas bom ser explícito)
@@ -79,4 +80,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "lotys",
+  project: "lex",
+  silent: !process.env["CI"],
+  authToken: process.env["SENTRY_AUTH_TOKEN"],
+  widenClientFileUpload: true,
+  tunnelRoute: "/sentry-tunnel",
+});

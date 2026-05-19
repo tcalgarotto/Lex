@@ -1,5 +1,8 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 /**
  * Global error boundary — usado quando o root layout falha.
  *
@@ -22,6 +25,10 @@ export default function GlobalError({
  /database_url/i.test(lower) ||
  /prismaclientinitializationerror/i.test(lower) ||
  /can't reach database server/i.test(lower);
+
+ useEffect(() => {
+   Sentry.captureException(error);
+ }, [error]);
 
  const title = isConfig ? "Configuração de produção incompleta" : "Algo saiu do esperado";
  const body = isConfig
