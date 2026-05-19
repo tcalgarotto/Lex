@@ -170,7 +170,7 @@ export function fundamentalIntakeUiRequiredLabels(form: FundamentalIntakeForm): 
 }
 
 /**
- * Habilita "Salvar e estruturar com Lex AI" quando os campos com * na UI estão
+ * Habilita "Organizar caso com Lex AI" quando os campos com * na UI estão
  * ok, o CNJ (se preenchido) é válido e o restante do formulário passa no Zod.
  */
 export function isReadyForLexStructure(form: FundamentalIntakeForm): boolean {

@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { CaseFactsPartiesTab } from "@/components/cases/case-facts-parties-tab";
+import {
+  isFundamentalIntakeStructured,
+} from "@/lib/cases/case-intake-source";
+import { loadCaseDisplaySnapshot } from "@/lib/cases/intake/case-intake-context";
 import { loadCaseForWorkspace } from "../_load-case";
 
 /**
@@ -21,6 +25,9 @@ export default async function CasePartiesFactsPage({
  const c = await loadCaseForWorkspace(workspaceId, id);
  if (!c) notFound();
 
+ const intakeStructured = isFundamentalIntakeStructured(c.metadataJson);
+ const intakeDerived = await loadCaseDisplaySnapshot(id, workspaceId);
+
  return (
  <div className="space-y-3">
  <header className="space-y-1">
@@ -31,10 +38,13 @@ export default async function CasePartiesFactsPage({
  </p>
  </header>
  <CaseFactsPartiesTab
+ caseId={id}
  facts={c.facts}
  parties={c.parties}
  requests={c.requests}
  risks={c.risks}
+ intakeStructured={intakeStructured}
+ intakeDerived={intakeDerived}
  />
  </div>
  );

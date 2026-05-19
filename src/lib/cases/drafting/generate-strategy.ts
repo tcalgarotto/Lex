@@ -8,7 +8,11 @@
 
 import { generateText } from "ai";
 import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
-import { getCaseBrainSnapshot, listPinnedFoundations } from "@/lib/cases/drafting/case-brain-shim";
+import {
+  buildCaseTaskContext,
+  formatCaseTaskContextForPrompt,
+} from "@/lib/cases/intake/case-intake-context";
+import { listPinnedFoundations } from "@/lib/cases/drafting/case-brain-shim";
 import type { StrategyResult } from "@/lib/cases/drafting/drafting-types";
 
 function safeJsonParse(text: string): StrategyResult | null {
@@ -56,8 +60,8 @@ export async function generateStrategy(
   caseId: string,
   workspaceId: string,
 ): Promise<StrategyResult> {
-  const snap = await getCaseBrainSnapshot(workspaceId, caseId);
-  if (!snap) {
+  const taskCtx = await buildCaseTaskContext(caseId, workspaceId, "strategy");
+  if (!taskCtx) {
     throw Object.assign(new Error("Caso não encontrado neste workspace."), { status: 404 });
   }
 
@@ -69,21 +73,7 @@ export async function generateStrategy(
     )
     .join("\n\n");
 
-  const parties = snap.brain
-    ? snap.brain.parties.map((p) => `- (${p.role}) ${p.name}`).join("\n")
-    : snap.parties.map((p) => `- (${p.role}) ${p.name}`).join("\n");
-
-  const facts = snap.brain
-    ? snap.brain.facts.map((f) => `- ${f.text}`).join("\n")
-    : snap.facts.map((f) => `- ${f.text}`).join("\n");
-
-  const requests = snap.brain
-    ? snap.brain.requests.map((r) => `- (${r.kind}) ${r.text}`).join("\n")
-    : snap.requests.map((r) => `- (${r.kind}) ${r.text}`).join("\n");
-
-  const risks = snap.brain
-    ? snap.brain.risks.map((r) => `- [${r.severity}] ${r.title}: ${r.detail}`).join("\n")
-    : snap.risks.map((r) => `- ${r.title}: ${r.detail}`).join("\n");
+  const caseContextBlock = formatCaseTaskContextForPrompt(taskCtx);
 
   const prompt = `Você é assistente jurídico interno do Lex. Produza APENAS JSON válido (sem markdown ao redor) com o formato:
 {
@@ -105,22 +95,15 @@ export async function generateStrategy(
 }
 
 Regras:
-- Use somente os dados fornecidos abaixo e os fundamentos pinados. Não invente normas verificadas fora dos trechos pinados.
-- Em candidateJurisprudence, liste apenas rótulos curtos como CANDIDATO — nunca afirme que foi verificado em tribunal.
+- Use somente os dados do caso abaixo e os fundamentos pinados. Não invente normas verificadas fora dos trechos pinados.
+- NÃO redija peça processual completa — apenas estratégia, teses, riscos, provas necessárias e próximos passos.
+- Em candidateJurisprudence, liste apenas rótulos curtos como CANDIDATO — nunca afirme verificação em tribunal.
+- Indique lacunas honestas em "gaps" quando faltar dado essencial.
 - "humanReviewWarnings" deve alertar revisão humana obrigatória antes de protocolar.
 - Texto em pt-BR, tom profissional, sem jargão interno de software.
 
-Partes:
-${parties || "(nenhuma)"}
-
-Fatos:
-${facts || "(nenhum)"}
-
-Pedidos:
-${requests || "(nenhum)"}
-
-Riscos consolidados:
-${risks || "(nenhum)"}
+Contexto do caso (entrevista salva e/ou dados organizados):
+${caseContextBlock || "(sem contexto)"}
 
 Fundamentos pinados:
 ${pinBlock || "(nenhum — descreva lacunas em gaps)"}

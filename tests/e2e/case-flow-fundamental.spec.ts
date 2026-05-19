@@ -75,7 +75,7 @@ test.describe("P0.1 — fluxo fundamental (autenticado + DB)", () => {
           r.status() !== 0,
         { timeout: 60_000 },
       ),
-      page.getByTestId("save-draft-sidebar").click(),
+      page.getByTestId("save-case-sidebar").click(),
     ]);
 
     expect(res.status()).toBe(201);
@@ -149,19 +149,24 @@ test.describe("P0.1 — fluxo fundamental (autenticado + DB)", () => {
     expect(joined).toMatch(/Réu E2E/);
   });
 
-  test("5) idempotência: segundo POST structure → 409 e contagens estáveis", async ({ page }) => {
+  test("5) reorganizar: segundo POST structure sem flag → 400; com reorganize → não duplica à toa", async ({
+    page,
+  }) => {
     test.skip(!hasDb, "Assertions no Postgres precisam de DATABASE_URL.");
     test.skip(!hasPieceModel, "Depende de caso já estruturado.");
 
     expect(caseId).toBeTruthy();
     const before = await countCaseMaterialization(caseId);
     const form = buildE2eFundamentalIntakeForm(runId);
-    const res = await page.request.post("/api/cases/fundamental-intake", {
+    const blocked = await page.request.post("/api/cases/fundamental-intake", {
       data: { action: "structure", caseId, form },
     });
-    expect(res.status()).toBe(409);
-    const after = await countCaseMaterialization(caseId);
-    expect(after).toEqual(before);
+    expect(blocked.status()).toBe(400);
+    const blockedJson = (await blocked.json()) as { code?: string };
+    expect(blockedJson.code).toBe("REORGANIZE_REQUIRED");
+
+    const afterBlocked = await countCaseMaterialization(caseId);
+    expect(afterBlocked).toEqual(before);
   });
 
   test("6) UI /partes-fatos: secções com contagem > 0", async ({ page }) => {
@@ -179,7 +184,9 @@ test.describe("P0.1 — fluxo fundamental (autenticado + DB)", () => {
 
     expect(caseId).toBeTruthy();
     await page.goto(`/cases/${caseId}/entrevista`);
-    await expect(page.getByText(/já foi estruturada/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("button", { name: /Reorganizar com Lex AI/i })).toBeVisible({
+      timeout: 30_000,
+    });
 
     const ok = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 2);
     expect(ok).toBe(true);

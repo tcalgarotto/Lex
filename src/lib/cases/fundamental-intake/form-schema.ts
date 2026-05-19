@@ -288,7 +288,7 @@ export function createDefaultFundamentalIntakeForm(): FundamentalIntakeForm {
     },
     narrative: {
       whatHappened:
-        "Descreva o problema com as palavras do cliente. Depois a Lex AI organizará fatos, partes, pedidos e riscos.",
+        "Descreva o problema com as palavras do cliente. Salve o caso quando quiser; a organização automática com Lex AI é opcional.",
     },
     timeline: [],
   });

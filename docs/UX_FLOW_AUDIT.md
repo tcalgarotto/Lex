@@ -2,6 +2,15 @@
 
 **Status:** F-1 sign-off provisório. Release público bloqueado. Owners Legal / Security / QA Lead: **PROVISÓRIO** (dupla revisão Thales PO + Cursor CTO interim).
 
+## P0.2 Lazy Intake
+
+- **Salvar caso não chama IA:** `POST /api/cases/fundamental-intake` com `action=save` (ou `draft`) persiste `metadataJson.intakeForm`, campos determinísticos do caso (`uf`, `summary`, `intakeLegalArea`) e timeline “Entrevista salva”, sem `runDeepseekFundamentalStructure`.
+- **Organizar com Lex AI é opcional:** botão secundário no formulário; materializa `CaseParty` / `CaseFact` / pedidos / riscos e define `intakeStructuredAt`. Falha da IA devolve caso salvo + `structureError` (HTTP 200), não apaga o rascunho.
+- **Reorganizar:** se o caso já foi organizado, o botão mostra **Reorganizar com Lex AI**; a UI pede confirmação (“Isso pode atualizar partes, fatos… A entrevista salva será preservada.”) e envia `reorganize: true` (ou `action=reorganize`). Sem flag, a API responde **400** `REORGANIZE_REQUIRED` (não mais 409). `applyFundamentalStructure` continua a respeitar secções marcadas como revisadas pelo advogado (`userConfirmedPaths`).
+- **Pesquisa / estratégia / minuta sem organizar:** usam contexto compacto por tarefa (`buildCaseTaskContext` + `formatCaseTaskContextForPrompt` em `src/lib/cases/intake/case-intake-context.ts`). O guard de minuta e o bootstrap da aba Estratégia aceitam autor/fatos derivados da entrevista (`intakeDisplay`), não só linhas em `CaseParty`/`CaseFact`.
+- **Casos antigos:** `intakeStructuredAt` e materialização relacional seguem válidos; checklist legado permanece em casos sem fluxo fundamental.
+- **Testes:** contratos Vitest `tests/cases/lazy-intake-*.test.ts`, `lazy-intake-p02-closure.test.ts`; E2E autenticado `tests/e2e/lazy-intake-p02.spec.ts` (salvar sem organizar + pesquisa/estratégia sem bloqueio indevido). Passos com IA real dependem de chave do motor (`test.skip` explícito).
+
 ## Atualização (2026-05-14) — Entrevista fundamental vs checklist legado (fonte de verdade)
 
 - **Problema:** `/cases/[id]/entrevista` ainda carregava só `CaseChecklistTab` (F2.1); o bootstrap do checklist ignorava `metadataJson.intakeForm`, gerando pendências e bloqueios de fluxo fora de sincronia com `/cases/new` + `POST /api/cases/fundamental-intake`.

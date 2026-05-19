@@ -7,11 +7,14 @@
  */
 
 import { CasePartyRole } from "@prisma/client";
+import type { CaseDisplaySnapshot } from "@/lib/cases/intake/case-intake-context";
 import type { CaseBrainSnapshot } from "@/lib/cases/drafting/case-brain-shim";
 import type { PinnedFoundationListItem, PinnedJurisprudenceListItem } from "@/lib/cases/drafting/drafting-types";
 
 export type DraftingGuardInput = {
   snapshot: CaseBrainSnapshot;
+  /** Partes/fatos derivados da entrevista quando ainda não há CaseParty/CaseFact. */
+  intakeDisplay?: CaseDisplaySnapshot | null;
   pinnedFoundations: PinnedFoundationListItem[];
   jurisprudenceCandidates: PinnedJurisprudenceListItem[];
   confirmUnverifiedFoundations?: boolean;
@@ -19,6 +22,15 @@ export type DraftingGuardInput = {
   draftingStrategyApproved?: boolean;
   draftingStrategyExists?: boolean;
 };
+
+export function intakeHasAuthorDisplay(display: CaseDisplaySnapshot | null | undefined): boolean {
+  if (!display) return false;
+  return display.parties.some((p) => /autor|cliente/i.test(p.role));
+}
+
+export function intakeHasFactDisplay(display: CaseDisplaySnapshot | null | undefined): boolean {
+  return (display?.facts.length ?? 0) > 0;
+}
 
 export function runDraftingGuard(input: DraftingGuardInput): { ok: true } | { ok: false; reasons: string[] } {
   const reasons: string[] = [];
@@ -33,16 +45,24 @@ export function runDraftingGuard(input: DraftingGuardInput): { ok: true } | { ok
 
   const hasAuthor =
     input.snapshot.parties.some((p) => p.role === CasePartyRole.AUTHOR) ||
-    (input.snapshot.brain?.parties.some((p) => p.role === "assisted_party") ?? false);
+    (input.snapshot.brain?.parties.some((p) => p.role === "assisted_party") ?? false) ||
+    intakeHasAuthorDisplay(input.intakeDisplay);
 
   if (!hasAuthor) {
-    reasons.push("Confirme ao menos uma parte autora antes de gerar a minuta.");
+    reasons.push(
+      "Informe ao menos a parte autora na entrevista ou em Partes e fatos antes de gerar a minuta.",
+    );
   }
 
   const hasCoreFact =
-    input.snapshot.facts.length > 0 || (input.snapshot.brain?.facts.length ?? 0) > 0;
+    input.snapshot.facts.length > 0 ||
+    (input.snapshot.brain?.facts.length ?? 0) > 0 ||
+    intakeHasFactDisplay(input.intakeDisplay);
+
   if (!hasCoreFact) {
-    reasons.push("Registre ao menos um fato essencial confirmado antes de gerar a minuta.");
+    reasons.push(
+      "Registre ao menos um fato essencial na entrevista ou em Partes e fatos antes de gerar a minuta.",
+    );
   }
 
   if (input.pinnedFoundations.length < 1) {
@@ -91,10 +111,14 @@ export function previewDraftingGuardMessages(input: {
     reasons.push("Aprove a estratégia assistida antes de redigir a minuta.");
   }
   if (!input.hasAuthor) {
-    reasons.push("Confirme ao menos uma parte autora antes de gerar a minuta.");
+    reasons.push(
+      "Informe ao menos a parte autora na entrevista ou em Partes e fatos antes de gerar a minuta.",
+    );
   }
   if (!input.hasFact) {
-    reasons.push("Registre ao menos um fato essencial confirmado antes de gerar a minuta.");
+    reasons.push(
+      "Registre ao menos um fato essencial na entrevista ou em Partes e fatos antes de gerar a minuta.",
+    );
   }
   if (input.pinCount < 1) {
     reasons.push("Fixe ao menos um fundamento jurídico na pesquisa do caso antes de gerar a minuta.");
@@ -110,4 +134,18 @@ export function previewDraftingGuardMessages(input: {
     );
   }
   return reasons;
+}
+
+/** Prévia UI/bootstrap — mesmo critério de autor/fato do guard de minuta. */
+export function resolveDraftingPartiesFactsPreview(input: {
+  parties: { role: string }[];
+  facts: { id: string }[];
+  intakeDisplay?: CaseDisplaySnapshot | null;
+}): { hasAuthor: boolean; hasFact: boolean } {
+  return {
+    hasAuthor:
+      input.parties.some((p) => p.role === "AUTHOR") ||
+      intakeHasAuthorDisplay(input.intakeDisplay),
+    hasFact: input.facts.length > 0 || intakeHasFactDisplay(input.intakeDisplay),
+  };
 }

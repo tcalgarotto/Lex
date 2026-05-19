@@ -20,25 +20,29 @@ export default async function NewCasePage({ searchParams }: PageProps) {
 
   let seedCaseId: string | null = null;
   let seedForm: FundamentalIntakeForm | null = null;
+  let intakeAlreadyOrganized = false;
 
   if (continueId.length > 0) {
     const { workspaceId } = await getWorkspaceContext();
     const c = await loadCaseForWorkspace(workspaceId, continueId);
     if (c) {
       const meta = c.metadataJson;
-      if (!isFundamentalIntakeStructured(meta)) {
-        const parsed = parseFundamentalIntakeFromMetadata(meta);
-        if (parsed) {
-          seedCaseId = c.id;
-          seedForm = parsed;
-        }
+      const parsed = parseFundamentalIntakeFromMetadata(meta);
+      if (parsed) {
+        seedCaseId = c.id;
+        seedForm = parsed;
+        intakeAlreadyOrganized = isFundamentalIntakeStructured(meta);
       }
     }
   }
 
   return (
     <LexPageFrame centerWidth="wide">
-      <FundamentalIntakeFormContent seedCaseId={seedCaseId} seedForm={seedForm} />
+      <FundamentalIntakeFormContent
+        seedCaseId={seedCaseId}
+        seedForm={seedForm}
+        intakeAlreadyOrganized={intakeAlreadyOrganized}
+      />
     </LexPageFrame>
   );
 }

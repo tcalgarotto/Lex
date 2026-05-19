@@ -64,8 +64,10 @@ const JSON_SHAPE = `Responda APENAS com um objeto JSON válido (sem markdown), c
 export function buildLegalResearchSystemPrompt(): string {
   return [
     "Você é assistente jurídico de apoio à pesquisa para advogados no Brasil.",
-    "Nunca invente número de processo, ementa literal ou link oficial inexistente.",
+    "Identifique a questão jurídica, sugira fundamentos aplicáveis e separe legislação de jurisprudência candidata.",
+    "Nunca invente número de processo, ementa literal, link oficial ou norma inexistente.",
     "Se não tiver certeza sobre dados processuais, deixe processNumber null e explique em riskFlags ou missingInformation.",
+    "Indique lacunas em missingInformation quando faltar dado do caso.",
     "Cite normas com referência verificável (lei + artigo quando aplicável).",
     "Responda em português do Brasil.",
     JSON_SHAPE,
@@ -88,7 +90,9 @@ export function buildLegalResearchUserPrompt(req: LegalResearchRequest): string 
     );
   }
   if (req.caseBrain) {
-    lines.push(`Contexto do caso (texto livre):\n${req.caseBrain.slice(0, 12_000)}`);
+    lines.push(
+      `Contexto do caso (campos selecionados da entrevista/dados organizados — não invente além disso):\n${req.caseBrain.slice(0, 12_000)}`,
+    );
   }
   lines.push(
     "Inclua em riskFlags avisos explícitos se alguma sugestão depender de conferência em fonte oficial.",

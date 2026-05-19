@@ -23,3 +23,8 @@ export function parseFundamentalIntakeFromMetadata(metadata: unknown): Fundament
   const p = parseFundamentalIntakeForm(raw);
   return p.success ? p.data : null;
 }
+
+/** Fonte canónica da entrevista salva (alias tipado). */
+export function getCaseIntakeForm(metadata: unknown): FundamentalIntakeForm | null {
+  return parseFundamentalIntakeFromMetadata(metadata);
+}

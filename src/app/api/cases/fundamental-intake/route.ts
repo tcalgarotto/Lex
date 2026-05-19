@@ -1,11 +1,12 @@
 /**
  * POST /api/cases/fundamental-intake
  *
- * - action=draft: grava rascunho (cria caso ou atualiza `caseId`).
- * - action=structure: chama DeepSeek, grava caso (se novo), materializa partes/fatos/pedidos/riscos/brain.
+ * - action=save | draft: grava entrevista sem IA (cria caso ou atualiza `caseId`).
+ * - action=structure | reorganize: persiste entrevista, depois organiza com Lex AI (opcional).
+ *   Caso já organizado exige `reorganize: true` ou `action=reorganize` (sem 409).
  *
- * Novo caso sem `caseId`: a IA corre **antes** de criar o registo — falha na estruturação não deixa caso órfão.
- * Não dispara consolidação Inngest (fluxo principal DeepSeek + Postgres).
+ * Save-first: estruturação nunca é pré-requisito para usar o caso.
+ * Falha da IA na organização devolve o caso salvo + `structureError` (não bloqueia).
  */
 
 import { NextResponse } from "next/server";
@@ -29,10 +30,23 @@ import { getLogger } from "@/lib/logger";
 const log = getLogger("lex.api.cases.fundamental-intake");
 
 const PostBody = z.object({
-  action: z.enum(["draft", "structure"]),
+  action: z.enum(["draft", "save", "structure", "reorganize"]),
+  reorganize: z.boolean().optional(),
   caseId: z.string().cuid().optional(),
   form: z.unknown(),
 });
+
+function isSaveAction(action: string): boolean {
+  return action === "draft" || action === "save";
+}
+
+function isStructureAction(action: string): boolean {
+  return action === "structure" || action === "reorganize";
+}
+
+function wantsReorganize(body: z.infer<typeof PostBody>): boolean {
+  return body.reorganize === true || body.action === "reorganize";
+}
 
 function revalidateCaseSurface(caseId: string) {
   revalidatePath("/cases");
@@ -65,18 +79,18 @@ export async function POST(req: Request) {
   }
   const form = parsedForm.data;
 
-  if (body.action === "structure" && !isReadyForLexStructure(form)) {
+  if (isStructureAction(body.action) && !isReadyForLexStructure(form)) {
     return NextResponse.json(
       {
         error:
           lexStructureBlockedReason(form) ??
-          "Complete todas as secções obrigatórias antes de estruturar com a Lex AI.",
+          "Complete todas as secções obrigatórias antes de organizar com a Lex AI.",
       },
       { status: 400 },
     );
   }
 
-  if (body.action === "draft") {
+  if (isSaveAction(body.action)) {
     try {
       const { id } = await persistFundamentalDraft({
         workspaceId,
@@ -86,7 +100,13 @@ export async function POST(req: Request) {
       });
       const c = await getCaseById(workspaceId, id);
       revalidateCaseSurface(id);
-      return NextResponse.json({ case: c, mode: "fundamental_draft" }, { status: body.caseId ? 200 : 201 });
+      return NextResponse.json(
+        {
+          case: c,
+          mode: body.action === "save" ? "fundamental_saved" : "fundamental_draft",
+        },
+        { status: body.caseId ? 200 : 201 },
+      );
     } catch (e) {
       const status = (e as { status?: number }).status ?? 500;
       return NextResponse.json({ error: (e as Error).message }, { status });
@@ -97,61 +117,67 @@ export async function POST(req: Request) {
   const narrative = buildIntakeNarrativeForModel(form);
 
   try {
-    assertDeepSeekConfigured();
-    if (!caseId) {
-      const structured = await runDeepseekFundamentalStructure(narrative);
-      const { id } = await persistFundamentalDraft({
-        workspaceId,
-        userId: user.id,
-        caseId: null,
-        form,
-      });
-      caseId = id;
-      await applyFundamentalStructure({
-        workspaceId,
-        userId: user.id,
-        caseId,
-        form,
-        structured,
-      });
-    } else {
-      await persistFundamentalDraft({
-        workspaceId,
-        userId: user.id,
-        caseId,
-        form,
-      });
+    const { id } = await persistFundamentalDraft({
+      workspaceId,
+      userId: user.id,
+      caseId,
+      form,
+    });
+    caseId = id;
 
-      const row = await prisma.case.findFirst({
-        where: { id: caseId, workspaceId, deletedAt: null },
-        select: { metadataJson: true },
-      });
-      const meta = (row?.metadataJson ?? {}) as Record<string, unknown>;
-      if (meta["intakeStructuredAt"]) {
-        return NextResponse.json(
-          { error: "Este caso já foi estruturado a partir da entrevista fundamental." },
-          { status: 409 },
-        );
-      }
-
-      const structured = await runDeepseekFundamentalStructure(narrative);
-      await applyFundamentalStructure({
-        workspaceId,
-        userId: user.id,
-        caseId,
-        form,
-        structured,
-      });
+    const row = await prisma.case.findFirst({
+      where: { id: caseId, workspaceId, deletedAt: null },
+      select: { metadataJson: true },
+    });
+    const meta = (row?.metadataJson ?? {}) as Record<string, unknown>;
+    if (meta["intakeStructuredAt"] && !wantsReorganize(body)) {
+      return NextResponse.json(
+        {
+          error: "Este caso já foi organizado. Confirme a reorganização para continuar.",
+          code: "REORGANIZE_REQUIRED",
+        },
+        { status: 400 },
+      );
     }
+
+    assertDeepSeekConfigured();
+    const structured = await runDeepseekFundamentalStructure(narrative);
+    await applyFundamentalStructure({
+      workspaceId,
+      userId: user.id,
+      caseId,
+      form,
+      structured,
+    });
 
     const c = await getCaseById(workspaceId, caseId);
     if (!c) {
-      return NextResponse.json({ error: "Caso não encontrado após estruturar." }, { status: 500 });
+      return NextResponse.json({ error: "Caso não encontrado após organizar." }, { status: 500 });
     }
     revalidateCaseSurface(caseId);
     return NextResponse.json({ case: c, mode: "fundamental_structured" }, { status: 200 });
   } catch (e) {
     const normalized = normalizeAiProviderError(e);
+
+    if (caseId) {
+      log.warn("structure_failed_case_saved", {
+        caseId,
+        code: normalized.code,
+        hint: normalized.technicalHint,
+      });
+      const c = await getCaseById(workspaceId, caseId);
+      revalidateCaseSurface(caseId);
+      return NextResponse.json(
+        {
+          case: c,
+          mode: "fundamental_saved",
+          structureError: normalized.userMessage,
+          code: normalized.code,
+        },
+        { status: 200 },
+      );
+    }
+
     log.warn("structure_failed", {
       code: normalized.code,
       hint: normalized.technicalHint,

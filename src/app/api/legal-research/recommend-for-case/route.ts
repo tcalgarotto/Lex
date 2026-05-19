@@ -20,7 +20,10 @@ import {
 } from "@/lib/legal-research";
 import { legalResearchRecommendBodySchema } from "@/lib/legal-research/request-body";
 import type { LegalResearchRequest, LegalResearchResponse } from "@/lib/legal-research/types";
-import { getCaseBrainSnapshot } from "@/lib/cases/case-brain/snapshot";
+import {
+  buildCaseTaskContext,
+  formatCaseTaskContextForPrompt,
+} from "@/lib/cases/intake/case-intake-context";
 
 
 export async function POST(req: Request) {
@@ -71,23 +74,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Não encontrado." }, { status: 404, headers: rl.headers });
   }
 
-  let caseBrainText = parsed.data.caseBrain ?? "";
-  if (!caseBrainText.trim()) {
-    const snap = await getCaseBrainSnapshot(parsed.data.caseId, workspaceId);
-    if (snap) {
-      caseBrainText = JSON.stringify({
-        narrative: snap.brain?.narrative ?? "",
-        parties: snap.parties,
-        facts: snap.facts,
-        claims: snap.claims,
-        risks: snap.risks,
-        documents: snap.documents?.map((d) => ({
-          id: d.id,
-          name: d.originalName,
-          preview: d.extractedPreview,
-        })),
-        fingerprint: snap.caseFingerprint,
-      }).slice(0, 12_000);
+  let caseBrainText = parsed.data.caseBrain?.trim() ?? "";
+  if (!caseBrainText) {
+    const taskCtx = await buildCaseTaskContext(parsed.data.caseId, workspaceId, "legal_research");
+    if (taskCtx) {
+      caseBrainText = formatCaseTaskContextForPrompt(taskCtx);
     }
   }
 

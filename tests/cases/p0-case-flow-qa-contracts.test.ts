@@ -30,19 +30,24 @@ describe("P0 Case Flow QA — contratos no código-fonte", () => {
     expect(n).toBeGreaterThanOrEqual(4);
   });
 
-  it("estruturação com caseId existente: persist rascunho antes da IA; 409 se já estruturado antes de DeepSeek", () => {
+  it("estruturação: persist antes da IA; REORGANIZE_REQUIRED se já organizado sem flag", () => {
     const r = read("src/app/api/cases/fundamental-intake/route.ts");
-    const elseIdx = r.indexOf("} else {");
-    expect(elseIdx).toBeGreaterThan(-1);
-    const elseBlock = r.slice(elseIdx, elseIdx + 900);
-    const iPersist = elseBlock.indexOf("persistFundamentalDraft");
-    const iDeepseek = elseBlock.indexOf("runDeepseekFundamentalStructure");
-    const i409 = elseBlock.indexOf("intakeStructuredAt");
-    expect(iPersist).toBeGreaterThan(-1);
-    expect(iDeepseek).toBeGreaterThan(-1);
-    expect(i409).toBeGreaterThan(-1);
-    expect(iPersist).toBeLessThan(i409);
-    expect(i409).toBeLessThan(iDeepseek);
+    const structureStart = r.indexOf("let caseId = body.caseId");
+    expect(structureStart).toBeGreaterThan(-1);
+    const block = r.slice(structureStart, structureStart + 1200);
+    const iPersist = block.indexOf("persistFundamentalDraft");
+    const iGate = block.indexOf("REORGANIZE_REQUIRED");
+    const iDeepseek = block.indexOf("runDeepseekFundamentalStructure");
+    expect(iPersist).toBeLessThan(iGate);
+    expect(iGate).toBeLessThan(iDeepseek);
+    expect(r).not.toMatch(/já foi organizado a partir da entrevista fundamental/);
+  });
+
+  it("UI entrevista: botão primário Salvar caso", () => {
+    const chrome = read("src/components/cases/fundamental-intake-chrome.tsx");
+    expect(chrome).toMatch(/data-testid="save-case-sidebar"/);
+    expect(chrome).toMatch(/Salvar caso/);
+    expect(chrome).toMatch(/Organizar caso com Lex AI/);
   });
 
   it("applyFundamentalStructure: dedupe de partes por role+name antes de createMany", () => {

@@ -7,9 +7,13 @@
  */
 
 import { generateText } from "ai";
-import { CasePartyRole } from "@prisma/client";
 import { getLanguageModelForLexTask, getProviderOptionsForLexTask } from "@/lib/ai/llm";
 import { prisma } from "@/lib/prisma";
+import {
+  buildCaseTaskContext,
+  formatCaseTaskContextForPrompt,
+  loadCaseDisplaySnapshot,
+} from "@/lib/cases/intake/case-intake-context";
 import {
   getCaseBrainSnapshot,
   listPinnedFoundations,
@@ -32,6 +36,8 @@ export async function generateDraft(
     throw Object.assign(new Error("Caso não encontrado neste workspace."), { status: 404 });
   }
 
+  const intakeDisplay = await loadCaseDisplaySnapshot(caseId, workspaceId);
+
   const caseMeta = await prisma.case.findFirst({
     where: { id: caseId, workspaceId },
     select: { metadataJson: true },
@@ -45,6 +51,7 @@ export async function generateDraft(
 
   const guard = runDraftingGuard({
     snapshot: snap,
+    intakeDisplay,
     pinnedFoundations,
     jurisprudenceCandidates,
     confirmUnverifiedFoundations: options?.confirmUnverifiedFoundations === true,
@@ -54,6 +61,9 @@ export async function generateDraft(
   if (!guard.ok) {
     return { status: "blocked", reasons: guard.reasons };
   }
+
+  const taskCtx = await buildCaseTaskContext(caseId, workspaceId, "draft");
+  const caseContextBlock = taskCtx ? formatCaseTaskContextForPrompt(taskCtx) : "";
 
   const foundationsUsed: DraftFoundationUse[] = pinnedFoundations.map((p) => ({
     ref: p.id,
@@ -65,23 +75,6 @@ export async function generateDraft(
         : "pinned",
     label: p.citation,
   }));
-
-  const parties = snap.brain
-    ? snap.brain.parties.map((p) => `- (${p.role}) ${p.name}`).join("\n")
-    : snap.parties.map((p) => `- (${p.role}) ${p.name}`).join("\n");
-
-  const authorLine =
-    snap.parties.find((p) => p.role === CasePartyRole.AUTHOR)?.name ??
-    snap.brain?.parties.find((p) => p.role === "assisted_party")?.name ??
-    "(autor a revisar)";
-
-  const facts = snap.brain
-    ? snap.brain.facts.map((f) => `- ${f.text}`).join("\n")
-    : snap.facts.map((f) => `- ${f.text}`).join("\n");
-
-  const requests = snap.brain
-    ? snap.brain.requests.map((r) => `- (${r.kind}) ${r.text}`).join("\n")
-    : snap.requests.map((r) => `- (${r.kind}) ${r.text}`).join("\n");
 
   const pinText = pinnedFoundations
     .map((p) => {
@@ -105,7 +98,13 @@ export async function generateDraft(
       ? JSON.stringify(meta["draftingStrategy"]).slice(0, 14_000)
       : "(sem estratégia salva)";
 
-  const prompt = `Elabore uma minuta processual em Markdown (pt-BR), com seções:
+  const authorLine =
+    intakeDisplay?.parties.find((p) => /autor|cliente/i.test(p.role))?.name ??
+    snap.parties.find((p) => p.role === "AUTHOR")?.name ??
+    snap.brain?.parties.find((p) => p.role === "assisted_party")?.name ??
+    "(autor a revisar)";
+
+  const prompt = `Elabore uma MINUTA REVISÁVEL em Markdown (pt-BR), com seções:
 # Endereçamento
 # Qualificação das partes
 # Dos fatos
@@ -116,19 +115,14 @@ export async function generateDraft(
 # Lacunas para revisão (bullet com o que falta confirmar)
 
 Regras obrigatórias:
-- Use somente fatos, partes, pedidos e fundamentos fornecidos abaixo.
+- Use SOMENTE fatos, partes, pedidos e fundamentos fornecidos abaixo. Não invente provas, datas, nomes, documentos ou decisões.
 - Nos trechos de direito, cite explicitamente os fundamentos pinados pelo rótulo/citação fornecidos.
-- Para julgados mencionados, se constar a nota "(candidata — confirmar fonte oficial)", mantenha essa frase ao lado da referência. Nunca trate julgado candidato como decisão já verificada.
-- Não invente números de processo nem normas fora dos trechos pinados.
+- Para julgados com "(candidata — confirmar fonte oficial)", mantenha essa frase. Nunca trate candidato como decisão verificada.
+- Destaque trechos que precisam de revisão humana antes de protocolar.
+- Se faltar dado essencial, escreva a lacuna em "Lacunas para revisão" em vez de inventar.
 
-Partes:
-${parties}
-
-Fatos:
-${facts}
-
-Pedidos:
-${requests}
+Contexto do caso:
+${caseContextBlock || "(sem contexto)"}
 
 Fundamentos pinados (única fonte normativa):
 ${pinText}
@@ -136,7 +130,7 @@ ${pinText}
 Julgados de apoio (candidatos — linguagem cautelosa):
 ${jurisNotes.length ? jurisNotes.join("\n") : "(nenhum)"}
 
-Estratégia processual aprovada / consolidada no caso (siga a linha; não contradiga sem marcar lacuna):
+Estratégia processual aprovada (siga a linha; não contradiga sem marcar lacuna):
 ${strategyBlock}
 
 Nome sugerido da parte autora: ${authorLine}
@@ -159,6 +153,11 @@ Nome sugerido da parte autora: ${authorLine}
   if (jurisprudenceCandidates.some((j) => j.verificationStatus === "AI_RECOMMENDED_UNVERIFIED")) {
     inlineNotes.push(
       "Julgados com indicação automática permanecem como candidatos até confirmação humana explícita.",
+    );
+  }
+  if (intakeDisplay?.source === "intake_form") {
+    inlineNotes.push(
+      "Caso baseado na entrevista salva — confira partes e fatos antes de protocolar.",
     );
   }
 

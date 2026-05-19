@@ -8,16 +8,15 @@ const SRC = fs.readFileSync(
 );
 
 describe("POST /api/cases/fundamental-intake (ordem e cache)", () => {
-  it("novo caso (!caseId): DeepSeek antes de persistFundamentalDraft — falha da IA não cria caso", () => {
-    const head = "if (!caseId)";
-    const i = SRC.indexOf(head);
-    expect(i).toBeGreaterThan(-1);
-    const slice = SRC.slice(i, i + 800);
-    const iAi = slice.indexOf("runDeepseekFundamentalStructure");
+  it("estruturação: persistFundamentalDraft antes de runDeepseekFundamentalStructure (save-first)", () => {
+    const structureStart = SRC.indexOf("let caseId = body.caseId");
+    expect(structureStart).toBeGreaterThan(-1);
+    const slice = SRC.slice(structureStart, structureStart + 1200);
     const iPersist = slice.indexOf("persistFundamentalDraft");
-    expect(iAi).toBeGreaterThan(-1);
+    const iAi = slice.indexOf("runDeepseekFundamentalStructure");
     expect(iPersist).toBeGreaterThan(-1);
-    expect(iAi).toBeLessThan(iPersist);
+    expect(iAi).toBeGreaterThan(-1);
+    expect(iPersist).toBeLessThan(iAi);
   });
 
   it("revalida rotas do caso após rascunho/estrutura", () => {

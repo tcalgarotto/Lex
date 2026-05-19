@@ -15,6 +15,8 @@ import { listPinnedJurisprudenceCandidates } from "@/lib/cases/drafting/case-bra
 import type { PinnedJurisprudenceListItem } from "@/lib/cases/drafting/drafting-types";
 import { loadCaseChecklistStateForBootstrap, type CaseChecklistStatePayload } from "@/lib/cases/case-checklist-state";
 import { listPinnedFoundations } from "@/lib/cases/case-brain/pinned-foundations";
+import { loadCaseDisplaySnapshot } from "@/lib/cases/intake/case-intake-context";
+import { resolveDraftingPartiesFactsPreview } from "@/lib/cases/drafting/drafting-guard";
 
 export type CaseDraftingBootstrapSlice = {
   casePartiesFacts: {
@@ -30,6 +32,8 @@ export type CaseDraftingBootstrapSlice = {
   draftingGuards: {
     hasUnverifiedFoundationPin: boolean;
     hasUnverifiedJuris: boolean;
+    hasAuthor: boolean;
+    hasFact: boolean;
   };
 };
 
@@ -116,6 +120,13 @@ export async function gatherCaseBootstrap(
 
   if (!checklist || !caseRow) return null;
 
+  const intakeDisplay = await loadCaseDisplaySnapshot(caseId, workspaceId);
+  const partiesFacts = resolveDraftingPartiesFactsPreview({
+    parties: caseRow.parties,
+    facts: caseRow.facts,
+    intakeDisplay,
+  });
+
   const strategy = strategySliceFromMetadata(caseRow.metadataJson, jurisprudenceCandidates);
 
   const hasUnverifiedFoundationPin = brainPins.some(
@@ -139,6 +150,8 @@ export async function gatherCaseBootstrap(
     draftingGuards: {
       hasUnverifiedFoundationPin,
       hasUnverifiedJuris,
+      hasAuthor: partiesFacts.hasAuthor,
+      hasFact: partiesFacts.hasFact,
     },
   };
 

@@ -5,7 +5,7 @@ const PORT = Number(process.env["E2E_PORT"] ?? 3000);
 const BASE_URL = process.env["E2E_BASE_URL"] ?? `http://localhost:${PORT}`;
 const isCI = !!process.env["CI"];
 const authFile = path.join(__dirname, "tests/e2e/.auth/user.json");
-const caseFlowSpec = /case-flow-fundamental\.spec\.ts/;
+const authE2eSpecs = /(case-flow-fundamental|lazy-intake-p02)\.spec\.ts/;
 const hasE2eAuthCreds =
   !!process.env["E2E_USER_EMAIL"]?.trim() && !!process.env["E2E_USER_PASSWORD"]?.trim();
 
@@ -53,7 +53,7 @@ export default defineConfig({
           name: "chromium",
           use: { ...devices["Desktop Chrome"] },
           dependencies: [],
-          testIgnore: [/auth\.setup\.ts/, caseFlowSpec],
+          testIgnore: [/auth\.setup\.ts/, authE2eSpecs],
         },
         {
           name: "chromium-auth",
@@ -62,7 +62,7 @@ export default defineConfig({
             storageState: authFile,
           },
           dependencies: ["setup"],
-          testMatch: caseFlowSpec,
+          testMatch: authE2eSpecs,
           timeout: 240_000,
         },
       ]
@@ -70,7 +70,7 @@ export default defineConfig({
         {
           name: "chromium",
           use: { ...devices["Desktop Chrome"] },
-          testIgnore: [/auth\.setup\.ts/, caseFlowSpec],
+          testIgnore: [/auth\.setup\.ts/, authE2eSpecs],
         },
       ],
   webServer: process.env["E2E_BASE_URL"]

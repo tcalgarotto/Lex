@@ -137,10 +137,15 @@ export function CaseTabs({
  </TabsContent>
  <TabsContent value="facts" className="mt-4">
  <CaseFactsPartiesTab
+ caseId={c.id}
  facts={c.facts}
  parties={c.parties}
  requests={c.requests}
  risks={c.risks}
+ intakeStructured={Boolean(
+   (c.metadataJson as Record<string, unknown> | null)?.["intakeStructuredAt"],
+ )}
+ intakeDerived={null}
  />
  </TabsContent>
  <TabsContent value="research" className="mt-4">

@@ -158,11 +158,15 @@ export function CaseDraftingTab({ caseId }: { caseId: string }) {
     bundle?.readiness && typeof bundle.readiness.score === "number" ? bundle.readiness.score : 0;
 
   const hasAuthor = useMemo(() => {
+    if (boot?.payload.drafting.draftingGuards.hasAuthor) return true;
     if (!caseData) return false;
     return caseData.parties.some((p) => p.role === "AUTHOR");
-  }, [caseData]);
+  }, [boot, caseData]);
 
-  const hasFact = (caseData?.facts.length ?? 0) > 0;
+  const hasFact = useMemo(() => {
+    if (boot?.payload.drafting.draftingGuards.hasFact) return true;
+    return (caseData?.facts.length ?? 0) > 0;
+  }, [boot, caseData]);
 
   const hasUnverifiedJuris = useMemo(
     () =>

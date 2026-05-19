@@ -7,6 +7,12 @@ import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DocumentUploadButton } from "@/components/documents/document-upload-button";
 import {
   LegalCurrencyInput,
@@ -183,18 +189,26 @@ export type FundamentalIntakeFormContentProps = {
    * (evita sobrepor o rail direito do caso). `standalone` — `/cases/new` com layout completo.
    */
   mode?: "standalone" | "embedded";
+  /** Caso já passou por "Organizar com Lex AI" — botão vira reorganizar + confirmação. */
+  intakeAlreadyOrganized?: boolean;
 };
 
 export default function FundamentalIntakeFormContent(props: FundamentalIntakeFormContentProps = {}) {
-  const { seedCaseId = null, seedForm = null, mode = "standalone" } = props;
+  const {
+    seedCaseId = null,
+    seedForm = null,
+    mode = "standalone",
+    intakeAlreadyOrganized = false,
+  } = props;
   const isEmbedded = mode === "embedded";
   const router = useRouter();
   const [form, setForm] = React.useState<FundamentalIntakeForm>(() => createDefaultFundamentalIntakeForm());
   const [caseId, setCaseId] = React.useState<string | null>(null);
-  const [loading, setLoading] = React.useState<"draft" | "structure" | null>(null);
+  const [loading, setLoading] = React.useState<"save" | "structure" | null>(null);
   const [clientErrors, setClientErrors] = React.useState<Record<string, string>>({});
   const [freeNarrativeExpanded, setFreeNarrativeExpanded] = React.useState(false);
   const [activeScrollSection, setActiveScrollSection] = React.useState<IntakeSectionId>("attend");
+  const [reorganizeDialogOpen, setReorganizeDialogOpen] = React.useState(false);
 
   const statuses = React.useMemo(() => sectionStatuses(form), [form]);
   const progress = React.useMemo(() => interviewProgressPercent(form), [form]);
@@ -246,7 +260,19 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
     setForm((prev) => updater(prev));
   }
 
-  async function submit(action: "draft" | "structure") {
+  const organizeButtonLabel = intakeAlreadyOrganized
+    ? "Reorganizar com Lex AI"
+    : "Organizar caso com Lex AI";
+
+  function requestOrganize() {
+    if (intakeAlreadyOrganized) {
+      setReorganizeDialogOpen(true);
+      return;
+    }
+    void submit("structure");
+  }
+
+  async function submit(action: "save" | "structure", opts?: { reorganize?: boolean }) {
     setClientErrors({});
     const parsed = parseFundamentalIntakeForm(form);
     if (!parsed.success) {
@@ -262,7 +288,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
     }
     if (action === "structure" && !isReadyForLexStructure(payload)) {
       toast.error(
-        lexStructureBlockedReason(form) ?? "Complete o formulário antes de estruturar com a Lex AI.",
+        lexStructureBlockedReason(form) ?? "Complete o formulário antes de organizar com a Lex AI.",
       );
       return;
     }
@@ -272,11 +298,17 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, caseId: caseId ?? undefined, form: payload }),
+        body: JSON.stringify({
+          action: action === "save" ? "save" : "structure",
+          reorganize: opts?.reorganize === true ? true : undefined,
+          caseId: caseId ?? undefined,
+          form: payload,
+        }),
       });
       const body = (await res.json().catch(() => ({}))) as {
         error?: string;
         code?: string;
+        structureError?: string;
         issues?: { formErrors?: string[]; fieldErrors?: Record<string, string[] | undefined> };
         case?: { id: string };
       };
@@ -300,10 +332,19 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
       router.refresh();
       const id = body.case?.id;
       if (id) setCaseId(id);
-      if (action === "draft") {
-        toast.success(caseId ? "Rascunho atualizado." : "Rascunho salvo. Você já pode anexar documentos.");
+      if (action === "save") {
+        toast.success(
+          "Caso salvo. Você pode pesquisar fundamentos ou criar uma minuta quando quiser.",
+        );
+      } else if (body.structureError) {
+        toast.success("Caso salvo.");
+        toast.warning(
+          `${body.structureError} A organização automática pode ser feita depois.`,
+        );
       } else {
-        toast.success("Caso estruturado com Lex AI.");
+        toast.success(
+          opts?.reorganize ? "Caso reorganizado com Lex AI." : "Caso organizado com Lex AI.",
+        );
         if (id) router.push(`/cases/${id}`);
       }
     } catch (e) {
@@ -366,6 +407,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             loading={loading}
             structureLocked={structureLocked}
             structureLockTitle={structureLocked ? structureLockTitle : undefined}
+            organizeButtonLabel={organizeButtonLabel}
           />
         </div>
       </div>
@@ -1444,11 +1486,12 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                 pending={pending}
                 lacunas={lacunas}
                 nextLabel={nextLabel}
-                onDraft={() => submit("draft")}
-                onStructure={() => submit("structure")}
+                onDraft={() => submit("save")}
+                onStructure={requestOrganize}
                 loading={loading}
                 structureLocked={structureLocked}
                 structureLockTitle={structureLocked ? structureLockTitle : undefined}
+                organizeButtonLabel={organizeButtonLabel}
               />
             </aside>
           </div>
@@ -1456,12 +1499,40 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
       </div>
 
       <IntakeMobileActionBar
-        onDraft={() => submit("draft")}
-        onStructure={() => submit("structure")}
+        onDraft={() => submit("save")}
+        onStructure={requestOrganize}
         loading={loading}
         structureLocked={structureLocked}
         structureLockTitle={structureLocked ? structureLockTitle : undefined}
+        organizeButtonLabel={organizeButtonLabel}
       />
+
+      <Dialog open={reorganizeDialogOpen} onOpenChange={setReorganizeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reorganizar com Lex AI?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">
+            Isso pode atualizar partes, fatos, pedidos e riscos derivados da entrevista. A entrevista
+            salva será preservada.
+          </p>
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => setReorganizeDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setReorganizeDialogOpen(false);
+                void submit("structure", { reorganize: true });
+              }}
+              disabled={loading !== null}
+            >
+              Reorganizar com Lex AI
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

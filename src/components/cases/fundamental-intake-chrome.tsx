@@ -136,6 +136,7 @@ export function IntakeSidebarPanel({
   hideActions,
   structureLocked,
   structureLockTitle,
+  organizeButtonLabel = "Organizar caso com Lex AI",
 }: {
   progress: number;
   pending: string[];
@@ -143,13 +144,14 @@ export function IntakeSidebarPanel({
   nextLabel: string;
   onDraft: () => void;
   onStructure: () => void;
-  loading: "draft" | "structure" | "hydrate" | null;
+  loading: "save" | "structure" | "hydrate" | null;
   /** Mobile: só resumo; botões ficam na barra inferior. */
   hideActions?: boolean;
-  /** Quando true, desativa só o botão "Estruturar com Lex AI" até o formulário estar completo. */
+  /** Quando true, desativa só o botão "Organizar caso com Lex AI" até o formulário estar completo. */
   structureLocked?: boolean;
   /** Texto para `title` / acessibilidade quando Lex está bloqueada. */
   structureLockTitle?: string;
+  organizeButtonLabel?: string;
 }) {
   return (
     <Card className="space-y-4 p-4 shadow-none md:p-5">
@@ -201,26 +203,31 @@ export function IntakeSidebarPanel({
         <div className="flex flex-col gap-2 pt-1">
           <Button
             type="button"
-            variant="secondary"
             className="h-auto min-h-[44px] w-full py-2.5 text-control font-semibold"
             disabled={loading !== null}
             onClick={onDraft}
-            data-testid="save-draft-sidebar"
+            data-testid="save-case-sidebar"
           >
-            {loading === "draft" ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
-            Salvar rascunho
+            {loading === "save" ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+            Salvar caso
           </Button>
           <Button
             type="button"
-            className="h-auto min-h-[44px] w-full bg-violet-600 py-2.5 text-control font-semibold text-white hover:bg-violet-500"
+            variant="outline"
+            className="h-auto min-h-[44px] w-full border-violet-500/40 py-2.5 text-control font-semibold text-violet-100 hover:bg-violet-500/10"
             disabled={loading !== null || Boolean(structureLocked)}
             title={structureLocked ? structureLockTitle : undefined}
             onClick={onStructure}
             data-testid="save-structure-sidebar"
           >
             {loading === "structure" ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}
-            Salvar e estruturar com Lex AI
+            {organizeButtonLabel}
           </Button>
+          <p className="text-xs leading-relaxed text-[color:var(--text-secondary)]">
+            {organizeButtonLabel.startsWith("Reorganizar")
+              ? "Atualiza partes, fatos, pedidos e riscos a partir da entrevista salva, preservando o relato."
+              : "Organize automaticamente partes, fatos, pedidos e riscos a partir do relato salvo. Opcional."}
+          </p>
         </div>
       ) : null}
     </Card>
@@ -233,12 +240,14 @@ export function IntakeMobileActionBar({
   loading,
   structureLocked,
   structureLockTitle,
+  organizeButtonLabel = "Organizar caso com Lex AI",
 }: {
   onDraft: () => void;
   onStructure: () => void;
-  loading: "draft" | "structure" | "hydrate" | null;
+  loading: "save" | "structure" | "hydrate" | null;
   structureLocked?: boolean;
   structureLockTitle?: string;
+  organizeButtonLabel?: string;
 }) {
   return (
     <div
@@ -249,23 +258,29 @@ export function IntakeMobileActionBar({
       <div className="mx-auto flex w-full max-w-lg gap-2">
         <Button
           type="button"
-          variant="secondary"
           className="h-11 min-h-[44px] flex-1 text-control font-medium"
           disabled={loading !== null}
           onClick={onDraft}
-          data-testid="save-draft-mobile"
+          data-testid="save-case-mobile"
         >
-          {loading === "draft" ? <Loader2 className="size-4 animate-spin" /> : "Rascunho"}
+          {loading === "save" ? <Loader2 className="size-4 animate-spin" /> : "Salvar caso"}
         </Button>
         <Button
           type="button"
-          className="h-11 min-h-[44px] flex-[1.35] text-[14px] font-semibold"
+          variant="outline"
+          className="h-11 min-h-[44px] flex-[1.35] border-violet-500/40 text-[14px] font-semibold"
           disabled={loading !== null || Boolean(structureLocked)}
           title={structureLocked ? structureLockTitle : undefined}
           onClick={onStructure}
           data-testid="save-structure-mobile"
         >
-          {loading === "structure" ? <Loader2 className="size-4 animate-spin" /> : "Estruturar"}
+          {loading === "structure" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : organizeButtonLabel.startsWith("Reorganizar") ? (
+            "Reorganizar"
+          ) : (
+            "Organizar"
+          )}
         </Button>
       </div>
     </div>

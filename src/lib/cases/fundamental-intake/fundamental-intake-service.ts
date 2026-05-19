@@ -259,17 +259,66 @@ export function mergeStructureWithForm(
   };
 }
 
+/** Campos do caso preenchidos de forma determinística a partir do formulário (sem IA). */
+export function buildDeterministicCaseFieldsFromIntake(form: FundamentalIntakeForm): {
+  narrative: string;
+  summary: string | null;
+  uf: string;
+  processNumber: string | null;
+  metaPatch: Record<string, unknown>;
+} {
+  const narrative = buildIntakeNarrativeForModel(form);
+  const area = form.attend.probableLegalArea.trim();
+  const relato =
+    form.narrative.whatHappened?.trim() ||
+    form.narrative.freeText?.trim() ||
+    form.goals.clientWants?.trim() ||
+    "";
+  let summary = [area, relato.slice(0, 200)].filter(Boolean).join(" — ").trim();
+  if (!summary) summary = form.attend.suggestedTitle.trim();
+  if (summary.length > 280) summary = `${summary.slice(0, 277)}…`;
+
+  let processNumber: string | null = null;
+  if (form.attend.preOrProcess === "existing_process") {
+    const cnjDigits = stripCnj(form.attend.cnj ?? "");
+    if (cnjDigits.length === 20) processNumber = formatCnj(form.attend.cnj);
+  }
+
+  const metaPatch: Record<string, unknown> = {
+    intakeForm: form,
+    intakeFormSavedAt: new Date().toISOString(),
+    intakeFormSource: "intake_form",
+  };
+  if (area) metaPatch["intakeLegalArea"] = area;
+  const vara = form.attend.tribunalVara.trim();
+  if (vara) metaPatch["intakeTribunalVara"] = vara;
+
+  return {
+    narrative,
+    summary: summary || null,
+    uf: form.attend.uf,
+    processNumber,
+    metaPatch,
+  };
+}
+
 export async function persistFundamentalDraft(args: {
   workspaceId: string;
   userId: string;
   caseId?: string | null;
   form: FundamentalIntakeForm;
 }): Promise<{ id: string }> {
-  const narrative = buildIntakeNarrativeForModel(args.form);
-  const metaPatch: Record<string, unknown> = {
-    intakeForm: args.form,
-    intakeFormSavedAt: new Date().toISOString(),
-    intakeFormSource: "intake_form",
+  const { narrative, summary, uf, processNumber, metaPatch } =
+    buildDeterministicCaseFieldsFromIntake(args.form);
+
+  const caseData = {
+    title: args.form.attend.suggestedTitle.trim(),
+    rawInput: narrative,
+    summary,
+    uf,
+    processNumber,
+    metadataJson: metaPatch as Prisma.InputJsonValue,
+    status: CaseStatus.INTAKE,
   };
 
   if (args.caseId) {
@@ -286,17 +335,15 @@ export async function persistFundamentalDraft(args: {
     await prisma.case.update({
       where: { id: args.caseId },
       data: {
-        title: args.form.attend.suggestedTitle.trim(),
-        rawInput: narrative,
+        ...caseData,
         metadataJson: meta as Prisma.InputJsonValue,
-        status: CaseStatus.INTAKE,
       },
     });
     await prisma.caseTimelineEvent.create({
       data: {
         caseId: args.caseId,
         kind: CaseTimelineKind.NOTE,
-        message: "Rascunho da entrevista fundamental atualizado.",
+        message: "Entrevista salva.",
         userId: args.userId,
         payloadJson: { source: "intake_form" },
       },
@@ -309,18 +356,14 @@ export async function persistFundamentalDraft(args: {
       data: {
         workspaceId: args.workspaceId,
         createdById: args.userId,
-        title: args.form.attend.suggestedTitle.trim(),
-        summary: null,
-        rawInput: narrative,
-        status: CaseStatus.INTAKE,
-        metadataJson: metaPatch as Prisma.InputJsonValue,
+        ...caseData,
       },
     });
     await tx.caseTimelineEvent.create({
       data: {
         caseId: c.id,
         kind: CaseTimelineKind.CASE_CREATED,
-        message: "Caso criado a partir da entrevista fundamental (rascunho).",
+        message: "Caso criado a partir da entrevista fundamental.",
         userId: args.userId,
       },
     });
@@ -328,7 +371,7 @@ export async function persistFundamentalDraft(args: {
       data: {
         caseId: c.id,
         kind: CaseTimelineKind.NOTE,
-        message: "Rascunho salvo — use «Salvar e estruturar com Lex AI» quando estiver pronto.",
+        message: "Entrevista salva. A organização automática com Lex AI é opcional.",
         userId: args.userId,
         payloadJson: { source: "intake_form" },
       },
