@@ -12,7 +12,7 @@
 -- PRÉ-REQUISITOS (aplicar manualmente no projeto Supabase de staging/prod):
 --   1. Bucket `documents` PRIVADO (public = false).
 --   2. RLS habilitado em storage.objects: `ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;`
---   3. Usuários Supabase Auth com o MESMO email da tabela `"User"` (sync em /api/auth/sync).
+--   3. `"User".id` = `auth.users.id` (sync em `/api/auth/sync` e `/auth/callback` via `syncAuthUserToDatabase`).
 --
 -- EXCEÇÃO OPERACIONAL: `service_role` bypassa RLS — usado apenas server-side
 -- (`src/lib/storage.ts`). Nunca expor SUPABASE_SERVICE_ROLE_KEY no cliente.
@@ -31,8 +31,9 @@ REVOKE ALL ON storage.objects FROM anon;
 REVOKE ALL ON storage.buckets FROM anon;
 
 -- -----------------------------------------------------------------------------
--- Helper: workspace IDs do usuário autenticado (JWT email ↔ Membership)
--- Ajuste se o vínculo Auth for auth.uid() = User.id em vez de email.
+-- Helper: workspace IDs do usuário autenticado (auth.uid() = User.id = Membership.userId)
+-- Preferir auth.uid() ao claim `email` do JWT: estável, não editável pelo cliente e
+-- alinhado ao sync Prisma (`src/lib/auth/sync-user.ts`).
 -- -----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.lex_auth_workspace_ids()
 RETURNS SETOF text
@@ -43,12 +44,11 @@ SET search_path = public
 AS $$
   SELECT m."workspaceId"::text
   FROM "Membership" m
-  INNER JOIN "User" u ON u.id = m."userId"
-  WHERE u.email = (auth.jwt() ->> 'email')
+  WHERE m."userId" = (auth.uid())::text
 $$;
 
 COMMENT ON FUNCTION public.lex_auth_workspace_ids() IS
-  'Workspace IDs do usuário Supabase Auth (via email JWT). Usado em policies do bucket documents.';
+  'Workspace IDs do JWT validado (auth.uid() = Membership.userId). Policies do bucket documents.';
 
 -- Primeiro segmento do path = workspaceId
 CREATE OR REPLACE FUNCTION public.lex_storage_workspace_prefix(object_name text)
@@ -85,7 +85,13 @@ AS $$
     AND public.lex_storage_workspace_prefix(object_name) ~ '^[a-zA-Z0-9_-]+$'
 $$;
 
--- Remover policies antigas com mesmo nome (idempotente em re-deploy manual)
+-- Remover policies legadas (dashboard manual / auth.uid direto em Membership)
+DROP POLICY IF EXISTS documents_read_own_workspace ON storage.objects;
+DROP POLICY IF EXISTS documents_write_own_workspace ON storage.objects;
+DROP POLICY IF EXISTS documents_update_own_workspace ON storage.objects;
+DROP POLICY IF EXISTS documents_delete_own_workspace ON storage.objects;
+
+-- Remover policies com mesmo nome antes de recriar (idempotente em re-deploy manual)
 DROP POLICY IF EXISTS documents_authenticated_select ON storage.objects;
 DROP POLICY IF EXISTS documents_authenticated_insert ON storage.objects;
 DROP POLICY IF EXISTS documents_authenticated_update ON storage.objects;

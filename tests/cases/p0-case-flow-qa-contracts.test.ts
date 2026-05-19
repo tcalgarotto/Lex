@@ -11,8 +11,10 @@ function read(rel: string): string {
  * mas impedem regressões óbvias (ordem, 409, sessão, fetch com cookies).
  */
 describe("P0 Case Flow QA — contratos no código-fonte", () => {
-  it("middleware: fallback getSession + 401 com SESSION_REQUIRED em /api", () => {
+  it("middleware: getUser em /api; getSession só fora de /api; SESSION_REQUIRED", () => {
     const m = read("src/proxy.ts");
+    expect(m).toMatch(/getUser\(\)/);
+    expect(m).toMatch(/!isApiRoute/);
     expect(m).toMatch(/getSession\(\)/);
     expect(m).toMatch(/SESSION_REQUIRED/);
     expect(m).toMatch(/Sessão não encontrada ou expirou/);

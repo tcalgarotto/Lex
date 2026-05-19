@@ -29,6 +29,9 @@ export async function ensureAuthUserForRead(authUser: AuthUser): Promise<void> {
 /**
  * Sincroniza o usuário Supabase Auth com a tabela `User` e garante workspace + membership.
  * Usar em login/callback/convites — não no render normal de listagens.
+ *
+ * **Contrato de segurança:** `User.id` é sempre `auth.users.id` (UUID do Supabase Auth).
+ * Storage RLS e APIs usam esse vínculo — não usar email do JWT como identidade primária.
  */
 export async function syncAuthUserToDatabase(authUser: AuthUser): Promise<{
   userId: string;

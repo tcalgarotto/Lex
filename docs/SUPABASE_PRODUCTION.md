@@ -34,9 +34,11 @@ Habilite Google/GitHub no painel Supabase (`Auth → Providers`).
 ## 3. Storage
 
 - Bucket: **`documents`** (privado).
-- Policies:
-  - `select_documents_owner` — SELECT permitido se `auth.uid()` for membro do workspace dono.
-  - `insert_documents_authenticated` — INSERT permitido para qualquer authenticated user (gravação real é via service role após validação do workspace).
+- Policies (fonte de verdade: `supabase/storage/documents_policies.sql`):
+  - `documents_authenticated_select` / `insert` / `update` / `delete` — tenant via `lex_storage_user_owns_prefix` + validação de path; membership via **`auth.uid()`** (ver `docs/security/AUTH_AND_STORAGE.md`).
+  - **Não** manter em paralelo policies `documents_*_own_workspace` (legado do dashboard).
+- Aplicar no SQL Editor: colar e executar o arquivo `supabase/storage/documents_policies.sql` inteiro após backup.
+- Auth: `User.id` = Supabase `auth.users.id`; sync em `/auth/callback` e `POST /api/auth/sync`.
 - Limite de tamanho: 50MB por upload.
 - MIME permitidos: `application/pdf`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `text/plain`.
 

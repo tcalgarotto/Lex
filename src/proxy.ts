@@ -159,6 +159,11 @@ export async function proxy(request: NextRequest) {
     },
   );
 
+  const pathname = request.nextUrl.pathname;
+  const isApiRoute = pathname.startsWith("/api");
+
+  // getUser() revalida o JWT com o Auth server (recomendado Supabase SSR).
+  // getSession() só lê o cookie — não usar para autorizar /api/* (evita sessão stale/forjada).
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
   try {
     const result = await supabase.auth.getUser();
@@ -166,9 +171,7 @@ export async function proxy(request: NextRequest) {
   } catch (err) {
     console.warn("[middleware] supabase.auth.getUser falhou:", (err as Error).message);
   }
-  // Fallback: alguns browsers/estados devolvem user null em getUser() mas sessão válida em cookie
-  // (ex.: refresh pendente). Evita 401 falso em POST /api/* para utilizador com sessão ativa na UI.
-  if (!user) {
+  if (!user && !isApiRoute) {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       user = sessionData.session?.user ?? null;
@@ -176,8 +179,6 @@ export async function proxy(request: NextRequest) {
       console.warn("[middleware] supabase.auth.getSession falhou:", (err as Error).message);
     }
   }
-
-  const pathname = request.nextUrl.pathname;
 
   // /api/* exigem auth, exceto webhooks/health
   if (pathname.startsWith("/api")) {

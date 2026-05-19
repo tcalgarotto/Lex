@@ -214,7 +214,7 @@ describe("FASE 3.2 — Storage policy remoto (Supabase client)", () => {
       report.fail("SR.5 user B não baixou fixture esperado", {
         severity: "P1",
         obtained: errorPayload(error),
-        fix: "Aplicar supabase/storage/documents_policies.sql e alinhar Auth email ↔ Membership",
+        fix: "Aplicar supabase/storage/documents_policies.sql (auth.uid() = Membership.userId)",
       });
     }
     expect(bytes).toBeGreaterThan(0);
