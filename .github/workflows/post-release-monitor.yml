@@ -1,0 +1,125 @@
+name: Post-release security monitor
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "Monitoring phase: t72, daily, weekly, manual, auto"
+        required: true
+        default: "manual"
+      base_url:
+        description: "Base URL"
+        required: true
+        default: "https://lex-navy.vercel.app"
+
+  schedule:
+    # Diário / T+72: 08:37 UTC (fora do minuto :00)
+    - cron: "37 8 * * *"
+    # Semanal: segundas 09:43 UTC
+    - cron: "43 9 * * 1"
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+concurrency:
+  group: post-release-security-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      POST_RELEASE_BASE_URL: ${{ github.event.inputs.base_url || 'https://lex-navy.vercel.app' }}
+      POST_RELEASE_PHASE: ${{ github.event.inputs.phase || 'auto' }}
+      POST_RELEASE_DEPLOYED_AT: "2026-05-19T18:24:00Z"
+      GITHUB_SHA: ${{ github.sha }}
+
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      RED_TEAM_CONFIRM_STAGING: "1"
+      E2E_BASE_URL: ${{ github.event.inputs.base_url || 'https://lex-navy.vercel.app' }}
+
+      SUPABASE_TEST_USER_A_EMAIL: ${{ secrets.SUPABASE_TEST_USER_A_EMAIL }}
+      SUPABASE_TEST_USER_A_PASSWORD: ${{ secrets.SUPABASE_TEST_USER_A_PASSWORD }}
+      SUPABASE_TEST_USER_B_EMAIL: ${{ secrets.SUPABASE_TEST_USER_B_EMAIL }}
+      SUPABASE_TEST_USER_B_PASSWORD: ${{ secrets.SUPABASE_TEST_USER_B_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run post-release monitor
+        run: npx tsx scripts/security-audit/post-release-monitor.ts
+
+      - name: Upload monitoring report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-release-monitor-report
+          path: |
+            docs/security/reports/post-release-monitor-*.md
+            POST_RELEASE_ROLLBACK_REQUIRED.md
+
+      - name: Commit monitoring report
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/security/POST_RELEASE_MONITORING.md docs/security/reports/ || true
+          if ! git diff --cached --quiet; then
+            git commit -m "docs(security): post-release monitoring report [skip ci]"
+            git push
+          fi
+
+      - name: Open issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORT=$(ls -t docs/security/reports/post-release-monitor-*.md 2>/dev/null | head -1)
+          if [ -z "$REPORT" ]; then
+            echo "No report file" > /tmp/post-release-failure.md
+            REPORT=/tmp/post-release-failure.md
+          fi
+          gh issue create \
+            --title "Post-release security monitor failed (P0/P1 or critical check)" \
+            --body-file "$REPORT" \
+            || gh issue create \
+              --title "Post-release security monitor failed (P0/P1 or critical check)" \
+              --body "Ver artifact post-release-monitor-report e POST_RELEASE_ROLLBACK_REQUIRED.md"

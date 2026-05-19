@@ -105,7 +105,7 @@ Amostra manual: mensagens `env-normalize`, Inngest, `GET /api/health` 200.
 |--------|-------------|--------|--------|----------|-----------|-------|
 | T+0–1h | Cursor Agent | PASSOU | PASSOU* | PASSOU* | — | *smoke/histórico |
 | T+24h | Cursor Agent (5.9 + **5.9.1**) | PASSOU† | PASSOU | PARCIAL | PASSOU | †Playwright/Inngest corrigidos em 5.9.1 |
-| T+72h | _pendente_ (2026-05-22) | | | | | |
+| T+72h | **agendado 2026-05-22** (cron) | — | — | — | — | validação script 5.10 local 2026-05-19: [relatório](docs/security/reports/post-release-monitor-2026-05-19T22-27.md) (core PASSOU; Vercel/Sentry exigem secrets no CI) |
 
 ---
 
@@ -223,6 +223,28 @@ Sem `--project=chromium-auth` (ou sem `SUPABASE_TEST_USER_*` / `E2E_USER_*`), o 
 |--------|------------|
 | T+0–1h (5.8) | NÃO |
 | T+24h (5.9) | NÃO |
+| T+72h dry-run script (5.10 local) | NÃO |
+
+---
+
+## FASE 5.10 — Cron automático (validação local 2026-05-19)
+
+Script: `scripts/security-audit/post-release-monitor.ts` — workflow `.github/workflows/post-release-monitor.yml`.
+
+| Check (local, sem `VERCEL_TOKEN` / `SENTRY_*`) | Resultado |
+|--------------------------------------------------|-----------|
+| `GET /api/ready` / `health` | PASSOU |
+| Playwright prod (`chromium-auth`, 13 cenários) | PASSOU |
+| `security:logs:review` | PASSOU |
+| `security:sample-observability-logs` | PASSOU |
+| `npm audit` | PASSOU (0) |
+| Vercel logs / Inngest | PENDENTE (secrets no CI) |
+| Sentry API | NÃO EXECUTADO (secrets no CI) |
+| Langfuse | PARCIAL (smoke OK; traces reais pendentes) |
+
+**Exit code:** 0 (sem P0/P1 em checks core).  
+**Relatório:** `docs/security/reports/post-release-monitor-2026-05-19T22-27.md`  
+**Próxima rodada oficial T+72h:** 2026-05-22 (~08:37 UTC, fase `auto` → `t72`).
 
 ---
 
@@ -238,3 +260,32 @@ E2E_BASE_URL=https://lex-navy.vercel.app npx playwright test \
 npx vercel logs https://lex-navy.vercel.app --since 24h --query inngest
 npm run observability:langfuse:smoke
 ```
+
+
+## Cron automático (FASE 5.10)
+
+| Frequência | Janela | Ação |
+|------------|--------|------|
+| Manual | quando necessário | `workflow_dispatch` |
+| Diário 08:37 UTC | 1ª semana pós-RC | health, logs, Sentry, Langfuse, DB, Playwright |
+| Semanal 09:43 UTC (seg) | semanas 2–4 pós-RC | idem |
+| T+72h | ~72h após deploy | rodada obrigatória (`POST_RELEASE_PHASE=t72`) |
+
+GitHub Actions usa **UTC**; o horário real pode atrasar alguns minutos — a evidência é o relatório em `docs/security/reports/`.
+
+Workflow: `.github/workflows/post-release-monitor.yml`
+
+### Secrets GitHub (Actions)
+
+Configure em **Settings → Secrets and variables → Actions** (nunca commitar valores):
+
+- `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`
+- `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`
+- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`
+- `DATABASE_URL`, `DIRECT_URL` (opcional)
+- `DEEPSEEK_API_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_TEST_USER_A_EMAIL`, `SUPABASE_TEST_USER_A_PASSWORD`
+- `SUPABASE_TEST_USER_B_EMAIL`, `SUPABASE_TEST_USER_B_PASSWORD`
+
+Scripts: `npm run security:post-release:monitor`, `security:post-release:t72`, etc.
