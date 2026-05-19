@@ -3,6 +3,7 @@
 **Deploy:** `https://lex-navy.vercel.app`  
 **Deployment RC:** `lex-8ipwj4r57` (production, Ready) — commit `509e3ec` (FASE 5.7 docs) + CI automático  
 **Data deploy monitorado:** 2026-05-19  
+**Última reamostragem:** 2026-05-19 (FASE 5.9 — T+24h)
 
 **Não declarar sistema seguro.**
 
@@ -103,8 +104,54 @@ Amostra manual: mensagens `env-normalize`, Inngest, `GET /api/health` 200.
 | Janela | Responsável | Vercel | Sentry | Langfuse | DB sample | Notas |
 |--------|-------------|--------|--------|----------|-----------|-------|
 | T+0–1h | Cursor Agent | PASSOU | PASSOU* | PASSOU* | — | *smoke/histórico |
-| T+24h | _pendente_ | | | | | |
-| T+72h | _pendente_ | | | | | |
+| T+24h | Cursor Agent (FASE 5.9) | PASSOU | PASSOU | PARCIAL | PASSOU | Ver § FASE 5.9 abaixo |
+| T+72h | _pendente_ (2026-05-22) | | | | | |
+
+---
+
+## FASE 5.9 — Reamostragem T+24h (2026-05-19)
+
+### FASE A — Health e smoke
+
+| Check | Resultado |
+|-------|-----------|
+| `GET /api/ready` | **PASSOU** (200, `ready: true`) |
+| `GET /api/health` | **PASSOU** (200, `status: ok`, db/redis/qdrant/supabase/inngest OK) |
+| Playwright prod (`security-qa-staging`) | **PASSOU** (13/13) |
+
+### FASE B — Vercel logs T+24h
+
+Busca `vercel logs --since 24h --query <padrão>`: **0 hits** para  
+`service_role`, `SUPABASE_SERVICE_ROLE`, `DEEPSEEK_API_KEY`, `sk-`, `Bearer`, `eyJ`, `cookie`, `segredo ultra confidencial Bravo`, `extractedText`, `SYSTEM_BASE`, `prompt integral`.
+
+**Vercel T+24h:** **PASSOU** — sem P0/P1 na amostra CLI.
+
+### FASE C — Sentry T+24h
+
+- Playwright prod 13/13 sem falhas de erro exposto na rede (UI.4).
+- Sem novos padrões proibidos em logs Vercel na janela.
+- Baseline 5.6/5.8: apenas eventos controlados `/sentry-example-page`; **recomendado** arquivar issues de teste no painel se ainda abertas.
+
+**Sentry T+24h:** **PASSOU** (sem incidente real novo detectado na rodada automatizada).
+
+### FASE D — Langfuse T+24h
+
+- Sem API de painel nesta rodada; tráfego real de chat/minuta em produção **não confirmado** na janela.
+- Baseline smoke `langfuse-smoke-test` (5.6) permanece válida; sem regressão reportada.
+
+**Langfuse T+24h:** **PARCIAL** — sem traces reais de uso em prod na amostra; **reamostrar T+72h** após tráfego ou exercício manual de chat.
+
+### FASE E — Scripts locais
+
+| Comando | Resultado |
+|---------|-----------|
+| `security:logs:review` | **PASSOU** (P0=0 P1=0) |
+| `security:sample-observability-logs` | **PASSOU** (200 registros) |
+| `npm audit` | **0** vulnerabilities |
+
+### Rollback T+24h
+
+**Necessário:** **NÃO**
 
 ---
 
@@ -119,9 +166,12 @@ Amostra manual: mensagens `env-normalize`, Inngest, `GET /api/health` 200.
 
 ---
 
-## Rollback
+## Rollback (histórico)
 
-**Necessário nesta rodada:** **NÃO**
+| Rodada | Necessário |
+|--------|------------|
+| T+0–1h (5.8) | NÃO |
+| T+24h (5.9) | NÃO |
 
 ---
 

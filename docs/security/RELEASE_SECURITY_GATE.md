@@ -2,7 +2,7 @@
 
 Checklist objetiva antes de promover build para produção. **Não substitui** revisão humana nem auditoria legal.
 
-Última atualização: **2026-05-19** (FASE 5.8 — deploy monitorado RC em produção).
+Última atualização: **2026-05-19** (FASE 5.9 — reamostragem T+24h RC).
 
 ---
 
@@ -81,7 +81,8 @@ Execução isolada e suíte geral **passam** quando a key está carregada via `.
 | Deploy | `https://lex-navy.vercel.app` — deploy `lex-8ipwj4r57` Ready | **FEITO** |
 | Smoke | Playwright prod 13/13 | **PASSOU** |
 | T+0–1h | Vercel logs sem P0/P1; Sentry/Langfuse reamostra | Ver `POST_RELEASE_MONITORING.md` § D |
-| T+24h / T+72h | Reamostragem + scripts security | **Agendado** |
+| T+24h | Reamostragem + scripts | **FEITO** — `POST_RELEASE_MONITORING.md` § 5.9 |
+| T+72h | Reamostragem + scripts | **Agendado** (2026-05-22) |
 | Rollback | `PRODUCTION_ROLLBACK_RUNBOOK.md` | **Não acionado** |
 
 ---
