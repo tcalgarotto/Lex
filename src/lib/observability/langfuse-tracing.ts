@@ -1,5 +1,28 @@
+import { after } from "next/server";
 import { propagateAttributes, setActiveTraceIO } from "@langfuse/tracing";
 import { flushLangfuseOtel, isLangfuseOtelEnabled } from "@/lib/observability/langfuse-otel";
+
+function isAfterOutsideRequestScope(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message.includes("outside a request scope") ||
+      error.message.includes("next-dynamic-api-wrong-context"))
+  );
+}
+
+/**
+ * Agenda flush após a resposta (serverless). Fora de request scope (ex.: vitest) é noop.
+ */
+export function scheduleLangfuseFlush(): void {
+  if (!isLangfuseOtelEnabled()) return;
+  try {
+    after(async () => {
+      await flushLangfuseTraces();
+    });
+  } catch (error) {
+    if (!isAfterOutsideRequestScope(error)) throw error;
+  }
+}
 
 export type LangfuseRouteContext = {
   traceName: string;

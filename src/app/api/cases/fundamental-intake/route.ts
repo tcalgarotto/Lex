@@ -10,10 +10,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { z } from "zod";
@@ -146,9 +145,7 @@ export async function POST(req: Request) {
     }
 
     assertDeepSeekConfigured();
-    after(async () => {
-      await flushLangfuseTraces();
-    });
+    scheduleLangfuseFlush();
 
     const structured = await withLangfuseRouteContext(
       {

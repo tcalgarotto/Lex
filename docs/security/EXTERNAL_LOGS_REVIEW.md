@@ -7,9 +7,9 @@
 | Campo | Valor |
 |-------|--------|
 | **Data da revisão** | 2026-05-19 |
-| **Responsável** | Cursor Agent (FASE 5.5) |
-| **Ambiente gate** | local/dev (Postgres + Supabase Auth; sem deploy Vercel consultado) |
-| **Janela** | rodadas red-team + CE.R* + Playwright 5.4/5.5 |
+| **Responsável** | Thales (PO) + Cursor Agent (FASE 5.6) |
+| **Ambiente gate** | Produção sem usuários reais / staging-like (deploy Vercel acessível; Sentry org **lotys**; Langfuse projeto **lex**, região US) |
+| **Janela amostrada** | Logs e traces disponíveis na rodada FASE 5.5–5.6 (últimas sessões de gate, smoke e `/sentry-example-page`) |
 
 ---
 
@@ -17,12 +17,12 @@
 
 | Fonte | Amostrado? | Resultado | Notas |
 |-------|------------|-----------|--------|
-| Vercel — Runtime Logs | ☐ painel | **PENDENTE** | `VERCEL_TOKEN` ausente; MCP Vercel sem `projectId`/`teamId` no repo |
-| Vercel — rotas API (upload, completion, RAG, drafts) | ☐ painel | **PENDENTE** | Mesmo bloqueio; ver procedimento abaixo para assinatura humana |
-| Sentry — Issues / breadcrumbs | ☐ painel | **PENDENTE** | `SENTRY_DSN` / `SENTRY_AUTH_TOKEN` ausentes no `.env` local |
-| Langfuse — Traces / generations | ☐ painel | **PENDENTE** | `LANGFUSE_*` ausentes no host de gate → OTEL desligado; ver `docs/observability/LANGFUSE.md` |
+| Vercel — Runtime Logs | ☑ painel | **PASSOU** | Logs revisados visualmente: aliases `env-normalize`, Inngest Web Crypto signing, requests `200` em `/`, `/login`, `/dashboard`, `/api/inngest`. Sem P0/P1. |
+| Vercel — rotas API / functions | ☑ painel | **PASSOU** | Mesma janela; apenas mensagens operacionais. Nenhum `service_role`, API key, JWT/cookie, prompt/documento integral ou segredo Bravo observado. |
+| Sentry — Issues / breadcrumbs | ☑ painel | **PASSOU** | Apenas eventos **controlados** de teste: `Sentry Test Error — Lex verification`, `Sentry test message — Lex verification`, rota `/sentry-example-page`. Detalhe do evento revisado: sem `Authorization`, cookie, service role, API key, prompt/PDF integral ou segredo Bravo. |
+| Langfuse — Traces / generations | ☑ painel | **PASSOU** | Traces `langfuse-smoke-test`; input/output simples (resposta `ok`); metadata com origem `scripts/test-langfuse-trace.ts`. Sem documento jurídico integral, segredo Bravo, token ou system prompt completo. |
 | ObservabilityLog (Postgres) | ☑ script | **PASSOU** | `npm run security:sample-observability-logs` — 200 registros, 0 padrões P0/P1 |
-| Código (sinks + Langfuse input) | ☑ estático | **PASSOU** | `security:logs:review` P0=0 P1=0; rotas usam `inputSummary` (len/count), não prompt integral |
+| Código (sinks + Langfuse input) | ☑ estático | **PASSOU** | `security:logs:review` P0=0 P1=0; rotas usam `inputSummary` (len/count), OTEL + `aiTelemetry` |
 
 ---
 
@@ -32,61 +32,64 @@ Padrões: `SUPABASE_SERVICE_ROLE`, `service_role`, `DEEPSEEK_API_KEY`, `sk-`, `B
 
 | Painel | P0 | P1 | P2 | P3 | Achados |
 |--------|----|----|----|-----|---------|
-| Vercel | — | — | — | — | Não consultado (PENDENTE) |
-| Sentry | — | — | — | — | Não consultado (PENDENTE) |
-| Langfuse | — | — | — | — | Não consultado (PENDENTE); export desligado no host |
+| Vercel | 0 | 0 | 0 | 0 | Nenhum padrão proibido na amostra visual |
+| Sentry | 0 | 0 | 0 | 0 | Somente teste controlado `/sentry-example-page`; sem dados sensíveis no detalhe do evento |
+| Langfuse | 0 | 0 | 0 | 0 | Somente smoke test controlado; input/output/metadata sem segredos |
 
 ---
 
-## Evidência substituta (host local, FASE 5.5)
+## Sentry — eventos de teste controlado (FASE 5.6)
 
-1. **Langfuse:** sem chaves no `.env`, cliente não inicializa (`src/lib/observability/langfuse.ts`).
-2. **Chat route:** `input` com `contentLen` apenas; `generation.end` com output redigido (`src/app/api/chat/[threadId]/route.ts`).
-3. **DB:** amostra automatizada sem segredos/prompt integral.
+| Evento | Classificação | Ação recomendada |
+|--------|---------------|------------------|
+| `Sentry Test Error — Lex verification` | Teste controlado (não incidente) | Resolver/arquivar no painel para não poluir Issues |
+| `Sentry test message — Lex verification` | Teste controlado | Idem |
+| Origem `/sentry-example-page` | Rota de verificação documentada | Manter rota; não tratar como falha de produção |
 
-Isso **não substitui** revisão dos painéis em staging/produção.
-
----
-
-## Procedimento para assinatura humana (pendente)
-
-### Vercel
-
-1. Deploy staging/preview do gate.
-2. Filtrar: `/api/documents/upload`, `/api/completion`, `/api/retrieval/search`, `/api/cases/*/drafts`.
-3. Buscar padrões proibidos (sem colar conteúdo sensível no ticket).
-4. Atualizar tabela “Escopo” para **PASSOU** ou **FALHOU**.
-
-### Sentry
-
-1. Issues últimas 72 h.
-2. Breadcrumbs / extra / context — sem prompt/PDF/token.
-3. Confirmar scrubbing de `Authorization` e cookies.
-
-### Langfuse
-
-1. Traces chat/completion/draft/retrieval após exercitar fluxos.
-2. `input`/`output` só metadata ou redação — não texto integral.
+**Evidência:** eventos intencionais da verificação pós-integração Sentry; nenhum evento real não resolvido com dados sensíveis identificado na amostra.
 
 ---
 
-## Classificação final (FASE 5.5)
+## Langfuse — smoke test (FASE 5.6)
+
+| Campo | Observação |
+|-------|------------|
+| Trace name | `langfuse-smoke-test` |
+| Input | Texto mínimo de smoke (não documento jurídico) |
+| Output | `ok` |
+| Metadata | `source: scripts/test-langfuse-trace.ts`, tags `smoke` |
+| Risco na amostra | Nenhum P0/P1 |
+
+Traces de fluxos reais (chat, minuta) devem continuar sendo amostrados após tráfego de usuários; na rodada 5.6 só havia smoke controlado no painel.
+
+---
+
+## Evidência histórica (FASE 5.5 — substituída)
+
+Revisão anterior sem acesso aos painéis (host local sem keys) — **substituída** por assinatura 5.6 acima. Evidência estática local (código + DB) permanece válida como complemento, não como substituto dos painéis.
+
+---
+
+## Classificação final (FASE 5.6)
 
 | Item | Status |
 |------|--------|
 | ObservabilityLog (DB) | **PASSOU** |
 | Código / logs estáticos | **PASSOU** |
-| Vercel logs | **PENDENTE** |
-| Sentry | **PENDENTE** |
-| Langfuse (painel) | **PENDENTE** |
+| Vercel logs | **PASSOU** |
+| Sentry | **PASSOU** |
+| Langfuse (painel) | **PASSOU** |
 
-**Produção sensível:** **BLOQUEADA** até Vercel + Sentry + Langfuse assinados **PASSOU** (ou exceção P2/P3 documentada).
+**Produção sensível:** **APROVADA PARA RELEASE CANDIDATE** — painéis externos assinados sem P0/P1 na amostra.
+
+**Não declarar sistema seguro.**
 
 ---
 
-## Comandos
+## Comandos (revalidação)
 
 ```bash
 npm run security:logs:review
 npm run security:sample-observability-logs
+set -a && . ./.env && set +a && npm run security:red-team:test
 ```

@@ -6,10 +6,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { CaseTimelineKind, Prisma } from "@prisma/client";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { getWorkspaceContext } from "@/lib/auth/session";
@@ -60,9 +59,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    after(async () => {
-      await flushLangfuseTraces();
-    });
+    scheduleLangfuseFlush();
 
     const draftingStrategy = await withLangfuseRouteContext(
       {

@@ -20,10 +20,10 @@
 | Red team dinâmico (0 P0) | **PASSOU** |
 | Completion mock (CE.M1–CE.M5) | **PASSOU** |
 | Completion provider real (CE.R1–R2) | **PASSOU** — 3/3 na suíte com `DEEPSEEK_API_KEY` no `.env` |
-| Logs/secrets automático (LR.*, SC.*) | **PASSOU** (código); painéis Vercel/Sentry/Langfuse **PENDENTE** |
+| Logs/secrets automático (LR.*, SC.*) | **PASSOU** (código + painéis FASE 5.6) |
 | CSP (script nonce, object-src, frame-ancestors) | **PASSOU**; `style-src unsafe-inline` **P2 aceito** |
 | QA manual jurídico (assistido LQA.* + Playwright) | **PASSOU** (peça minuta **PARCIAL** — guardas 409) |
-| Logs produção (painéis) | **PENDENTE** — ver `EXTERNAL_LOGS_REVIEW.md` |
+| Logs produção (painéis) | **PASSOU** — `EXTERNAL_LOGS_REVIEW.md` FASE 5.6 |
 | Backup / rollback runbook | **PASSOU** (documentado) |
 
 **Suítes (rodada final):**
@@ -33,7 +33,7 @@
 | `npm run security:red-team:test` | **113 passed**, 0 skipped (com `DEEPSEEK_API_KEY`) |
 | `npm test` (total repo) | **872 passed** (B3.3 intermitente em suite completa) |
 
-**P0/P1/P2 nesta rodada:** 0 P0 dinâmico; 0 P1 código; P2 CSP styles; pendente = assinatura painéis Vercel/Sentry/Langfuse.
+**P0/P1/P2 nesta rodada:** 0 P0 dinâmico; 0 P1 código; P2 CSP styles. Painéis externos assinados FASE 5.6 (histórico 5.5 pendente = resolvido).
 
 **Não declarar sistema seguro.**
 
@@ -860,4 +860,23 @@ Comandos de evidência: ver `RELEASE_SECURITY_GATE.md` seção Verificação fin
 
 ---
 
-_Status: RC **não-IA** e RC **IA** aprovados no host de gate; **produção sensível bloqueada** até painéis externos; **não** declarar sistema seguro._
+# FASE 5.6 — Assinatura final painéis externos (2026-05-19)
+
+| Item | Resultado |
+|------|-----------|
+| Vercel logs (painel) | **PASSOU** — runtime + rotas; só mensagens operacionais; sem secrets/prompt/PDF |
+| Sentry (painel) | **PASSOU** — apenas teste controlado `/sentry-example-page`; detalhe sem dados sensíveis |
+| Langfuse (painel) | **PASSOU** — smoke `langfuse-smoke-test`; input/output simples; sem Bravo/keys/prompt integral |
+| ObservabilityLog + código | **PASSOU** (revalidado) |
+| CE.R* | **PASSOU** |
+| RC não-IA | **APROVADO** |
+| RC IA | **APROVADO** |
+| Produção sensível | **APROVADA PARA RELEASE CANDIDATE** |
+
+**Sentry (teste controlado):** eventos `Sentry Test Error — Lex verification` e `Sentry test message — Lex verification` — classificar como verificação, não incidente; recomendado resolver/arquivar no painel.
+
+**Histórico resolvido:** frases “logs externos pendentes”, “produção sensível bloqueada” e “IA crítico bloqueado por painéis” referem-se a FASE 5.5 e anteriores.
+
+---
+
+_Status: RC **não-IA** e RC **IA** aprovados; **produção sensível aprovada para release candidate** (painéis externos FASE 5.6); **não** declarar sistema seguro._

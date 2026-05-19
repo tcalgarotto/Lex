@@ -2,7 +2,7 @@
 
 Checklist objetiva antes de promover build para produção. **Não substitui** revisão humana nem auditoria legal.
 
-Última atualização: **2026-05-19** (FASE 5.5 — CE.R* na suíte completa + assinatura logs externos).
+Última atualização: **2026-05-19** (FASE 5.6 — painéis externos assinados + produção sensível RC).
 
 ---
 
@@ -18,7 +18,7 @@ Checklist objetiva antes de promover build para produção. **Não substitui** r
 | Completion mock (CE.M*) | **PASSOU** |
 | Secrets/logs estático | **PASSOU** — P0=0 P1=0 |
 | ObservabilityLog (DB) | **PASSOU** |
-| Vercel / Sentry / Langfuse (painéis) | **PENDENTE** — `EXTERNAL_LOGS_REVIEW.md` |
+| Vercel / Sentry / Langfuse (painéis) | **PASSOU** — `EXTERNAL_LOGS_REVIEW.md` (FASE 5.6) |
 | QA LQA + Playwright | **PASSOU** — 11/11 + 13/13 |
 | Peça E2E (minuta API) | **PARCIAL** — sem vazamento Bravo; geração LLM completa pode retornar 409 (guardas drafting) |
 | npm audit | **0** vulnerabilidades |
@@ -46,9 +46,9 @@ Execução isolada e suíte geral **passam** quando a key está carregada via `.
 
 | Linha | Decisão | Motivo |
 |-------|---------|--------|
-| **RC não-IA** | **APROVADO** | Storage, SR.*, RAG, red-team, LQA, Playwright, logs estáticos, DB sample, npm audit |
-| **RC IA** | **APROVADO** | CE.R* PASSOU (provider real); CE.M* PASSOU; peça com ressalva 409/guardas |
-| **Produção sensível** | **BLOQUEADO** | Vercel, Sentry e Langfuse **PENDENTE** no painel (sem credenciais de consulta no host FASE 5.5) |
+| **RC não-IA** | **APROVADO** | Storage, SR.*, RAG, red-team, LQA, Playwright, logs estáticos, DB sample, npm audit, painéis externos |
+| **RC IA** | **APROVADO** | CE.R* PASSOU (provider real); CE.M* PASSOU; painéis externos; peça com ressalva 409/guardas |
+| **Produção sensível** | **APROVADA PARA RELEASE CANDIDATE** | Vercel, Sentry e Langfuse assinados **PASSOU** sem P0/P1 na amostra (`EXTERNAL_LOGS_REVIEW.md` FASE 5.6) |
 
 ---
 
@@ -58,7 +58,7 @@ Execução isolada e suíte geral **passam** quando a key está carregada via `.
 |---|----------|---------------------|
 | 1–22 | (inalterado) | ver tabelas anteriores |
 | 20 | Completion E2E provider | `completion-e2e-provider` + `DEEPSEEK_API_KEY` |
-| 23 | Painéis externos | `EXTERNAL_LOGS_REVIEW.md` assinado PASSOU |
+| 23 | Painéis externos | `EXTERNAL_LOGS_REVIEW.md` assinado **PASSOU** |
 
 ---
 
@@ -67,11 +67,11 @@ Execução isolada e suíte geral **passam** quando a key está carregada via `.
 - P0 dinâmico em red-team ou secrets scan.
 - Cross-tenant em storage/RAG/completion.
 - Release **IA crítico** sem `CE.R*` (**atendido** no host com key).
-- **Produção sensível** sem Vercel + Sentry + Langfuse **PASSOU** no painel.
+- **Produção sensível** sem Vercel + Sentry + Langfuse **PASSOU** no painel (**atendido** FASE 5.6).
 
 ---
 
-## Verificação final (FASE 5.5 — 2026-05-19)
+## Verificação final (FASE 5.6 — 2026-05-19)
 
 ```bash
 npm run security:storage:hardening-check
@@ -94,7 +94,7 @@ set -a && . ./.env && set +a && npx playwright test tests/e2e/security-qa-stagin
 | `lint` / `typecheck` | OK |
 | `npm audit` | 0 vulnerabilities |
 | Playwright staging | **13 passed** |
-| Painéis externos | **PENDENTE** |
+| Painéis externos | **PASSOU** (FASE 5.6) |
 
 ---
 

@@ -1,9 +1,8 @@
 import { streamText } from "ai";
-import { after } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
@@ -57,9 +56,7 @@ export async function POST(req: Request) {
   const styleBlock = styleInjection(style?.profileJson ?? null);
   const grounding = groundingFromChunks(chunks);
 
-  after(async () => {
-    await flushLangfuseTraces();
-  });
+  scheduleLangfuseFlush();
 
   return await withLangfuseRouteContext(
     {

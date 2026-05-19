@@ -5,10 +5,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { z } from "zod";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { CaseDraftStatus, CaseTimelineKind, Prisma } from "@prisma/client";
@@ -64,9 +63,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Body inválido", detail: parsed.error.message }, { status: 400 });
   }
 
-  after(async () => {
-    await flushLangfuseTraces();
-  });
+  scheduleLangfuseFlush();
 
   const out = await withLangfuseRouteContext(
     {

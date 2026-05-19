@@ -7,10 +7,9 @@
  */
 
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { CaseTimelineKind, Prisma } from "@prisma/client";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { getWorkspaceContext } from "@/lib/auth/session";
@@ -37,9 +36,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!c) return NextResponse.json({ error: "Caso não encontrado" }, { status: 404 });
 
   try {
-    after(async () => {
-      await flushLangfuseTraces();
-    });
+    scheduleLangfuseFlush();
 
     const draftingStrategy = await withLangfuseRouteContext(
       {

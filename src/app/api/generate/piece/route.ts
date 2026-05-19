@@ -1,9 +1,8 @@
 import { generateText, streamText } from "ai";
-import { after } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
@@ -91,9 +90,7 @@ export async function POST(req: Request) {
     return new Response(diagnostic, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }
 
-  after(async () => {
-    await flushLangfuseTraces();
-  });
+  scheduleLangfuseFlush();
 
   return await withLangfuseRouteContext(
     {

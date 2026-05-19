@@ -1,5 +1,4 @@
 import { createUIMessageStream, createUIMessageStreamResponse, streamText } from "ai";
-import { after } from "next/server";
 import { ChatRole } from "@prisma/client";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { enforceAiRouteRateLimit } from "@/lib/rate-limit-ai";
@@ -18,7 +17,7 @@ import { recordCostEntry } from "@/lib/cost/record";
 import { recordObservabilityLog } from "@/lib/observability/record";
 import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { classifyLegalQuery } from "@/lib/legal/query-classifier";
@@ -133,9 +132,7 @@ Depois disso, é PROIBIDO afirmar artigo, prazo, súmula, precedente, tribunal, 
     });
   }
 
-  after(async () => {
-    await flushLangfuseTraces();
-  });
+  scheduleLangfuseFlush();
 
   const tLlm = Date.now();
   const citations = chunks.map((c, i) => {

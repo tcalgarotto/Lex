@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
-import { after } from "next/server";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { aiTelemetry } from "@/lib/ai/ai-telemetry";
 import {
-  flushLangfuseTraces,
+  scheduleLangfuseFlush,
   withLangfuseRouteContext,
 } from "@/lib/observability/langfuse-tracing";
 import { prisma } from "@/lib/prisma";
@@ -148,9 +147,7 @@ Gere agora a peça do tipo: ${kind}.`;
       "- Requerimentos finais",
     ].join("\n");
   } else {
-    after(async () => {
-      await flushLangfuseTraces();
-    });
+    scheduleLangfuseFlush();
 
     const tLlm = Date.now();
     const res = await generateText({
