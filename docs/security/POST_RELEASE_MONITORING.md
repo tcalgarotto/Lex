@@ -104,7 +104,7 @@ Amostra manual: mensagens `env-normalize`, Inngest, `GET /api/health` 200.
 | Janela | Responsável | Vercel | Sentry | Langfuse | DB sample | Notas |
 |--------|-------------|--------|--------|----------|-----------|-------|
 | T+0–1h | Cursor Agent | PASSOU | PASSOU* | PASSOU* | — | *smoke/histórico |
-| T+24h | Cursor Agent (FASE 5.9) | PASSOU | PASSOU | PARCIAL | PASSOU | Ver § FASE 5.9 abaixo |
+| T+24h | Cursor Agent (5.9 + **5.9.1**) | PASSOU† | PASSOU | PARCIAL | PASSOU | †Playwright/Inngest corrigidos em 5.9.1 |
 | T+72h | _pendente_ (2026-05-22) | | | | | |
 
 ---
@@ -117,7 +117,7 @@ Amostra manual: mensagens `env-normalize`, Inngest, `GET /api/health` 200.
 |-------|-----------|
 | `GET /api/ready` | **PASSOU** (200, `ready: true`) |
 | `GET /api/health` | **PASSOU** (200, `status: ok`, db/redis/qdrant/supabase/inngest OK) |
-| Playwright prod (`security-qa-staging`) | **PASSOU** (13/13) |
+| Playwright prod (`security-qa-staging`) | **PASSOU** (13/13) — ver comando canônico § 5.9.1 |
 
 ### FASE B — Vercel logs T+24h
 
@@ -155,6 +155,57 @@ Busca `vercel logs --since 24h --query <padrão>`: **0 hits** para
 
 ---
 
+## FASE 5.9.1 — Correção evidência T+24h (Playwright + Inngest)
+
+### Playwright T+24h — causa do “No tests found”
+
+O spec `tests/e2e/security-qa-staging.spec.ts` existe, mas só roda no projeto **`chromium-auth`** (depende de `auth.setup.ts` + credenciais no `.env`).
+
+**Comando canônico (produção):**
+
+```bash
+set -a && . ./.env && set +a
+E2E_BASE_URL=https://lex-navy.vercel.app npx playwright test \
+  --config=playwright.config.ts \
+  --project=chromium-auth \
+  tests/e2e/security-qa-staging.spec.ts
+```
+
+Sem `--project=chromium-auth` (ou sem `SUPABASE_TEST_USER_*` / `E2E_USER_*`), o Playwright pode reportar **“No tests found”**.
+
+**Reexecução 5.9.1:** **PASSOU** — **13/13** (2026-05-19).
+
+### `/api/inngest` — 500 / 400 / 206 (investigado)
+
+| Status | Mensagem (amostra Vercel 24h) | Classificação |
+|--------|------------------------------|---------------|
+| GET/PUT **200** | sync Inngest (`env-normalize`) | OK — chaves presentes |
+| POST **206** | steps Inngest (pipeline parcial) | **P3** operacional esperado |
+| POST **400** / **206** | `NonRetriableError: PDF_NO_TEXT` | **P3** — PDF sem texto (uploads de teste QA) |
+| POST **500** | sem detalhe na UI CLI; correlaciona com falhas de step | **P2** operacional — investigar job específico se recorrente |
+
+**Config produção (`/api/health`):** `inngest.ok: true`, `hasEventKey: true`, `hasSigningKey: true`, `appId: lex-production`.
+
+**Não é:** “No signing key” / “No event key” em produção (sync 200). O truncamento `Error [No...` nos logs = **`NonRetriableError`** (ex.: `PDF_NO_TEXT`), não vazamento de secret.
+
+**Ação:** nenhuma correção de env obrigatória para RC. Opcional: melhorar logging do step que retorna 500; tratar thumbnail `Event key not found` no **send** client-side como não-fatal (já logado).
+
+**Inngest 500/400:** **EXPLICADO** (sem P0/P1; sem rollback).
+
+### Revalidação 5.9.1
+
+| Check | Resultado |
+|-------|-----------|
+| `/api/ready` | 200 |
+| `/api/health` | `ok`, flags prod |
+| Playwright (comando acima) | **13/13** |
+| Vercel P0/P1 (24h) | **0** hits |
+| Langfuse smoke | **PASSOU** (`ok`) |
+| DB sample | **PASSOU** |
+| `npm audit` | **0** |
+
+---
+
 ## FASE F — Issues de follow-up
 
 | Issue | Título |
@@ -178,8 +229,12 @@ Busca `vercel logs --since 24h --query <padrão>`: **0 hits** para
 ## Comandos úteis
 
 ```bash
-curl -sS https://lex-navy.vercel.app/api/health | jq .status,.flags
-E2E_BASE_URL=https://lex-navy.vercel.app npx playwright test tests/e2e/security-qa-staging.spec.ts
-npx vercel logs https://lex-navy.vercel.app --since 24h
-npm run observability:langfuse:smoke   # local, valida export
+curl -sS https://lex-navy.vercel.app/api/ready
+curl -sS https://lex-navy.vercel.app/api/health | jq .status,.flags,.checks.inngest
+set -a && . ./.env && set +a
+E2E_BASE_URL=https://lex-navy.vercel.app npx playwright test \
+  --config=playwright.config.ts --project=chromium-auth \
+  tests/e2e/security-qa-staging.spec.ts
+npx vercel logs https://lex-navy.vercel.app --since 24h --query inngest
+npm run observability:langfuse:smoke
 ```
