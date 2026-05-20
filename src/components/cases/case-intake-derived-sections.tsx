@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import type { CaseDisplaySnapshot } from "@/lib/cases/intake/case-intake-context";
 
 export function IntakeOrganizeBanner({
@@ -14,7 +15,7 @@ export function IntakeOrganizeBanner({
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/95">
       <p>
         Este caso ainda não foi organizado automaticamente. As informações abaixo vêm da entrevista
-        salva.
+        salva — não são análise jurídica completa.
       </p>
       {showOrganizeCta ? (
         <Button
@@ -53,21 +54,52 @@ export function CaseIntakeDerivedSections({ display }: { display: CaseDisplaySna
   const partyLines = display.parties.map((p) =>
     p.detail ? `${p.name} (${p.role}) — ${p.detail}` : `${p.name} (${p.role})`,
   );
-  const factLines = display.facts.map((f) => f.text);
+  const factLines = display.facts.map((f) => (f.category ? `[${f.category}] ${f.text}` : f.text));
   const requestLines = display.requests.map((r) => r.text);
   const riskLines = display.risks.map((r) => `${r.title}: ${r.detail}`);
-  const gapLines = display.gaps;
+  const relationLines = display.partyRelations.map(
+    (r) => `${r.from} → ${r.to}: ${r.relation}`,
+  );
+
+  const hasStructuredContent =
+    partyLines.length > 0 ||
+    factLines.length > 0 ||
+    requestLines.length > 0 ||
+    riskLines.length > 0;
+
+  if (display.insufficient && !hasStructuredContent) {
+    return (
+      <Card className="border-dashed p-4">
+        <p className="text-sm font-medium text-foreground">Informação insuficiente</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          A entrevista ainda não traz elementos mínimos para estruturar partes e fatos. Complete o
+          relato na aba Entrevista ou organize com Lex AI.
+        </p>
+        {display.pendingQuestions.length > 0 ? (
+          <ReadOnlyList title="Perguntas pendentes" items={display.pendingQuestions} />
+        ) : null}
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Vista derivada da entrevista (somente leitura). Edite na aba Entrevista ou organize com Lex
-        AI para editar partes e fatos em tabelas.
+        {display.source === "intake_structured"
+          ? "Vista estruturada pela Lex AI (somente leitura). Confirme itens marcados como sugeridos antes de citar em peça."
+          : "Vista derivada da entrevista salva (somente leitura). Organize com Lex AI para editar em tabelas."}
       </p>
+
       <ReadOnlyList title="Partes" items={partyLines} />
       <ReadOnlyList title="Fatos" items={factLines} />
       <ReadOnlyList title="Pedidos" items={requestLines} />
-      <ReadOnlyList title="Riscos / alertas" items={[...riskLines, ...gapLines]} />
+      <ReadOnlyList title="Riscos / alertas" items={riskLines} />
+      <ReadOnlyList title="Relação entre partes" items={relationLines} />
+      <ReadOnlyList title="Provas mencionadas" items={display.evidenceMentioned} />
+      <ReadOnlyList title="Lacunas" items={display.gaps} />
+      <ReadOnlyList title="Perguntas pendentes" items={display.pendingQuestions} />
+      <ReadOnlyList title="Confirmar com o cliente" items={display.needsConfirmation} />
+      <ReadOnlyList title="Próximos passos" items={display.nextSteps} />
     </div>
   );
 }

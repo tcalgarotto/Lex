@@ -183,9 +183,9 @@ export function CaseCockpitActions({ caseId, primary, readiness, archived = fals
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/processos?returnCase=${caseId}`} className="cursor-pointer">
+                <Link href={`/cases/${caseId}/processo`} className="cursor-pointer">
                   <Scale className="mr-2 size-4" />
-                  Vincular processo
+                  Processo vinculado
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

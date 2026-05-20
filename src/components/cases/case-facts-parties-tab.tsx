@@ -28,15 +28,32 @@ export function CaseFactsPartiesTab(props: {
     props.requests.length === 0 &&
     props.risks.length === 0;
 
+  const derived = props.intakeDerived;
   const showIntakeFallback =
-    !props.intakeStructured && props.intakeDerived && (relationalEmpty || props.intakeDerived.parties.length > 0);
+    !props.intakeStructured && derived && (relationalEmpty || derived.parties.length > 0 || derived.facts.length > 0);
 
   return (
     <div className="space-y-6">
+      {derived?.insufficient && relationalEmpty ? (
+        <div className="rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+          <p className="font-medium text-foreground">Informação insuficiente</p>
+          <p className="mt-1 text-muted-foreground">
+            Complete a entrevista ou organize com Lex AI para estruturar partes, fatos e lacunas.
+          </p>
+          {derived.pendingQuestions.length > 0 ? (
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-amber-100/90">
+              {derived.pendingQuestions.slice(0, 8).map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
       {showIntakeFallback ? (
         <>
           <IntakeOrganizeBanner caseId={props.caseId} showOrganizeCta />
-          <CaseIntakeDerivedSections display={props.intakeDerived!} />
+          <CaseIntakeDerivedSections display={derived!} />
         </>
       ) : null}
 
@@ -55,7 +72,7 @@ export function CaseFactsPartiesTab(props: {
             <CaseRisksTab risks={props.risks} />
           </Section>
         </>
-      ) : !showIntakeFallback ? (
+      ) : !showIntakeFallback && !derived?.insufficient ? (
         <p className="text-sm text-muted-foreground">
           Nenhum dado em partes, fatos, pedidos ou riscos. Complete a entrevista ou organize com Lex
           AI.

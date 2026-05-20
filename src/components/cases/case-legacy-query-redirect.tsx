@@ -18,6 +18,8 @@ const TAB_TO_PATH: Record<string, string> = {
  facts: "/partes-fatos",
  research: "/pesquisa-juridica",
  strategy: "/estrategia",
+ pieces: "/pecas",
+ drafts: "/pecas",
  checklist: "/entrevista",
  activity: "",
 };

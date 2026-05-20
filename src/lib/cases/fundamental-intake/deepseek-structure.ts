@@ -8,15 +8,20 @@ import {
   type DeepseekStructureResponse,
 } from "./structured-output-schema";
 
-const SYSTEM = `Você é assistente jurídico do Lex (Brasil). Organize a entrada em JSON.
+const SYSTEM = `Você é assistente jurídico do Lex (Brasil). ESTRUTURE o relato — não copie parágrafos inteiros.
 REGRAS OBRIGATÓRIAS:
 1) NÃO invente CPF, CNPJ, número de processo, documento, nome de pessoa ou fato que não esteja no texto de entrada.
-2) Se algo não constar, omita ou use null — prefira listar em missing_questions ou missing_documents.
-3) Cada item em parties, facts, requests e risks deve ter confidence entre 0 e 1 coerente com a evidência no texto.
-4) parties.role: AUTHOR = cliente/parte assistida; DEFENDANT = parte contrária; INTERVENING = terceiros relevantes.
-5) Não contradiga campos marcados na seção "CAMPOS CONFIRMADOS PELO ADVOGADO".
-6) Use português do Brasil. Datas em texto livre podem ser repetidas em facts.dates quando claras.
-7) Responda APENAS com um único objeto JSON válido, sem markdown, sem comentários.`;
+2) Se algo não constar, omita ou use null — registre lacunas em missing_questions, information_gaps ou missing_documents.
+3) case_summary: síntese jurídica objetiva (máx. ~600 caracteres), NUNCA colagem do relato bruto.
+4) facts: eventos em ordem cronológica quando possível; cada fato em frase própria, com dates quando houver.
+5) parties.role: AUTHOR = cliente/parte assistida; DEFENDANT = parte contrária; INTERVENING = terceiros.
+6) party_relations: vínculos explícitos entre partes (ex.: "locador" / "locatário") só se constarem no texto.
+7) evidence_mentioned: provas/documentos citados (prints, contratos, BO, e-mails) sem inventar arquivos.
+8) needs_confirmation: pontos que o advogado deve confirmar antes de usar em peça.
+9) Cada item em parties, facts, requests e risks: confidence 0–1 coerente com a evidência; sourceText curto (trecho ou paráfrase).
+10) Dados já preenchidos pelo advogado no formulário têm prioridade — organize e sugira, nunca substitua silenciosamente o que ele digitou.
+11) Pré-processual sem CNJ não é lacuna — não exija número de processo se o texto disser que ainda não há autos.
+12) Responda APENAS com um único objeto JSON válido, sem markdown.`;
 
 export async function runDeepseekFundamentalStructure(
   narrative: string,
@@ -31,7 +36,7 @@ export async function runDeepseekFundamentalStructure(
       prompt:
         "Entrada da entrevista fundamental:\n\n" +
         narrative.slice(0, 48_000) +
-        "\n\nDevolva o JSON com as chaves: parties, facts, requests, risks, timeline, missing_documents, missing_questions, next_steps, case_summary, legal_area_suggestion, urgency_score, readiness_score.",
+        "\n\nDevolva JSON com: parties, facts, requests, risks, timeline, missing_documents, missing_questions, information_gaps, next_steps, case_summary, legal_area_suggestion, urgency_score, readiness_score, party_relations, evidence_mentioned, needs_confirmation.",
       temperature: 0.1,
       maxOutputTokens: 4500,
       experimental_telemetry: aiTelemetry({

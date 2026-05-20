@@ -4,7 +4,7 @@ import { getWorkspaceContext } from "@/lib/auth/session";
 import { CaseOverviewTab } from "@/components/cases/case-overview-tab";
 import { CaseCalendarSection } from "@/components/calendar/case-calendar-section";
 import { loadCaseForWorkspace } from "./_load-case";
-import { prisma } from "@/lib/prisma";
+import { loadCaseLinkedProcesses } from "@/lib/cases/load-case-linked-processes";
 import { Button } from "@/components/ui/button";
 import { isCasePreProcessual } from "@/lib/cases/labels";
 
@@ -20,22 +20,10 @@ export default async function CaseOverviewPage({ params }: { params: Promise<{ i
   const { workspaceId } = await getWorkspaceContext();
   const c = await loadCaseForWorkspace(workspaceId, id);
   if (!c) notFound();
-  const legalProcesses = await prisma.legalProcess.findMany({
-    where: { workspaceId, caseId: id },
-    orderBy: { updatedAt: "desc" },
-    take: 5,
-    select: {
-      id: true,
-      processId: true,
-      cnjFormatted: true,
-      tribunalAcronym: true,
-      classeNome: true,
-      dataJudStatus: true,
-      _count: { select: { movements: true, alerts: true } },
-    },
-  });
 
+  const legalProcesses = await loadCaseLinkedProcesses(workspaceId, id);
   const pre = isCasePreProcessual(c);
+  const processHref = `/cases/${id}/processo`;
 
   return (
     <div className="space-y-3">
@@ -47,33 +35,19 @@ export default async function CaseOverviewPage({ params }: { params: Promise<{ i
                 Processo judicial
               </p>
               <p className="mt-1 text-caption leading-snug text-muted-foreground">
-                {pre && legalProcesses.length === 0
-                  ? "Pré-processual · sem CNJ."
-                  : "CNJ vinculado a este caso."}
+                {legalProcesses.length > 0
+                  ? `${legalProcesses.length} processo(s) vinculado(s).`
+                  : pre
+                    ? "Pré-processual · CNJ opcional."
+                    : "Nenhum CNJ vinculado ainda."}
               </p>
             </div>
             <Button asChild size="sm" variant="outline" className="shrink-0">
-              <Link href={`/processos?returnCase=${id}`}>Importar CNJ</Link>
+              <Link href={processHref}>
+                {legalProcesses.length > 0 ? "Ver processos" : "Vincular processo"}
+              </Link>
             </Button>
           </div>
-          {legalProcesses.length > 0 ? (
-            <div className="mt-2 grid gap-2 sm:grid-cols-1">
-              {legalProcesses.map((process) => (
-                <Link
-                  key={process.id}
-                  href={`/processos/${process.processId ?? process.id}`}
-                  className="rounded-lg border border-[color:var(--border-subtle)] p-2 text-sm hover:bg-[color:var(--surface-overlay)]"
-                >
-                  <p className="font-medium">{process.cnjFormatted}</p>
-                  <p className="mt-0.5 text-caption text-muted-foreground">
-                    {process.tribunalAcronym} · {process.classeNome ?? "Classe não informada"}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-2 text-caption text-muted-foreground">Nenhum CNJ vinculado.</p>
-          )}
         </div>
 
         <CaseCalendarSection workspaceId={workspaceId} caseId={id} compact />

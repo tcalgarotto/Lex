@@ -7,6 +7,7 @@ import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,22 +26,27 @@ import {
 } from "@/components/legal-form/legal-form";
 import {
   IntakeMobileActionBar,
-  IntakeSidebarPanel,
   IntakeStepper,
-  IntakeStepperVertical,
   scrollToIntakeSection,
+  IntakeGuidedStepper,
+  scrollToGuidedStep,
 } from "@/components/cases/fundamental-intake-chrome";
+import { INTAKE_GUIDED_STEPS, type IntakeGuidedStepId } from "@/lib/cases/fundamental-intake/intake-guided-flow";
+import { buildIntakeComplementChecklist } from "@/lib/cases/fundamental-intake/intake-complement-checklist";
+import { IntakeCompactSidebar } from "@/components/intake/intake-compact-sidebar";
+import { IntakeDisclosure, IntakeEmptyHint } from "@/components/intake/intake-disclosure";
+import { UfCombobox } from "@/components/forms/uf-combobox";
+import { MaritalStatusCombobox } from "@/components/forms/marital-status-combobox";
+import { ClientAddressFields } from "@/components/intake/client-address-fields";
 import {
   SECTION_ANCHOR,
   cnjVisualError,
   interviewProgressPercent,
   isReadyForLexStructure,
-  lacunaLabels,
   lexStructureBlockedReason,
-  nextRecommendedSection,
-  pendingRequiredLabels,
+  nextSuggestedQuestion,
   sectionStatuses,
-  toggleSectionConfirmed,
+  topIntakeHighlightItems,
   type IntakeSectionId,
 } from "@/components/cases/fundamental-intake-helpers";
 import {
@@ -50,7 +56,7 @@ import {
   parseFundamentalIntakeForm,
   type FundamentalIntakeForm,
 } from "@/lib/cases/fundamental-intake/form-schema";
-import { digitsOnly, maskCnpjInput, maskCpfInput, maskDateBrInput, parseBrDateToIso, formatIsoToBrDate } from "@/lib/forms/legal-input-masks";
+import { digitsOnly, maskCnpjInput, maskCpfInput } from "@/lib/forms/legal-input-masks";
 import type { ZodIssue } from "zod";
 
 function maskPartyDocument(raw: string): string {
@@ -70,30 +76,6 @@ const SECTION_SCROLL_ORDER: IntakeSectionId[] = [
   "goals",
   "communication",
 ];
-
-const NEXT_SECTION_LABEL: Record<IntakeSectionId, string> = {
-  attend: "Atendimento",
-  client: "Cliente / parte autora",
-  opposing: "Parte contrária",
-  third: "Terceiros",
-  narrative: "Relato",
-  timeline: "Linha do tempo",
-  documents: "Provas e documentos",
-  goals: "Objetivo e riscos",
-  communication: "Comunicação",
-};
-
-function timelineDateFieldValue(raw: string): string {
-  const t = raw?.trim() ?? "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return formatIsoToBrDate(t);
-  return t;
-}
-
-function onTimelineDateInput(raw: string): string {
-  const m = maskDateBrInput(raw);
-  const iso = parseBrDateToIso(m);
-  return iso || m;
-}
 
 function flattenZodIssues(issues: ZodIssue[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -155,31 +137,6 @@ const DOC_GROUPS: Array<{ title: string; items: Array<{ key: DocCheckKey; label:
   },
 ];
 
-function sectionReviewFooter(
-  section: IntakeSectionId,
-  paths: string[] | undefined,
-  onToggle: (on: boolean) => void,
-) {
-  const key = `section:${section}`;
-  const checked = (paths ?? []).includes(key);
-  return (
-    <label className="flex cursor-pointer items-start gap-2 text-sm leading-relaxed text-[color:var(--text-secondary)]">
-      <input
-        type="checkbox"
-        className="mt-1 size-4 shrink-0 rounded border border-[color:var(--border-default)] bg-transparent accent-violet-500"
-        checked={checked}
-        onChange={(e) => onToggle(e.target.checked)}
-      />
-      <span>
-        <span className="font-medium text-[color:var(--text-primary)]">Dados revisados pelo advogado</span>
-        <span className="mt-0.5 block text-sm leading-relaxed text-[color:var(--text-secondary)]">
-          Marcado, o Lex evita sobrescrever estes dados automaticamente em versões futuras da IA.
-        </span>
-      </span>
-    </label>
-  );
-}
-
 export type FundamentalIntakeFormContentProps = {
   /** Continuação do mesmo caso (rascunho em `metadataJson.intakeForm`). */
   seedCaseId?: string | null;
@@ -208,14 +165,15 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
   const [clientErrors, setClientErrors] = React.useState<Record<string, string>>({});
   const [freeNarrativeExpanded, setFreeNarrativeExpanded] = React.useState(false);
   const [activeScrollSection, setActiveScrollSection] = React.useState<IntakeSectionId>("attend");
+  const [activeGuidedStep, setActiveGuidedStep] = React.useState<IntakeGuidedStepId>("narrative");
   const [reorganizeDialogOpen, setReorganizeDialogOpen] = React.useState(false);
+  const [thirdPartiesOpen, setThirdPartiesOpen] = React.useState(false);
 
   const statuses = React.useMemo(() => sectionStatuses(form), [form]);
   const progress = React.useMemo(() => interviewProgressPercent(form), [form]);
-  const pending = React.useMemo(() => pendingRequiredLabels(form), [form]);
-  const lacunas = React.useMemo(() => lacunaLabels(form), [form]);
-  const nextId = React.useMemo(() => nextRecommendedSection(form), [form]);
-  const nextLabel = NEXT_SECTION_LABEL[nextId];
+  const complementChecklist = React.useMemo(() => buildIntakeComplementChecklist(form), [form]);
+  const nextQuestion = React.useMemo(() => nextSuggestedQuestion(form), [form]);
+  const highlightItems = React.useMemo(() => topIntakeHighlightItems(form, 3), [form]);
 
   const structureLocked = React.useMemo(() => !isReadyForLexStructure(form), [form]);
   const structureLockTitle = React.useMemo(() => lexStructureBlockedReason(form) ?? undefined, [form]);
@@ -227,7 +185,12 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
     if (seedCaseId) setCaseId(seedCaseId);
     if (seedForm) {
       const parsed = parseFundamentalIntakeForm(seedForm);
-      if (parsed.success) setForm(parsed.data);
+      if (parsed.success) {
+        setForm(parsed.data);
+        setThirdPartiesOpen(
+          Object.values(parsed.data.thirdParties).some((v) => (v ?? "").trim().length > 2),
+        );
+      }
     }
   }, [seedCaseId, seedForm]);
 
@@ -379,8 +342,44 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             }) as React.CSSProperties
       }
     >
+      {isEmbedded ? (
+        <>
+          <Card className="mb-4 border-violet-500/20 bg-violet-500/[0.04] p-4 text-sm leading-relaxed text-muted-foreground">
+            <p className="font-medium text-foreground">Caso ≠ processo judicial</p>
+            <p className="mt-1">
+              <strong className="text-foreground">Caso</strong> é a demanda ou atendimento jurídico do
+              cliente. <strong className="text-foreground">Processo</strong> são os autos já existentes
+              (CNJ) — opcional. Caso pré-processual não fica incompleto por não ter número de processo.
+            </p>
+          </Card>
+
+          <div className="mb-4 hidden md:block">
+            <IntakeGuidedStepper
+              activeId={activeGuidedStep}
+              sectionStatuses={statuses}
+              onNavigate={(id) => {
+                setActiveGuidedStep(id);
+                const step = INTAKE_GUIDED_STEPS.find((s) => s.id === id);
+                if (step) scrollToGuidedStep(step.scrollTo);
+              }}
+            />
+          </div>
+        </>
+      ) : null}
+
       {/* Mobile: stepper horizontal sob o topbar (em md+ o menu vai para o card na coluna direita). */}
       <div className="sticky top-[calc(var(--app-header-h)+0.25rem)] z-40 -mx-4 mb-4 w-full shrink-0 border-b border-[color:var(--border-default)]/30 bg-[color:var(--surface-base)]/95 px-4 pb-2 pt-1 backdrop-blur-md supports-[backdrop-filter]:bg-[color:var(--surface-base)]/85 md:hidden">
+        {isEmbedded ? (
+          <IntakeGuidedStepper
+            activeId={activeGuidedStep}
+            sectionStatuses={statuses}
+            onNavigate={(id) => {
+              setActiveGuidedStep(id);
+              const step = INTAKE_GUIDED_STEPS.find((s) => s.id === id);
+              if (step) scrollToGuidedStep(step.scrollTo);
+            }}
+          />
+        ) : null}
         <IntakeStepper
           activeId={stepperActive}
           statuses={statuses}
@@ -388,160 +387,149 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
         />
       </div>
 
-      {/* Mobile: coluna 2 (navegação + resumo) logo abaixo do stepper horizontal, sticky — não no fim da página. */}
-      <div className="mb-4 space-y-3 md:hidden">
-        <div className="sticky top-[calc(var(--app-header-h)+4.25rem)] z-30 max-h-[min(70svh,calc(100svh-var(--app-header-h)-5.5rem))] space-y-3 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]">
-          <IntakeStepperVertical
-            activeId={stepperActive}
-            statuses={statuses}
-            onNavigate={(id) => scrollToIntakeSection(id)}
-          />
-          <IntakeSidebarPanel
-            hideActions
-            progress={progress}
-            pending={pending}
-            lacunas={lacunas}
-            nextLabel={nextLabel}
-            onDraft={() => {}}
-            onStructure={() => {}}
-            loading={loading}
-            structureLocked={structureLocked}
-            structureLockTitle={structureLocked ? structureLockTitle : undefined}
-            organizeButtonLabel={organizeButtonLabel}
-          />
-        </div>
-      </div>
-
       <div
         className={cn(
-          "flex flex-col gap-6",
-          !isEmbedded && "md:block",
-          isEmbedded && "md:grid md:grid-cols-[minmax(0,1fr),min(280px,34%)] md:items-start md:gap-6",
+          "grid min-w-0 grid-cols-1 gap-6",
+          "lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start",
+          isEmbedded && "md:grid-cols-[minmax(0,1fr)_260px] md:items-start",
         )}
       >
-          <div
-            className={cn(
-              "min-w-0 flex-1 space-y-6 overflow-x-hidden pb-2",
-              isEmbedded
-                ? "md:mx-0 md:w-full md:max-w-none md:pr-0 md:pb-4"
-                : "md:mx-auto md:w-[var(--intake-shell-w)] md:min-w-0 md:max-w-[var(--intake-shell-w)] md:pr-[calc(var(--intake-sidebar-w)+var(--intake-gap))] md:pb-4",
-            )}
-          >
+          <div className="min-w-0 space-y-6 overflow-x-hidden pb-2">
           <LegalSectionCard
             id={SECTION_ANCHOR.attend}
             step={1}
             title="Atendimento"
-            subtitle="Contexto inicial do caso e dados processuais, se houver."
+            subtitle="Comece pelo essencial — o restante pode ficar para depois."
             status={statuses.attend}
-            footer={sectionReviewFooter("attend", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({ ...p, userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "attend", on) })),
-            )}
+            tone="essential"
           >
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               <LegalTextInput
                 id="attend-suggestedTitle"
-                label="Título sugerido do caso"
+                label="Título do caso"
                 value={form.attend.suggestedTitle}
                 onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, suggestedTitle: v } }))}
+                placeholder="Ex.: Ação de cobrança — Maria x Banco X"
                 requirement="required"
                 error={err("attend.suggestedTitle")}
-              />
-              <LegalTextInput
-                id="attend-probableLegalArea"
-                label="Área jurídica provável"
-                value={form.attend.probableLegalArea}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, probableLegalArea: v } }))}
-                requirement="optional"
+                className="md:col-span-2"
               />
               <LegalSelect
                 id="attend-preOrProcess"
-                label="Fase"
+                label="Fase do caso"
                 value={form.attend.preOrProcess}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, preOrProcess: v } }))}
+                onChange={(v) =>
+                  patchForm((p) => ({
+                    ...p,
+                    attend: {
+                      ...p.attend,
+                      preOrProcess: v,
+                      ...(v === "pre_processual" ? { cnj: "", tribunalVara: "" } : {}),
+                    },
+                  }))
+                }
                 requirement="required"
                 options={[
-                  { value: "pre_processual", label: "Pré-processual / consultivo" },
-                  { value: "existing_process", label: "Processo já existente" },
+                  { value: "pre_processual", label: "Pré-processual ou consultivo" },
+                  { value: "existing_process", label: "Já existe processo (CNJ)" },
                 ]}
               />
-              <LegalSelect
-                id="attend-clientOrigin"
-                label="Origem do cliente"
-                value={form.attend.clientOrigin ?? "outro"}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, clientOrigin: v } }))}
-                requirement="optional"
-                options={[
-                  { value: "indicacao", label: "Indicação" },
-                  { value: "whatsapp", label: "WhatsApp" },
-                  { value: "site", label: "Site" },
-                  { value: "retorno", label: "Retorno" },
-                  { value: "outro", label: "Outro" },
-                ]}
+              <LegalTextInput
+                id="attend-city"
+                label="Cidade"
+                value={form.attend.city}
+                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, city: v } }))}
+                placeholder="Ex.: Porto Alegre"
+                requirement="required"
+                error={err("attend.city")}
+              />
+              <UfCombobox
+                id="attend-uf"
+                label="UF"
+                value={form.attend.uf}
+                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, uf: v } }))}
+                requirement="required"
+                error={err("attend.uf")}
               />
               <LegalDateInput
                 id="attend-intakeDate"
                 label="Data do atendimento"
                 isoValue={form.attend.intakeDate ?? ""}
                 onIsoChange={(iso) => patchForm((p) => ({ ...p, attend: { ...p.attend, intakeDate: iso } }))}
+                validationMode="general"
+                error={err("attend.intakeDate")}
                 requirement="optional"
               />
-              <LegalMaskedInput
-                id="attend-cnj"
-                mask="cnj"
-                label="Número CNJ (se já existir processo)"
-                value={form.attend.cnj}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, cnj: v } }))}
-                placeholder="0000000-00.0000.0.00.0000"
-                requirement="optional"
-                error={cnjErr ?? err("attend.cnj")}
-              />
-              <LegalTextInput
-                id="attend-tribunalVara"
-                label="Tribunal / vara"
-                value={form.attend.tribunalVara}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, tribunalVara: v } }))}
-                requirement="optional"
-              />
-              <LegalTextInput
-                id="attend-city"
-                label="Cidade do caso"
-                value={form.attend.city}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, city: v } }))}
-                requirement="required"
-                error={err("attend.city")}
-              />
-              <LegalTextInput
-                id="attend-uf"
-                label="UF"
-                value={form.attend.uf}
-                onChange={(v) =>
-                  patchForm((p) => ({ ...p, attend: { ...p.attend, uf: v.replace(/[^a-zA-Z]/g, "").slice(0, 2) } }))
-                }
-                placeholder="SP"
-                requirement="required"
-                className="max-w-[5rem] uppercase"
-                error={err("attend.uf")}
-              />
-              <LegalTextInput
-                id="attend-responsibleLawyer"
-                label="Advogado(a) responsável"
-                value={form.attend.responsibleLawyer}
-                onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, responsibleLawyer: v } }))}
-                requirement="optional"
-                className="md:col-span-2"
-              />
+              {form.attend.preOrProcess === "existing_process" ? (
+                <>
+                  <LegalMaskedInput
+                    id="attend-cnj"
+                    mask="cnj"
+                    label="Número CNJ"
+                    value={form.attend.cnj}
+                    onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, cnj: v } }))}
+                    placeholder="0000000-00.0000.0.00.0000"
+                    requirement="optional"
+                    error={cnjErr ?? err("attend.cnj")}
+                  />
+                  <LegalTextInput
+                    id="attend-tribunalVara"
+                    label="Tribunal / vara"
+                    value={form.attend.tribunalVara}
+                    onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, tribunalVara: v } }))}
+                    requirement="optional"
+                  />
+                </>
+              ) : null}
             </div>
+            {form.attend.preOrProcess === "pre_processual" ? (
+              <p className="text-xs text-muted-foreground">
+                Caso pré-processual é o fluxo normal. CNJ pode ser vinculado depois em Processo vinculado.
+              </p>
+            ) : null}
+            <IntakeDisclosure title="Detalhes administrativos" optional>
+              <div className="grid gap-3 md:grid-cols-2">
+                <LegalTextInput
+                  id="attend-probableLegalArea"
+                  label="Área jurídica provável"
+                  value={form.attend.probableLegalArea}
+                  onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, probableLegalArea: v } }))}
+                  placeholder="Ex.: consumidor, família"
+                  requirement="optional"
+                />
+                <LegalSelect
+                  id="attend-clientOrigin"
+                  label="Origem do cliente"
+                  value={form.attend.clientOrigin ?? "outro"}
+                  onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, clientOrigin: v } }))}
+                  requirement="optional"
+                  options={[
+                    { value: "indicacao", label: "Indicação" },
+                    { value: "whatsapp", label: "WhatsApp" },
+                    { value: "site", label: "Site" },
+                    { value: "retorno", label: "Retorno" },
+                    { value: "outro", label: "Outro" },
+                  ]}
+                />
+                <LegalTextInput
+                  id="attend-responsibleLawyer"
+                  label="Advogado(a) responsável"
+                  value={form.attend.responsibleLawyer}
+                  onChange={(v) => patchForm((p) => ({ ...p, attend: { ...p.attend, responsibleLawyer: v } }))}
+                  requirement="optional"
+                  className="md:col-span-2"
+                />
+              </div>
+            </IntakeDisclosure>
           </LegalSectionCard>
 
           <LegalSectionCard
             id={SECTION_ANCHOR.client}
             step={2}
             title="Cliente / parte autora"
-            subtitle="Identifique quem procura o escritório ou quem será representado."
+            subtitle="Cadastro rápido — detalhes pessoais e endereço podem ficar para depois."
             status={statuses.client}
-            footer={sectionReviewFooter("client", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({ ...p, userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "client", on) })),
-            )}
+            tone="essential"
           >
             <div className="flex flex-wrap gap-2">
               <Button
@@ -563,153 +551,174 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             </div>
 
             {form.clientKind === "PERSON" ? (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <LegalTextInput
-                  id="client-fullName"
-                  label="Nome completo"
-                  value={form.clientPerson?.fullName ?? ""}
-                  onChange={(v) =>
-                    patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, fullName: v } }))
-                  }
-                  requirement="required"
-                  error={err("clientPerson.fullName")}
-                  className="md:col-span-2"
-                />
-                <LegalMaskedInput
-                  id="client-cpf"
-                  mask="cpf"
-                  label="CPF"
-                  value={form.clientPerson?.cpf ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, cpf: v } }))}
-                  requirement="lacuna"
-                  error={err("clientPerson.cpf")}
-                />
-                <LegalTextInput id="client-rg" label="RG" value={form.clientPerson?.rg ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, rg: v } }))} requirement="optional" />
-                <LegalDateInput
-                  id="client-birthDate"
-                  label="Data de nascimento"
-                  isoValue={form.clientPerson?.birthDate ?? ""}
-                  onIsoChange={(iso) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, birthDate: iso } }))}
-                  requirement="optional"
-                />
-                <LegalTextInput id="client-nationality" label="Nacionalidade" value={form.clientPerson?.nationality ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, nationality: v } }))} requirement="optional" />
-                <LegalTextInput id="client-marital" label="Estado civil" value={form.clientPerson?.maritalStatus ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, maritalStatus: v } }))} requirement="optional" />
-                <LegalTextInput id="client-profession" label="Profissão" value={form.clientPerson?.profession ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, profession: v } }))} requirement="optional" />
-                <LegalMaskedInput
-                  id="client-phone"
-                  mask="phone"
-                  label="Telefone"
-                  value={form.clientPerson?.phone ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, phone: v } }))}
-                  requirement="optional"
-                  error={err("clientPerson.phone")}
-                />
-                <LegalTextInput
-                  id="client-email"
-                  label="E-mail"
-                  type="email"
-                  value={form.clientPerson?.email ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, email: v } }))}
-                  requirement="optional"
-                  autoComplete="email"
-                  error={err("clientPerson.email")}
-                />
-                <LegalTextarea
-                  id="client-address"
-                  label="Endereço"
-                  minHeightPx={88}
-                  value={form.clientPerson?.address ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, address: v } }))}
-                  requirement="optional"
-                  className="md:col-span-2"
-                />
-                <LegalMaskedInput
-                  id="client-cep"
-                  mask="cep"
-                  label="CEP"
-                  value={form.clientPerson?.cep ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, cep: v } }))}
-                  requirement="optional"
-                />
-                <LegalTextInput id="client-pcity" label="Cidade (cliente)" value={form.clientPerson?.city ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, city: v } }))} requirement="optional" />
-                <LegalTextInput id="client-puf" label="UF (cliente)" value={form.clientPerson?.uf ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, uf: v.replace(/[^a-zA-Z]/g, "").slice(0, 2) } }))} requirement="optional" className="max-w-[5rem] uppercase" />
-                <LegalTextInput id="client-legalRep" label="Representante legal (se aplicável)" value={form.clientPerson?.legalRepresentative ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, legalRepresentative: v } }))} requirement="optional" className="md:col-span-2" />
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground md:col-span-2">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-violet-500"
-                    checked={!!form.clientPerson?.isLegalRepresentative}
-                    onChange={(e) =>
+              <>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Contato</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <LegalTextInput
+                    id="client-fullName"
+                    label="Nome completo"
+                    value={form.clientPerson?.fullName ?? ""}
+                    onChange={(v) =>
+                      patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, fullName: v } }))
+                    }
+                    placeholder="Nome completo do cliente"
+                    requirement="required"
+                    error={err("clientPerson.fullName")}
+                    className="md:col-span-2"
+                  />
+                  <LegalMaskedInput
+                    id="client-cpf"
+                    mask="cpf"
+                    label="CPF"
+                    value={form.clientPerson?.cpf ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, cpf: v } }))}
+                    requirement="lacuna"
+                    error={err("clientPerson.cpf")}
+                  />
+                  <LegalMaskedInput
+                    id="client-phone"
+                    mask="phone"
+                    label="Telefone"
+                    value={form.clientPerson?.phone ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, phone: v } }))}
+                    requirement="optional"
+                    error={err("clientPerson.phone")}
+                  />
+                  <LegalTextInput
+                    id="client-email"
+                    label="E-mail"
+                    type="email"
+                    value={form.clientPerson?.email ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, email: v } }))}
+                    requirement="optional"
+                    autoComplete="email"
+                    error={err("clientPerson.email")}
+                    className="md:col-span-2"
+                  />
+                </div>
+                <IntakeDisclosure title="Detalhes pessoais" optional>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <LegalTextInput id="client-rg" label="RG" value={form.clientPerson?.rg ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, rg: v } }))} requirement="optional" />
+                    <LegalDateInput
+                      id="client-birthDate"
+                      label="Data de nascimento"
+                      isoValue={form.clientPerson?.birthDate ?? ""}
+                      onIsoChange={(iso) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, birthDate: iso } }))}
+                      validationMode="birth"
+                      error={err("clientPerson.birthDate")}
+                      requirement="optional"
+                    />
+                    <LegalTextInput id="client-nationality" label="Nacionalidade" value={form.clientPerson?.nationality ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, nationality: v } }))} placeholder="Ex.: brasileira" requirement="optional" />
+                    <MaritalStatusCombobox
+                      id="client-marital"
+                      value={form.clientPerson?.maritalStatus ?? "nao_informado"}
+                      onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, maritalStatus: v } }))}
+                      error={err("clientPerson.maritalStatus")}
+                    />
+                    <LegalTextInput id="client-profession" label="Profissão" value={form.clientPerson?.profession ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, profession: v } }))} requirement="optional" className="md:col-span-2" />
+                    <LegalTextInput id="client-legalRep" label="Representante legal (se aplicável)" value={form.clientPerson?.legalRepresentative ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientPerson: { ...p.clientPerson, legalRepresentative: v } }))} requirement="optional" className="md:col-span-2" />
+                    <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground md:col-span-2">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-violet-500"
+                        checked={!!form.clientPerson?.isLegalRepresentative}
+                        onChange={(e) =>
+                          patchForm((p) => ({
+                            ...p,
+                            clientPerson: { ...p.clientPerson, isLegalRepresentative: e.target.checked },
+                          }))
+                        }
+                      />
+                      É representante legal (não é o próprio interessado)
+                    </label>
+                  </div>
+                </IntakeDisclosure>
+                <IntakeDisclosure title="Endereço" optional>
+                  <ClientAddressFields
+                    idPrefix="client"
+                    cep={form.clientPerson?.cep ?? ""}
+                    address={form.clientPerson?.address ?? ""}
+                    city={form.clientPerson?.city ?? ""}
+                    uf={form.clientPerson?.uf ?? ""}
+                    ufError={err("clientPerson.uf")}
+                    onPatch={(patch) =>
                       patchForm((p) => ({
                         ...p,
-                        clientPerson: { ...p.clientPerson, isLegalRepresentative: e.target.checked },
+                        clientPerson: { ...p.clientPerson, ...patch },
                       }))
                     }
                   />
-                  É representante legal (não é o próprio interessado)
-                </label>
-              </div>
+                </IntakeDisclosure>
+              </>
             ) : (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <LegalTextInput
-                  id="co-legalName"
-                  label="Razão social"
-                  value={form.clientCompany?.legalName ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalName: v } }))}
-                  requirement="required"
-                  error={err("clientCompany.legalName")}
-                  className="md:col-span-2"
-                />
-                <LegalTextInput id="co-trade" label="Nome fantasia" value={form.clientCompany?.tradeName ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, tradeName: v } }))} requirement="optional" />
-                <LegalMaskedInput
-                  id="co-cnpj"
-                  mask="cnpj"
-                  label="CNPJ"
-                  value={form.clientCompany?.cnpj ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, cnpj: v } }))}
-                  requirement="lacuna"
-                  error={err("clientCompany.cnpj")}
-                />
-                <LegalTextInput id="co-stateReg" label="Inscrição estadual" value={form.clientCompany?.stateRegistration ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, stateRegistration: v } }))} requirement="optional" />
-                <LegalTextInput id="co-repName" label="Representante legal — nome" value={form.clientCompany?.legalRepName ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalRepName: v } }))} requirement="optional" />
-                <LegalMaskedInput
-                  id="co-repCpf"
-                  mask="cpf"
-                  label="Representante legal — CPF"
-                  value={form.clientCompany?.legalRepCpf ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalRepCpf: v } }))}
-                  requirement="optional"
-                  error={err("clientCompany.legalRepCpf")}
-                />
-                <LegalTextInput id="co-repRole" label="Cargo" value={form.clientCompany?.legalRepRole ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalRepRole: v } }))} requirement="optional" />
-                <LegalMaskedInput
-                  id="co-phone"
-                  mask="phone"
-                  label="Telefone"
-                  value={form.clientCompany?.phone ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, phone: v } }))}
-                  requirement="optional"
-                  error={err("clientCompany.phone")}
-                />
-                <LegalTextInput
-                  id="co-email"
-                  label="E-mail"
-                  type="email"
-                  value={form.clientCompany?.email ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, email: v } }))}
-                  requirement="optional"
-                  error={err("clientCompany.email")}
-                />
-                <LegalTextarea
-                  id="co-address"
-                  label="Endereço"
-                  minHeightPx={88}
-                  value={form.clientCompany?.address ?? ""}
-                  onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, address: v } }))}
-                  requirement="optional"
-                  className="md:col-span-2"
-                />
-              </div>
+              <>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Contato</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <LegalTextInput
+                    id="co-legalName"
+                    label="Razão social"
+                    value={form.clientCompany?.legalName ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalName: v } }))}
+                    requirement="required"
+                    error={err("clientCompany.legalName")}
+                    className="md:col-span-2"
+                  />
+                  <LegalMaskedInput
+                    id="co-cnpj"
+                    mask="cnpj"
+                    label="CNPJ"
+                    value={form.clientCompany?.cnpj ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, cnpj: v } }))}
+                    requirement="lacuna"
+                    error={err("clientCompany.cnpj")}
+                  />
+                  <LegalMaskedInput
+                    id="co-phone"
+                    mask="phone"
+                    label="Telefone"
+                    value={form.clientCompany?.phone ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, phone: v } }))}
+                    requirement="optional"
+                    error={err("clientCompany.phone")}
+                  />
+                  <LegalTextInput
+                    id="co-email"
+                    label="E-mail"
+                    type="email"
+                    value={form.clientCompany?.email ?? ""}
+                    onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, email: v } }))}
+                    requirement="optional"
+                    error={err("clientCompany.email")}
+                    className="md:col-span-2"
+                  />
+                </div>
+                <IntakeDisclosure title="Detalhes da empresa e endereço" optional>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <LegalTextInput id="co-trade" label="Nome fantasia" value={form.clientCompany?.tradeName ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, tradeName: v } }))} requirement="optional" />
+                    <LegalTextInput id="co-stateReg" label="Inscrição estadual" value={form.clientCompany?.stateRegistration ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, stateRegistration: v } }))} requirement="optional" />
+                    <LegalTextInput id="co-repName" label="Representante legal — nome" value={form.clientCompany?.legalRepName ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalRepName: v } }))} requirement="optional" />
+                    <LegalMaskedInput
+                      id="co-repCpf"
+                      mask="cpf"
+                      label="Representante legal — CPF"
+                      value={form.clientCompany?.legalRepCpf ?? ""}
+                      onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalRepCpf: v } }))}
+                      requirement="optional"
+                      error={err("clientCompany.legalRepCpf")}
+                    />
+                    <LegalTextInput id="co-repRole" label="Cargo" value={form.clientCompany?.legalRepRole ?? ""} onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, legalRepRole: v } }))} requirement="optional" className="md:col-span-2" />
+                    <LegalTextarea
+                      id="co-address"
+                      label="Endereço"
+                      minHeightPx={72}
+                      value={form.clientCompany?.address ?? ""}
+                      onChange={(v) => patchForm((p) => ({ ...p, clientCompany: { ...p.clientCompany, address: v } }))}
+                      requirement="optional"
+                      className="md:col-span-2"
+                    />
+                  </div>
+                </IntakeDisclosure>
+              </>
             )}
           </LegalSectionCard>
 
@@ -719,12 +728,6 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             title="Parte contrária / possível réu"
             subtitle="Identifique quem está do outro lado ou marque quando ainda não for possível."
             status={statuses.opposing}
-            footer={sectionReviewFooter("opposing", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({
-                ...p,
-                userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "opposing", on),
-              })),
-            )}
           >
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
@@ -748,16 +751,22 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
               />
               <span>A parte contrária ainda é desconhecida</span>
             </label>
+            {form.opposing.unknown ? (
+              <IntakeEmptyHint>
+                Parte contrária ainda não identificada — isso é aceitável nesta fase. Quando souber quem é,
+                desmarque a opção acima e preencha o essencial.
+              </IntakeEmptyHint>
+            ) : null}
 
             {!form.opposing.unknown ? (
-              <div className="space-y-4 pt-2">
+              <div className="space-y-3 pt-1">
                 {(form.opposing.parties ?? []).map((party, idx) => (
                   <div
                     key={idx}
-                    className="rounded-xl border border-[color:var(--border-default)]/80 bg-white/[0.02] p-4"
+                    className="rounded-lg border border-[color:var(--border-default)]/50 bg-white/[0.02] p-3"
                   >
-                    <div className="mb-3 flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-muted-foreground">
                         Parte contrária {idx + 1}
                       </p>
                       {(form.opposing.parties?.length ?? 0) > 1 ? (
@@ -808,82 +817,10 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                         }
                         error={err(`opposing.parties.${idx}.document`)}
                       />
-                      <LegalMaskedInput
-                        id={`opp-phone-${idx}`}
-                        mask="phone"
-                        label="Telefone"
-                        value={party.phone}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const parties = [...(p.opposing.parties ?? [])];
-                            parties[idx] = { ...parties[idx]!, phone: v };
-                            return { ...p, opposing: { ...p.opposing, parties } };
-                          })
-                        }
-                        requirement="optional"
-                        error={err(`opposing.parties.${idx}.phone`)}
-                      />
-                      <LegalTextInput
-                        id={`opp-email-${idx}`}
-                        label="E-mail"
-                        type="email"
-                        value={party.email}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const parties = [...(p.opposing.parties ?? [])];
-                            parties[idx] = { ...parties[idx]!, email: v };
-                            return { ...p, opposing: { ...p.opposing, parties } };
-                          })
-                        }
-                        requirement="optional"
-                        error={err(`opposing.parties.${idx}.email`)}
-                      />
-                      <LegalTextarea
-                        id={`opp-addr-${idx}`}
-                        label="Endereço"
-                        minHeightPx={88}
-                        value={party.address}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const parties = [...(p.opposing.parties ?? [])];
-                            parties[idx] = { ...parties[idx]!, address: v };
-                            return { ...p, opposing: { ...p.opposing, parties } };
-                          })
-                        }
-                        requirement="optional"
-                        className="md:col-span-2"
-                      />
-                      <LegalTextInput
-                        id={`opp-city-${idx}`}
-                        label="Cidade"
-                        value={party.city}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const parties = [...(p.opposing.parties ?? [])];
-                            parties[idx] = { ...parties[idx]!, city: v };
-                            return { ...p, opposing: { ...p.opposing, parties } };
-                          })
-                        }
-                        requirement="optional"
-                      />
-                      <LegalTextInput
-                        id={`opp-uf-${idx}`}
-                        label="UF"
-                        value={party.uf}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const parties = [...(p.opposing.parties ?? [])];
-                            parties[idx] = { ...parties[idx]!, uf: v.replace(/[^a-zA-Z]/g, "").slice(0, 2) };
-                            return { ...p, opposing: { ...p.opposing, parties } };
-                          })
-                        }
-                        requirement="optional"
-                        className="max-w-[5rem] uppercase"
-                      />
                       <LegalTextarea
                         id={`opp-rel-${idx}`}
                         label="Relação com o cliente"
-                        minHeightPx={88}
+                        minHeightPx={64}
                         value={party.relationToClient}
                         onChange={(v) =>
                           patchForm((p) => {
@@ -895,22 +832,98 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                         requirement="optional"
                         className="md:col-span-2"
                       />
-                      <LegalTextarea
-                        id={`opp-part-${idx}`}
-                        label="Participação no fato"
-                        minHeightPx={88}
-                        value={party.participation}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const parties = [...(p.opposing.parties ?? [])];
-                            parties[idx] = { ...parties[idx]!, participation: v };
-                            return { ...p, opposing: { ...p.opposing, parties } };
-                          })
-                        }
-                        requirement="optional"
-                        className="md:col-span-2"
-                      />
                     </div>
+                    <IntakeDisclosure title="Contato, endereço e participação no fato" optional className="mt-2">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <LegalMaskedInput
+                          id={`opp-phone-${idx}`}
+                          mask="phone"
+                          label="Telefone"
+                          value={party.phone}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const parties = [...(p.opposing.parties ?? [])];
+                              parties[idx] = { ...parties[idx]!, phone: v };
+                              return { ...p, opposing: { ...p.opposing, parties } };
+                            })
+                          }
+                          requirement="optional"
+                          error={err(`opposing.parties.${idx}.phone`)}
+                        />
+                        <LegalTextInput
+                          id={`opp-email-${idx}`}
+                          label="E-mail"
+                          type="email"
+                          value={party.email}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const parties = [...(p.opposing.parties ?? [])];
+                              parties[idx] = { ...parties[idx]!, email: v };
+                              return { ...p, opposing: { ...p.opposing, parties } };
+                            })
+                          }
+                          requirement="optional"
+                          error={err(`opposing.parties.${idx}.email`)}
+                        />
+                        <LegalTextarea
+                          id={`opp-addr-${idx}`}
+                          label="Endereço"
+                          minHeightPx={64}
+                          value={party.address}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const parties = [...(p.opposing.parties ?? [])];
+                              parties[idx] = { ...parties[idx]!, address: v };
+                              return { ...p, opposing: { ...p.opposing, parties } };
+                            })
+                          }
+                          requirement="optional"
+                          className="md:col-span-2"
+                        />
+                        <LegalTextInput
+                          id={`opp-city-${idx}`}
+                          label="Cidade"
+                          value={party.city}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const parties = [...(p.opposing.parties ?? [])];
+                              parties[idx] = { ...parties[idx]!, city: v };
+                              return { ...p, opposing: { ...p.opposing, parties } };
+                            })
+                          }
+                          requirement="optional"
+                        />
+                        <UfCombobox
+                          id={`opp-uf-${idx}`}
+                          label="UF"
+                          value={party.uf}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const parties = [...(p.opposing.parties ?? [])];
+                              parties[idx] = { ...parties[idx]!, uf: v };
+                              return { ...p, opposing: { ...p.opposing, parties } };
+                            })
+                          }
+                          error={err(`opposing.parties.${idx}.uf`)}
+                          requirement="optional"
+                        />
+                        <LegalTextarea
+                          id={`opp-part-${idx}`}
+                          label="Participação no fato"
+                          minHeightPx={64}
+                          value={party.participation}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const parties = [...(p.opposing.parties ?? [])];
+                              parties[idx] = { ...parties[idx]!, participation: v };
+                              return { ...p, opposing: { ...p.opposing, parties } };
+                            })
+                          }
+                          requirement="optional"
+                          className="md:col-span-2"
+                        />
+                      </div>
+                    </IntakeDisclosure>
                   </div>
                 ))}
                 <Button
@@ -934,13 +947,21 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             id={SECTION_ANCHOR.third}
             step={4}
             title="Terceiros"
-            subtitle="Beneficiários, testemunhas, menores, órgãos públicos ou instituições ligadas ao caso."
+            subtitle="Só se houver testemunhas, beneficiários ou outros envolvidos."
             status={statuses.third}
-            footer={sectionReviewFooter("third", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({ ...p, userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "third", on) })),
-            )}
+            tone="optional"
           >
-            <div className="grid gap-4 md:grid-cols-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 accent-violet-500"
+                checked={thirdPartiesOpen}
+                onChange={(e) => setThirdPartiesOpen(e.target.checked)}
+              />
+              Há terceiros envolvidos no caso?
+            </label>
+            {thirdPartiesOpen ? (
+              <div className="grid gap-4 md:grid-cols-2">
               <LegalTextarea id="tp-ben" label="Beneficiário" minHeightPx={88} value={form.thirdParties.beneficiary} onChange={(v) => patchForm((p) => ({ ...p, thirdParties: { ...p.thirdParties, beneficiary: v } }))} requirement="optional" />
               <LegalTextarea id="tp-wit" label="Testemunhas" minHeightPx={88} value={form.thirdParties.witnesses} onChange={(v) => patchForm((p) => ({ ...p, thirdParties: { ...p.thirdParties, witnesses: v } }))} requirement="optional" />
               <LegalTextarea id="tp-min" label="Menores envolvidos" minHeightPx={88} value={form.thirdParties.minors} onChange={(v) => patchForm((p) => ({ ...p, thirdParties: { ...p.thirdParties, minors: v } }))} requirement="optional" />
@@ -948,21 +969,17 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
               <LegalTextarea id="tp-pub" label="Órgão público" minHeightPx={88} value={form.thirdParties.publicBody} onChange={(v) => patchForm((p) => ({ ...p, thirdParties: { ...p.thirdParties, publicBody: v } }))} requirement="optional" />
               <LegalTextarea id="tp-inst" label="Empresa / instituição" minHeightPx={88} value={form.thirdParties.institution} onChange={(v) => patchForm((p) => ({ ...p, thirdParties: { ...p.thirdParties, institution: v } }))} requirement="optional" />
               <LegalTextarea id="tp-other" label="Outros terceiros" minHeightPx={88} value={form.thirdParties.other} onChange={(v) => patchForm((p) => ({ ...p, thirdParties: { ...p.thirdParties, other: v } }))} requirement="optional" className="md:col-span-2" />
-            </div>
+              </div>
+            ) : null}
           </LegalSectionCard>
 
           <LegalSectionCard
             id={SECTION_ANCHOR.narrative}
             step={5}
             title="Relato"
-            subtitle="Organize a história em blocos; a Lex AI consolidará fatos e riscos."
+            subtitle="Centro da entrevista — descreva com as palavras do cliente."
             status={statuses.narrative}
-            footer={sectionReviewFooter("narrative", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({
-                ...p,
-                userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "narrative", on),
-              })),
-            )}
+            tone="essential"
           >
             <label className="flex cursor-pointer items-start gap-2 text-sm">
               <input
@@ -982,39 +999,42 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             <LegalTextarea
               id="nar-what"
               label="O que aconteceu?"
-              minHeightPx={88}
+              minHeightPx={160}
               value={form.narrative.whatHappened}
               onChange={(v) => patchForm((p) => ({ ...p, narrative: { ...p.narrative, whatHappened: v } }))}
+              placeholder="Descreva o que aconteceu, com as palavras do cliente"
               requirement={form.freeNarrativeOnly ? "optional" : "required"}
               error={err("narrative.whatHappened")}
-              hint="Descreva o problema com as palavras do cliente. Depois a Lex AI organizará fatos, partes, pedidos e riscos."
+              hint="Fale como em entrevista: o que ocorreu, sem juridiquês."
             />
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <LegalTextarea
                 id="nar-when"
                 label="Quando?"
-                minHeightPx={88}
+                minHeightPx={56}
                 value={form.narrative.whenHappened}
                 onChange={(v) => patchForm((p) => ({ ...p, narrative: { ...p.narrative, whenHappened: v } }))}
+                placeholder="Ex.: março/2024"
                 requirement="optional"
               />
               <LegalTextarea
                 id="nar-where"
                 label="Onde?"
-                minHeightPx={88}
+                minHeightPx={56}
                 value={form.narrative.whereHappened}
                 onChange={(v) => patchForm((p) => ({ ...p, narrative: { ...p.narrative, whereHappened: v } }))}
+                placeholder="Cidade ou contexto"
+                requirement="optional"
+              />
+              <LegalTextarea
+                id="nar-who"
+                label="Quem?"
+                minHeightPx={56}
+                value={form.narrative.whoParticipated}
+                onChange={(v) => patchForm((p) => ({ ...p, narrative: { ...p.narrative, whoParticipated: v } }))}
                 requirement="optional"
               />
             </div>
-            <LegalTextarea
-              id="nar-who"
-              label="Quem participou?"
-              minHeightPx={88}
-              value={form.narrative.whoParticipated}
-              onChange={(v) => patchForm((p) => ({ ...p, narrative: { ...p.narrative, whoParticipated: v } }))}
-              requirement="optional"
-            />
             <LegalTextarea
               id="nar-tried"
               label="O que o cliente já tentou fazer?"
@@ -1070,20 +1090,16 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             title="Linha do tempo"
             subtitle="Eventos em ordem aproximada fortalecem a minuta e a estratégia."
             status={statuses.timeline}
-            footer={sectionReviewFooter("timeline", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({
-                ...p,
-                userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "timeline", on),
-              })),
-            )}
           >
             {(form.timeline ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum evento adicionado ainda.</p>
+              <IntakeEmptyHint>
+                Adicione o primeiro evento se souber datas relevantes — ajuda na linha do tempo da peça.
+              </IntakeEmptyHint>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(form.timeline ?? []).map((row, idx) => (
-                  <div key={idx} className="rounded-xl border border-[color:var(--border-default)]/80 bg-white/[0.02] p-4">
-                    <div className="mb-3 flex justify-end">
+                  <div key={idx} className="rounded-lg border border-[color:var(--border-default)]/50 bg-white/[0.02] p-3">
+                    <div className="mb-2 flex justify-end">
                       <Button
                         type="button"
                         variant="ghost"
@@ -1100,21 +1116,58 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                       </Button>
                     </div>
                     <div className="grid gap-3 md:grid-cols-2">
-                      <LegalTextInput
-                        id={`tl-date-${idx}`}
-                        label="Data do evento"
-                        value={timelineDateFieldValue(row.date)}
-                        onChange={(v) =>
-                          patchForm((p) => {
-                            const tl = [...(p.timeline ?? [])];
-                            tl[idx] = { ...tl[idx]!, date: onTimelineDateInput(v) };
-                            return { ...p, timeline: tl };
-                          })
-                        }
-                        placeholder="dd/mm/aaaa"
-                        requirement="optional"
-                        hint="Somente números; convertemos para ISO quando a data for válida."
-                      />
+                      <label className="flex cursor-pointer items-center gap-2 text-sm md:col-span-2">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-violet-500"
+                          checked={!!row.dateUncertain}
+                          onChange={(e) =>
+                            patchForm((p) => {
+                              const tl = [...(p.timeline ?? [])];
+                              tl[idx] = {
+                                ...tl[idx]!,
+                                dateUncertain: e.target.checked,
+                                ...(e.target.checked ? { date: "" } : {}),
+                              };
+                              return { ...p, timeline: tl };
+                            })
+                          }
+                        />
+                        Data aproximada (não sei o dia exato)
+                      </label>
+                      {row.dateUncertain ? (
+                        <LegalTextInput
+                          id={`tl-approx-${idx}`}
+                          label="Data aproximada"
+                          value={row.dateApproximate ?? ""}
+                          onChange={(v) =>
+                            patchForm((p) => {
+                              const tl = [...(p.timeline ?? [])];
+                              tl[idx] = { ...tl[idx]!, dateApproximate: v };
+                              return { ...p, timeline: tl };
+                            })
+                          }
+                          placeholder="Ex.: início de 2023, há cerca de 2 anos"
+                          requirement="optional"
+                          className="md:col-span-2"
+                        />
+                      ) : (
+                        <LegalDateInput
+                          id={`tl-date-${idx}`}
+                          label="Data do evento"
+                          isoValue={/^\d{4}-\d{2}-\d{2}$/.test(row.date ?? "") ? row.date! : ""}
+                          onIsoChange={(iso) =>
+                            patchForm((p) => {
+                              const tl = [...(p.timeline ?? [])];
+                              tl[idx] = { ...tl[idx]!, date: iso };
+                              return { ...p, timeline: tl };
+                            })
+                          }
+                          validationMode="event"
+                          error={err(`timeline.${idx}.date`)}
+                          requirement="optional"
+                        />
+                      )}
                       <LegalTextInput
                         id={`tl-who-${idx}`}
                         label="Pessoa / instituição"
@@ -1196,12 +1249,6 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             title="Provas e documentos"
             subtitle="Marque o que já existe e o que ainda falta reunir."
             status={statuses.documents}
-            footer={sectionReviewFooter("documents", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({
-                ...p,
-                userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "documents", on),
-              })),
-            )}
           >
             <div className="space-y-5">
               {DOC_GROUPS.map((g) => (
@@ -1234,15 +1281,21 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                 </div>
               ))}
             </div>
-            <LegalTextarea
-              id="doc-missing"
-              label="Documentos ainda faltantes"
-              minHeightPx={96}
-              value={form.documents.missingNotes}
-              onChange={(v) => patchForm((p) => ({ ...p, documents: { ...p.documents, missingNotes: v } }))}
-              requirement="optional"
-              hint="Liste o que o cliente ainda precisa enviar."
-            />
+            <div className="rounded-lg border border-amber-500/35 bg-amber-500/[0.06] p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-200/90">
+                Documentos faltantes — ação
+              </p>
+              <LegalTextarea
+                id="doc-missing"
+                label="O que ainda falta reunir"
+                minHeightPx={72}
+                value={form.documents.missingNotes}
+                onChange={(v) => patchForm((p) => ({ ...p, documents: { ...p.documents, missingNotes: v } }))}
+                requirement="optional"
+                hint="Liste o que o cliente precisa enviar."
+                className="mt-2"
+              />
+            </div>
             <div className="rounded-lg border border-dashed border-[color:var(--border-default)] p-4">
               {caseId ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1274,9 +1327,6 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
             title="Objetivo, urgência e riscos"
             subtitle="O que o cliente busca e quais riscos processuais ou de prazo são relevantes."
             status={statuses.goals}
-            footer={sectionReviewFooter("goals", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({ ...p, userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "goals", on) })),
-            )}
           >
             <LegalTextarea
               id="goals-wants"
@@ -1287,9 +1337,9 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
               requirement="optional"
               error={err("goals.clientWants")}
             />
-            <div className="grid gap-4 md:grid-cols-2">
-              <LegalTextarea id="goals-ideal" label="Resultado ideal" minHeightPx={88} value={form.goals.idealOutcome} onChange={(v) => patchForm((p) => ({ ...p, goals: { ...p.goals, idealOutcome: v } }))} requirement="optional" />
-              <LegalTextarea id="goals-min" label="Resultado mínimo aceitável" minHeightPx={88} value={form.goals.minimumOutcome} onChange={(v) => patchForm((p) => ({ ...p, goals: { ...p.goals, minimumOutcome: v } }))} requirement="optional" />
+            <div className="grid gap-3 md:grid-cols-2">
+              <LegalTextarea id="goals-ideal" label="Resultado ideal" minHeightPx={72} value={form.goals.idealOutcome} onChange={(v) => patchForm((p) => ({ ...p, goals: { ...p.goals, idealOutcome: v } }))} requirement="optional" />
+              <LegalTextarea id="goals-min" label="Resultado mínimo aceitável" minHeightPx={72} value={form.goals.minimumOutcome} onChange={(v) => patchForm((p) => ({ ...p, goals: { ...p.goals, minimumOutcome: v } }))} requirement="optional" />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <LegalSelect
@@ -1329,37 +1379,61 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                 ]}
               />
             </div>
-            <LegalCurrencyInput
-              id="goals-value"
-              label="Valor econômico envolvido (estimativa)"
-              value={form.goals.approximateValue}
-              onChange={(v) => patchForm((p) => ({ ...p, goals: { ...p.goals, approximateValue: v } }))}
-              requirement="optional"
-            />
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="max-w-sm">
+              <LegalCurrencyInput
+                id="goals-value"
+                label="Valor econômico (estimativa)"
+                value={form.goals.approximateValue}
+                onChange={(v) => patchForm((p) => ({ ...p, goals: { ...p.goals, approximateValue: v } }))}
+                requirement="optional"
+              />
+            </div>
+            <div className="space-y-3">
               {(
                 [
-                  ["urgency", "Urgência"],
-                  ["deadlineExpiring", "Prazo crítico"],
-                  ["hearingOrSummons", "Audiência ou intimação"],
-                  ["immediateDamageRisk", "Risco de dano imediato"],
-                  ["prescriptionRisk", "Risco de prescrição"],
-                  ["vulnerablePerson", "Pessoa em situação de vulnerabilidade"],
-                  ["evidenceLossRisk", "Risco de perda de provas"],
-                  ["unfavorableFacts", "Há fatos desfavoráveis ao cliente"],
+                  ["Prazo", ["urgency", "deadlineExpiring", "hearingOrSummons", "prescriptionRisk"]],
+                  ["Dano", ["immediateDamageRisk", "vulnerablePerson", "unfavorableFacts"]],
+                  ["Prova / vulnerabilidade", ["evidenceLossRisk"]],
                 ] as const
-              ).map(([key, label]) => (
-                <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg border border-[color:var(--border-default)]/60 bg-white/[0.02] px-3 py-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-violet-500"
-                    checked={!!form.goals[key]}
-                    onChange={(e) =>
-                      patchForm((p) => ({ ...p, goals: { ...p.goals, [key]: e.target.checked } }))
-                    }
-                  />
-                  {label}
-                </label>
+              ).map(([groupTitle, keys]) => (
+                <div key={groupTitle}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {groupTitle}
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {keys.map((key) => {
+                      const labels: Record<string, string> = {
+                        urgency: "Urgência",
+                        deadlineExpiring: "Prazo crítico",
+                        hearingOrSummons: "Audiência ou intimação",
+                        prescriptionRisk: "Risco de prescrição",
+                        immediateDamageRisk: "Risco de dano imediato",
+                        vulnerablePerson: "Pessoa em vulnerabilidade",
+                        evidenceLossRisk: "Risco de perda de provas",
+                        unfavorableFacts: "Fatos desfavoráveis ao cliente",
+                      };
+                      return (
+                        <label
+                          key={key}
+                          className="flex cursor-pointer items-center gap-2 rounded-lg border border-[color:var(--border-default)]/60 bg-white/[0.02] px-3 py-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            className="size-4 accent-violet-500"
+                            checked={!!form.goals[key as keyof typeof form.goals]}
+                            onChange={(e) =>
+                              patchForm((p) => ({
+                                ...p,
+                                goals: { ...p.goals, [key]: e.target.checked },
+                              }))
+                            }
+                          />
+                          {labels[key]}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               ))}
             </div>
           </LegalSectionCard>
@@ -1367,17 +1441,12 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
           <LegalSectionCard
             id={SECTION_ANCHOR.communication}
             step={9}
-            title="Comunicação e próximos passos"
-            subtitle="Preferências de contato e combinados internos."
+            title="Gestão do atendimento"
+            subtitle="Opcional — canal, retornos e tarefas internas."
             status={statuses.communication}
-            footer={sectionReviewFooter("communication", form.userConfirmedPaths, (on) =>
-              patchForm((p) => ({
-                ...p,
-                userConfirmedPaths: toggleSectionConfirmed(p.userConfirmedPaths, "communication", on),
-              })),
-            )}
+            tone="optional"
           >
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <LegalSelect
                 id="com-channel"
                 label="Canal preferido"
@@ -1392,109 +1461,124 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                 ]}
               />
               <LegalTextInput
-                id="com-time"
-                label="Melhor horário para contato"
-                value={form.communication.preferredTime}
-                onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, preferredTime: v } }))}
-                requirement="optional"
-              />
-              <LegalTextInput
-                id="com-meet"
-                label="Próxima reunião / retorno"
-                value={form.communication.nextMeeting}
-                onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, nextMeeting: v } }))}
-                requirement="optional"
-              />
-              <LegalTextInput
                 id="com-task"
-                label="Tarefa interna"
+                label="Próxima tarefa interna"
                 value={form.communication.internalNextTask}
                 onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, internalNextTask: v } }))}
                 requirement="optional"
               />
             </div>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 accent-violet-500"
-                checked={!!form.communication.needsFeeAgreement}
-                onChange={(e) =>
-                  patchForm((p) => ({
-                    ...p,
-                    communication: { ...p.communication, needsFeeAgreement: e.target.checked },
-                  }))
-                }
-              />
-              Precisa formalizar honorários / contrato
-            </label>
-            <LegalTextarea
-              id="com-pay"
-              label="Combinado de pagamento"
-              minHeightPx={88}
-              value={form.communication.paymentArrangement}
-              onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, paymentArrangement: v } }))}
-              requirement="optional"
-            />
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 accent-violet-500"
-                checked={!!form.communication.clientInformedFees}
-                onChange={(e) =>
-                  patchForm((p) => ({
-                    ...p,
-                    communication: { ...p.communication, clientInformedFees: e.target.checked },
-                  }))
-                }
-              />
-              Cliente foi informado sobre honorários
-            </label>
-            <LegalTextarea
-              id="com-notes"
-              label="Observações internas"
-              minHeightPx={96}
-              value={form.communication.internalNotes}
-              onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, internalNotes: v } }))}
-              requirement="optional"
-            />
+            <IntakeDisclosure title="Retornos, honorários e observações" optional>
+              <div className="grid gap-3 md:grid-cols-2">
+                <LegalTextInput
+                  id="com-time"
+                  label="Melhor horário para contato"
+                  value={form.communication.preferredTime}
+                  onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, preferredTime: v } }))}
+                  requirement="optional"
+                />
+                <LegalTextInput
+                  id="com-meet"
+                  label="Próxima reunião / retorno"
+                  value={form.communication.nextMeeting}
+                  onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, nextMeeting: v } }))}
+                  requirement="optional"
+                />
+                <label className="flex cursor-pointer items-center gap-2 text-sm md:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-violet-500"
+                    checked={!!form.communication.needsFeeAgreement}
+                    onChange={(e) =>
+                      patchForm((p) => ({
+                        ...p,
+                        communication: { ...p.communication, needsFeeAgreement: e.target.checked },
+                      }))
+                    }
+                  />
+                  Precisa formalizar honorários / contrato
+                </label>
+                <LegalTextarea
+                  id="com-pay"
+                  label="Combinado de pagamento"
+                  minHeightPx={64}
+                  value={form.communication.paymentArrangement}
+                  onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, paymentArrangement: v } }))}
+                  requirement="optional"
+                  className="md:col-span-2"
+                />
+                <label className="flex cursor-pointer items-center gap-2 text-sm md:col-span-2">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-violet-500"
+                    checked={!!form.communication.clientInformedFees}
+                    onChange={(e) =>
+                      patchForm((p) => ({
+                        ...p,
+                        communication: { ...p.communication, clientInformedFees: e.target.checked },
+                      }))
+                    }
+                  />
+                  Cliente foi informado sobre honorários
+                </label>
+                <LegalTextarea
+                  id="com-notes"
+                  label="Observações internas"
+                  minHeightPx={64}
+                  value={form.communication.internalNotes}
+                  onChange={(v) => patchForm((p) => ({ ...p, communication: { ...p.communication, internalNotes: v } }))}
+                  requirement="optional"
+                  className="md:col-span-2"
+                />
+              </div>
+            </IntakeDisclosure>
           </LegalSectionCard>
         </div>
 
-        {/* Standalone: painel à direita em `fixed` na viewport. Embedded: coluna da grelha, sticky dentro do centro. */}
         <div
           className={cn(
-            "pointer-events-none hidden md:block",
-            isEmbedded
-              ? "md:relative md:col-start-2 md:row-start-1 md:self-start md:sticky md:top-4 md:z-10 md:max-h-[min(calc(100vh-6rem),920px)] md:overflow-y-auto md:overscroll-y-contain"
-              : "md:fixed md:left-[var(--app-main-inset)] md:right-0 md:top-[calc(var(--app-header-h,5.5rem)+2rem)] md:bottom-4 md:z-30",
+            "min-w-0 lg:sticky lg:top-[calc(var(--app-header-h,5.5rem)+1rem)] lg:max-h-[min(calc(100vh-var(--app-header-h,5.5rem)-2rem),880px)] lg:self-start lg:overflow-y-auto lg:overscroll-y-contain",
+            isEmbedded ? "hidden md:block" : "hidden lg:block",
           )}
         >
-          <div
-            className={cn(
-              "pointer-events-none mx-auto flex h-full justify-end",
-              isEmbedded ? "w-full" : "w-[var(--intake-shell-w)]",
-            )}
-          >
-            <aside className="ml-auto flex h-full min-h-0 w-[var(--intake-sidebar-w)] max-w-full flex-col gap-3 overflow-y-auto overscroll-y-contain pointer-events-auto md:[scrollbar-width:none] md:[&::-webkit-scrollbar]:hidden">
-              <IntakeStepperVertical
-                activeId={stepperActive}
-                statuses={statuses}
-                onNavigate={(id) => scrollToIntakeSection(id)}
-              />
-              <IntakeSidebarPanel
-                progress={progress}
-                pending={pending}
-                lacunas={lacunas}
-                nextLabel={nextLabel}
-                onDraft={() => submit("save")}
-                onStructure={requestOrganize}
-                loading={loading}
-                structureLocked={structureLocked}
-                structureLockTitle={structureLocked ? structureLockTitle : undefined}
-                organizeButtonLabel={organizeButtonLabel}
-              />
-            </aside>
-          </div>
+          <IntakeCompactSidebar
+            progress={progress}
+            nextQuestion={nextQuestion}
+            highlightItems={highlightItems}
+            activeSectionId={stepperActive}
+            sectionStatuses={statuses}
+            onNavigateSection={(id) => scrollToIntakeSection(id)}
+            checklistItems={complementChecklist}
+            onDraft={() => submit("save")}
+            onStructure={requestOrganize}
+            loading={loading}
+            structureLocked={structureLocked}
+            structureLockTitle={structureLocked ? structureLockTitle : undefined}
+            organizeButtonLabel={organizeButtonLabel}
+          />
+        </div>
+
+        <div
+          className={cn(
+            "sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-30 min-w-0",
+            isEmbedded ? "md:hidden" : "lg:hidden",
+          )}
+        >
+          <IntakeCompactSidebar
+            progress={progress}
+            nextQuestion={nextQuestion}
+            highlightItems={highlightItems}
+            activeSectionId={stepperActive}
+            sectionStatuses={statuses}
+            onNavigateSection={(id) => scrollToIntakeSection(id)}
+            checklistItems={complementChecklist}
+            onDraft={() => submit("save")}
+            onStructure={requestOrganize}
+            loading={loading}
+            structureLocked={structureLocked}
+            structureLockTitle={structureLocked ? structureLockTitle : undefined}
+            organizeButtonLabel={organizeButtonLabel}
+          />
         </div>
       </div>
 

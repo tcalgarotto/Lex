@@ -17,6 +17,7 @@ import {
 } from "@/lib/cases/case-intake-source";
 import type { FundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
 import { buildIntakeNarrativeForModel } from "@/lib/cases/fundamental-intake/build-narrative";
+import { readCaseIntakeFundamentalMeta } from "@/lib/cases/case-intake-fundamental-meta";
 import { prisma } from "@/lib/prisma";
 
 export type { FundamentalIntakeForm };
@@ -37,14 +38,20 @@ export type DisplayRisk = { title: string; detail: string; severity?: string };
 
 /** Vista read-only para UI quando o caso ainda não foi organizado com Lex AI. */
 export type CaseDisplaySnapshot = {
-  source: "structured" | "intake_form";
+  source: "structured" | "intake_form" | "intake_structured";
   parties: DisplayParty[];
   facts: DisplayFact[];
   requests: DisplayRequest[];
   risks: DisplayRisk[];
   gaps: string[];
+  pendingQuestions: string[];
+  nextSteps: string[];
+  partyRelations: Array<{ from: string; to: string; relation: string }>;
+  evidenceMentioned: string[];
+  needsConfirmation: string[];
   legalArea: string | null;
   clientObjective: string | null;
+  insufficient: boolean;
 };
 
 export type CompactContextLimits = {
@@ -126,7 +133,10 @@ function clientDisplayName(form: FundamentalIntakeForm): string {
   return (form.clientPerson?.fullName ?? "").trim();
 }
 
-function deriveDisplayFromIntakeForm(form: FundamentalIntakeForm): CaseDisplaySnapshot {
+function deriveDisplayFromIntakeForm(
+  form: FundamentalIntakeForm,
+  meta?: ReturnType<typeof readCaseIntakeFundamentalMeta>,
+): CaseDisplaySnapshot {
   const parties: DisplayParty[] = [];
   const clientName = clientDisplayName(form);
   if (clientName) parties.push({ role: "Cliente / parte autora", name: clientName });
@@ -139,26 +149,26 @@ function deriveDisplayFromIntakeForm(form: FundamentalIntakeForm): CaseDisplaySn
   }
 
   const facts: DisplayFact[] = [];
-  const narrativeBits = [
-    form.narrative.whatHappened,
-    form.narrative.whenHappened,
-    form.narrative.whereHappened,
-    form.narrative.damage,
-    form.narrative.freeText,
-  ]
-    .map((s) => (s ?? "").trim())
-    .filter(Boolean);
-  if (narrativeBits.length) {
-    facts.push({ text: narrativeBits.join(" "), category: "relato" });
-  }
+  const what = (form.narrative.whatHappened ?? "").trim();
+  const when = (form.narrative.whenHappened ?? "").trim();
+  const where = (form.narrative.whereHappened ?? "").trim();
+  const damage = (form.narrative.damage ?? "").trim();
+  if (what) facts.push({ text: what, category: "relato" });
+  if (when) facts.push({ text: `Quando: ${when}`, category: "data" });
+  if (where) facts.push({ text: `Onde: ${where}`, category: "local" });
+  if (damage) facts.push({ text: damage, category: "dano" });
   for (const row of form.timeline ?? []) {
     const ev = (row.event ?? "").trim();
-    if (ev) facts.push({ text: ev, category: "linha_do_tempo" });
+    if (!ev) continue;
+    const prefix = (row.date ?? "").trim() ? `${row.date}: ` : "";
+    facts.push({ text: `${prefix}${ev}`, category: "linha_do_tempo" });
   }
 
   const requests: DisplayRequest[] = [];
   const wants = (form.goals.clientWants ?? "").trim();
   if (wants) requests.push({ text: wants, kind: "principal" });
+  const ideal = (form.goals.idealOutcome ?? "").trim();
+  if (ideal && ideal !== wants) requests.push({ text: ideal, kind: "ideal" });
 
   const risks: DisplayRisk[] = [];
   const gapFlags: string[] = [];
@@ -168,47 +178,98 @@ function deriveDisplayFromIntakeForm(form: FundamentalIntakeForm): CaseDisplaySn
   if ((form.documents.missingNotes ?? "").trim()) {
     gapFlags.push(form.documents.missingNotes.trim());
   }
+  if (meta?.informationGaps?.length) gapFlags.push(...meta.informationGaps);
+
+  const pendingQuestions = meta?.missingQuestions ?? [];
+  const insufficient =
+    parties.length === 0 && facts.length === 0 && !wants && pendingQuestions.length > 0;
 
   return {
-    source: "intake_form",
+    source: meta ? "intake_structured" : "intake_form",
     parties,
     facts,
     requests,
     risks,
     gaps: gapFlags,
+    pendingQuestions,
+    nextSteps: meta?.nextSteps ?? [],
+    partyRelations: meta?.partyRelations ?? [],
+    evidenceMentioned: meta?.evidenceMentioned ?? [],
+    needsConfirmation: meta?.needsConfirmation ?? [],
     legalArea: form.attend.probableLegalArea?.trim() || null,
     clientObjective: wants || null,
+    insufficient,
   };
 }
 
-function deriveDisplayFromSnapshot(snap: CaseBrainSnapshot): CaseDisplaySnapshot {
+function emptyDisplayExtras(): Pick<
+  CaseDisplaySnapshot,
+  | "gaps"
+  | "pendingQuestions"
+  | "nextSteps"
+  | "partyRelations"
+  | "evidenceMentioned"
+  | "needsConfirmation"
+  | "insufficient"
+> {
+  return {
+    gaps: [],
+    pendingQuestions: [],
+    nextSteps: [],
+    partyRelations: [],
+    evidenceMentioned: [],
+    needsConfirmation: [],
+    insufficient: false,
+  };
+}
+
+function deriveDisplayFromSnapshot(
+  snap: CaseBrainSnapshot,
+  meta?: ReturnType<typeof readCaseIntakeFundamentalMeta>,
+): CaseDisplaySnapshot {
+  const extras = emptyDisplayExtras();
+  if (meta) {
+    extras.gaps = meta.informationGaps ?? [];
+    extras.pendingQuestions = meta.missingQuestions ?? [];
+    extras.nextSteps = meta.nextSteps ?? [];
+    extras.partyRelations = meta.partyRelations ?? [];
+    extras.evidenceMentioned = meta.evidenceMentioned ?? [];
+    extras.needsConfirmation = meta.needsConfirmation ?? [];
+  }
+
   const source = pickStructuredSource({ snap, intakeForm: null });
   if (source === "brain" && snap.brain) {
+    const parties = snap.brain.parties.map((p) => ({ role: p.role, name: p.name }));
+    const facts = snap.brain.facts.map((f) => ({ text: f.text }));
     return {
       source: "structured",
-      parties: snap.brain.parties.map((p) => ({ role: p.role, name: p.name })),
-      facts: snap.brain.facts.map((f) => ({ text: f.text })),
+      parties,
+      facts,
       requests: snap.brain.requests.map((r) => ({ text: r.text, kind: r.kind })),
       risks: snap.brain.risks.map((r) => ({
         title: r.title,
         detail: r.detail,
         severity: r.severity,
       })),
-      gaps: [],
-      legalArea: null,
+      ...extras,
+      legalArea: snap.brain.area?.[0] ?? null,
       clientObjective: snap.brain.objective?.trim() || null,
+      insufficient: parties.length === 0 && facts.length === 0,
     };
   }
 
+  const parties = snap.parties.map((p) => ({ role: p.role, name: p.name }));
+  const facts = snap.facts.map((f) => ({ text: f.text, category: f.category ?? undefined }));
   return {
     source: "structured",
-    parties: snap.parties.map((p) => ({ role: p.role, name: p.name })),
-    facts: snap.facts.map((f) => ({ text: f.text, category: f.category ?? undefined })),
+    parties,
+    facts,
     requests: snap.claims.map((r) => ({ text: r.text, kind: r.kind })),
     risks: snap.risks.map((r) => ({ title: r.title, detail: r.detail, severity: r.severity })),
-    gaps: [],
+    ...extras,
     legalArea: null,
     clientObjective: snap.summary,
+    insufficient: parties.length === 0 && facts.length === 0,
   };
 }
 
@@ -218,15 +279,16 @@ export function buildCaseDisplaySnapshot(args: {
 }): CaseDisplaySnapshot | null {
   const intakeForm = getCaseIntakeForm(args.metadataJson);
   const structured = isFundamentalIntakeStructured(args.metadataJson);
+  const intakeMeta = readCaseIntakeFundamentalMeta(args.metadataJson);
 
   if (structured && args.snap) {
-    return deriveDisplayFromSnapshot(args.snap);
+    return deriveDisplayFromSnapshot(args.snap, intakeMeta ?? undefined);
   }
   if (intakeForm) {
-    return deriveDisplayFromIntakeForm(intakeForm);
+    return deriveDisplayFromIntakeForm(intakeForm, intakeMeta ?? undefined);
   }
   if (args.snap) {
-    return deriveDisplayFromSnapshot(args.snap);
+    return deriveDisplayFromSnapshot(args.snap, intakeMeta ?? undefined);
   }
   return null;
 }

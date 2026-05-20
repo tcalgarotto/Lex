@@ -50,7 +50,13 @@ interface CaseOverviewTabProps {
  caseData: CaseOverview;
 }
 
-type CaseRouteSeg = "documentos" | "partes-fatos" | "pesquisa-juridica" | "estrategia";
+type CaseRouteSeg =
+  | "documentos"
+  | "partes-fatos"
+  | "pesquisa-juridica"
+  | "estrategia"
+  | "pecas"
+  | "processo";
 
 interface NextStep {
  label: string;
@@ -173,7 +179,12 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  }
  if (hasFacts && hasRequests && !hasDraft) {
  steps.push({
- label: "Gerar estratégia inicial e primeira peça",
+ label: "Gerar estratégia inicial",
+ tone: "info",
+ action: { kind: "route", segment: "estrategia" },
+ });
+ steps.push({
+ label: "Preparar primeira minuta",
  tone: "info",
  action: { kind: "route", segment: "estrategia" },
  });
@@ -181,7 +192,7 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  steps.push({
  label: "Revisar última peça gerada",
  tone: "info",
- action: { kind: "route", segment: "estrategia" },
+ action: { kind: "route", segment: "pecas" },
  });
  }
 
@@ -292,8 +303,8 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  </div>
  </div>
  <Button asChild variant="ghost" size="sm">
- <Link href={`/processos/${c.process.id}`}>
- Abrir <ArrowRight className="ml-1 size-3" />
+ <Link href={`/cases/${c.id}/processo`}>
+ Ver no caso <ArrowRight className="ml-1 size-3" />
  </Link>
  </Button>
  </div>
@@ -303,8 +314,8 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  <div className="flex flex-wrap items-center justify-between gap-2">
  <p className="min-w-0 leading-snug">Pré-processual — vincule o CNJ quando houver número.</p>
  <Button asChild variant="outline" size="sm" className="shrink-0">
- <Link href={`/processos?returnCase=${c.id}`}>
- <Hash className="mr-1 size-3" /> Importar CNJ
+ <Link href={`/cases/${c.id}/processo`}>
+ <Hash className="mr-1 size-3" /> Processo vinculado
  </Link>
  </Button>
  </div>
@@ -379,6 +390,11 @@ export function CaseOverviewTab({ caseData: c }: CaseOverviewTabProps) {
  <Sparkles className="mr-1 size-3" aria-hidden /> Gerar estratégia
  </Link>
  </Button>
+ {hasDraft ? (
+ <Button type="button" variant="outline" size="sm" asChild>
+ <Link href={`/cases/${c.id}/pecas`}>Peças e minutas</Link>
+ </Button>
+ ) : null}
  </div>
 
  <section

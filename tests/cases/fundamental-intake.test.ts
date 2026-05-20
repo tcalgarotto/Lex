@@ -77,10 +77,10 @@ describe("cnjVisualError", () => {
 });
 
 describe("isReadyForLexStructure (campos com * na UI)", () => {
-  it("libera Lex no formulário padrão quando Zod e asteriscos estão ok", () => {
+  it("formulário vazio não libera Lex até preencher obrigatórios", () => {
     const f = createDefaultFundamentalIntakeForm();
-    expect(isReadyForLexStructure(f)).toBe(true);
-    expect(lexStructureBlockedReason(f)).toBeNull();
+    expect(isReadyForLexStructure(f)).toBe(false);
+    expect(lexStructureBlockedReason(f)).toMatch(/obrigatório/i);
   });
 
   it("não libera Lex sem UF (obrigatório *)", () => {

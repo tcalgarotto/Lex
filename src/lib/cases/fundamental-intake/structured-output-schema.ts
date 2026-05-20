@@ -72,11 +72,25 @@ export const deepseekStructureResponseSchema = z.object({
     .default([]),
   missing_documents: z.array(z.string()).default([]),
   missing_questions: z.array(z.string()).default([]),
+  /** Lacunas de informação (não confundir com documentos ausentes). */
+  information_gaps: z.array(z.string()).default([]),
   next_steps: z.array(z.string()).default([]),
   case_summary: z.string().default(""),
   legal_area_suggestion: z.string().nullable().optional(),
   urgency_score: z.number().min(0).max(100).optional(),
   readiness_score: z.number().min(0).max(100).optional(),
+  party_relations: z
+    .array(
+      z.object({
+        from: z.string(),
+        to: z.string(),
+        relation: z.string(),
+        confidence: z.number().min(0).max(1).optional(),
+      }),
+    )
+    .default([]),
+  evidence_mentioned: z.array(z.string()).default([]),
+  needs_confirmation: z.array(z.string()).default([]),
 });
 
 export type DeepseekStructureResponse = z.infer<typeof deepseekStructureResponseSchema>;

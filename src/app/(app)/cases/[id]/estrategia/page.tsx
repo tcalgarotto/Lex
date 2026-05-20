@@ -36,9 +36,10 @@ export default async function CaseStrategyPage({ params }: { params: Promise<{ i
  return (
  <div className="space-y-3">
  <header className="space-y-1">
- <h2 className="text-sm font-semibold text-foreground">Estratégia e peças</h2>
+ <h2 className="text-sm font-semibold text-foreground">Estratégia</h2>
  <p className="max-w-3xl text-sm text-muted-foreground">
- Estratégia processual, minutas e revisões — mantidas na mesma linha do tempo do caso.
+ Fundamentos fixados, lacunas, aprovação da linha argumentativa e geração da minuta — sem sair
+ do caso. Versões salvas aparecem em Peças e minutas.
  </p>
  </header>
  <Suspense fallback={<EstrategiaFallback />}>

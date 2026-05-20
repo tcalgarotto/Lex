@@ -7,6 +7,12 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { IntakeSectionId, SectionUiStatus } from "@/components/cases/fundamental-intake-helpers";
 import { SECTION_ANCHOR } from "@/components/cases/fundamental-intake-helpers";
+import {
+  INTAKE_GUIDED_STEPS,
+  INTAKE_REVIEW_ANCHOR,
+  guidedStepStatus,
+  type IntakeGuidedStepId,
+} from "@/lib/cases/fundamental-intake/intake-guided-flow";
 
 /** Alinhado aos 9 blocos do formulário (sem card “Revisão”). */
 export type IntakeStepperSectionId = IntakeSectionId;
@@ -123,6 +129,59 @@ export function IntakeStepper({
 export function scrollToIntakeSection(id: IntakeSectionId) {
   const el = document.getElementById(SECTION_ANCHOR[id]);
   el?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+export function scrollToGuidedStep(scrollTo: IntakeSectionId | "review") {
+  if (scrollTo === "review") {
+    document.getElementById(INTAKE_REVIEW_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  scrollToIntakeSection(scrollTo);
+}
+
+/** Stepper por tópicos da entrevista guiada (Fase 3). */
+export function IntakeGuidedStepper({
+  activeId,
+  sectionStatuses,
+  onNavigate,
+}: {
+  activeId: IntakeGuidedStepId;
+  sectionStatuses: Record<IntakeSectionId, SectionUiStatus>;
+  onNavigate: (id: IntakeGuidedStepId) => void;
+}) {
+  return (
+    <nav
+      aria-label="Etapas da entrevista guiada"
+      className="lex-glass-card w-full shrink-0 overflow-x-auto rounded-2xl px-2 py-2"
+    >
+      <div className="flex min-w-max gap-1.5">
+        {INTAKE_GUIDED_STEPS.map((step, idx) => {
+          const st = guidedStepStatus(step, sectionStatuses);
+          const active = activeId === step.id;
+          const statusHint =
+            st === "complete" ? " — completo" : st === "lacuna" ? " — lacuna" : " — incompleto";
+          return (
+            <button
+              key={step.id}
+              type="button"
+              title={`${step.description}${statusHint}`}
+              onClick={() => onNavigate(step.id)}
+              aria-current={active ? "step" : undefined}
+              className={cn(
+                "flex max-w-[11rem] min-w-[7.5rem] flex-col rounded-lg border px-2.5 py-2 text-left transition-colors",
+                active
+                  ? "border-violet-500/50 bg-violet-500/15 text-violet-100"
+                  : "border-transparent text-[color:var(--text-secondary)] hover:bg-white/[0.04]",
+              )}
+            >
+              <span className="text-[10px] font-medium text-muted-foreground">{idx + 1}</span>
+              <span className="text-xs font-semibold leading-snug">{step.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
 }
 
 export function IntakeSidebarPanel({

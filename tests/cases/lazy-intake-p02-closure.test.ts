@@ -44,8 +44,14 @@ describe("Lazy intake P0.2 — fechamento", () => {
       requests: [],
       risks: [],
       gaps: [],
+      pendingQuestions: [],
+      nextSteps: [],
+      partyRelations: [],
+      evidenceMentioned: [],
+      needsConfirmation: [],
       legalArea: null,
       clientObjective: null,
+      insufficient: false,
     };
     const r = resolveDraftingPartiesFactsPreview({
       parties: [],

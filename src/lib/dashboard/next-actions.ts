@@ -185,7 +185,7 @@ export async function buildNextActions(workspaceId: string): Promise<NextActions
         hint: d.case?.title
           ? `Caso "${d.case.title}" sem fatos extraídos`
           : "Caso sem fatos extraídos",
-        href: d.caseId ? `/cases/${d.caseId}` : "/documentos",
+        href: d.caseId ? `/cases/${d.caseId}/partes-fatos` : "/documentos",
         tone: "info",
       })),
     },

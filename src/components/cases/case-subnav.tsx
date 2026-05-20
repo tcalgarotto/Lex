@@ -15,10 +15,12 @@ import { cn } from "@/lib/utils";
 export const CASE_SUBNAV_ITEMS = [
  { suffix: "", label: "Visão geral" },
  { suffix: "/entrevista", label: "Entrevista" },
- { suffix: "/partes-fatos", label: "Partes e fatos" },
+ { suffix: "/partes-fatos", label: "Fatos e partes" },
  { suffix: "/documentos", label: "Documentos" },
  { suffix: "/pesquisa-juridica", label: "Pesquisa jurídica" },
- { suffix: "/estrategia", label: "Estratégia e peças" },
+ { suffix: "/estrategia", label: "Estratégia" },
+ { suffix: "/pecas", label: "Peças e minutas" },
+ { suffix: "/processo", label: "Processo vinculado" },
 ] as const;
 
 export function CaseSubnav({ caseId }: { caseId: string }) {

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowRight, CheckCircle2, Circle, Loader2, Sparkles, FlaskConical } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -152,14 +151,6 @@ export function CaseStrategyPiecesTab({
  {error ? (
  <p className="mt-2 text-[11px] text-rose-300">{error}</p>
  ) : null}
- <div className="mt-3 flex items-center justify-end">
- <Button asChild variant="ghost" size="sm" className="text-[11px] text-muted-foreground">
- <Link href={`/strategy?caseId=${caseId}`}>
- <FlaskConical className="mr-1 size-3" />
- Abrir no Laboratório <ArrowRight className="ml-1 size-3" />
- </Link>
- </Button>
- </div>
  </Card>
 
  {strategy ? <StrategyPanel strategy={strategy} /> : null}

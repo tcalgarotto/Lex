@@ -1,10 +1,16 @@
 import { z } from "zod";
+import { validateIsoDateString } from "@/lib/forms/br-date-validation";
+import { isValidBrUf } from "@/lib/forms/br-uf";
+import { isValidMaritalStatus } from "@/lib/forms/marital-status";
 import { isValidBrazilPhone, isValidCnpj, isValidCpf, isValidEmail, onlyDigits } from "./br-validators";
+import { normalizeIntakeFormPlaceholders } from "./intake-placeholder-guard";
 
 const optionalTrimmed = z.string().max(20_000).optional().default("");
 
 const timelineRowSchema = z.object({
   date: z.string().max(40).optional().default(""),
+  dateUncertain: z.boolean().optional().default(false),
+  dateApproximate: z.string().max(120).optional().default(""),
   event: z.string().max(2000).optional().default(""),
   who: z.string().max(500).optional().default(""),
   documentRef: z.string().max(500).optional().default(""),
@@ -48,15 +54,17 @@ export const fundamentalIntakeFormSchema = z
     userConfirmedPaths: z.array(z.string().max(200)).max(400).optional().default([]),
 
     attend: z.object({
-      suggestedTitle: z.string().min(2, "Título sugerido é obrigatório.").max(200),
+      suggestedTitle: z.string().max(200).optional().default(""),
       probableLegalArea: z.string().max(200).optional().default(""),
       preOrProcess: z.enum(["pre_processual", "existing_process"]),
       cnj: z.string().max(40).optional().default(""),
       tribunalVara: z.string().max(200).optional().default(""),
-      city: z.string().min(1, "Cidade do caso é obrigatória.").max(120),
+      city: z.string().max(120).optional().default(""),
       uf: z
         .string()
-        .length(2, "UF com 2 letras.")
+        .max(2)
+        .optional()
+        .default("")
         .transform((s) => s.toUpperCase()),
       responsibleLawyer: z.string().max(200).optional().default(""),
       clientOrigin: z.enum(["indicacao", "whatsapp", "site", "retorno", "outro"]).optional().default("outro"),
@@ -184,6 +192,20 @@ export const fundamentalIntakeFormSchema = z
     freeNarrativeOnly: z.boolean().optional().default(false),
   })
   .superRefine((data, ctx) => {
+    const clientNameEarly =
+      data.clientKind === "PERSON"
+        ? (data.clientPerson?.fullName ?? "").trim()
+        : (data.clientCompany?.legalName ?? "").trim();
+    const hasNarrativeEarly =
+      (data.narrative.whatHappened ?? "").trim().length >= 10 ||
+      (data.narrative.freeText ?? "").trim().length >= 20 ||
+      (data.timeline ?? []).some((r) => (r.event ?? "").trim().length >= 8);
+    const isBlankDraft =
+      !(data.attend.suggestedTitle ?? "").trim() &&
+      !(data.attend.city ?? "").trim() &&
+      clientNameEarly.length < 2 &&
+      !hasNarrativeEarly;
+
     const cpf = onlyDigits(data.clientPerson?.cpf ?? "");
     if (cpf.length > 0 && !isValidCpf(data.clientPerson?.cpf ?? "")) {
       ctx.addIssue({ code: "custom", path: ["clientPerson", "cpf"], message: "CPF inválido." });
@@ -216,12 +238,87 @@ export const fundamentalIntakeFormSchema = z
     if (data.attend.cnj.trim().length > 0 && cnj.length !== 20) {
       ctx.addIssue({ code: "custom", path: ["attend", "cnj"], message: "CNJ deve ter 20 dígitos." });
     }
+    if (data.attend.preOrProcess === "existing_process" && cnj.length > 0 && cnj.length !== 20) {
+      ctx.addIssue({ code: "custom", path: ["attend", "cnj"], message: "CNJ deve ter 20 dígitos." });
+    }
+
+    const attendUf = (data.attend.uf ?? "").trim();
+    if (attendUf.length > 0 && !isValidBrUf(attendUf)) {
+      ctx.addIssue({ code: "custom", path: ["attend", "uf"], message: "UF inválida." });
+    }
+
+    const intakeDate = (data.attend.intakeDate ?? "").trim();
+    if (intakeDate) {
+      const v = validateIsoDateString(intakeDate, "general");
+      if (!v.ok) {
+        ctx.addIssue({ code: "custom", path: ["attend", "intakeDate"], message: v.message });
+      }
+    }
+
+    const birth = (data.clientPerson?.birthDate ?? "").trim();
+    if (birth) {
+      const v = validateIsoDateString(birth, "birth");
+      if (!v.ok) {
+        ctx.addIssue({ code: "custom", path: ["clientPerson", "birthDate"], message: v.message });
+      }
+    }
+
+    const marital = (data.clientPerson?.maritalStatus ?? "").trim();
+    if (marital && !isValidMaritalStatus(marital)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["clientPerson", "maritalStatus"],
+        message: "Estado civil inválido.",
+      });
+    }
+
+    const clientUf = (data.clientPerson?.uf ?? "").trim();
+    if (clientUf.length > 0 && !isValidBrUf(clientUf)) {
+      ctx.addIssue({ code: "custom", path: ["clientPerson", "uf"], message: "UF inválida." });
+    }
+
+    for (let i = 0; i < (data.timeline ?? []).length; i += 1) {
+      const row = data.timeline[i]!;
+      const ev = (row.event ?? "").trim();
+      if (!ev) continue;
+      if (row.dateUncertain) {
+        if (!(row.dateApproximate ?? "").trim() && !(row.date ?? "").trim()) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["timeline", i, "dateApproximate"],
+            message: "Informe data aproximada ou desmarque “data incerta”.",
+          });
+        }
+        continue;
+      }
+      const dateIso = (row.date ?? "").trim();
+      if (!dateIso) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["timeline", i, "date"],
+          message: "Informe a data do evento ou marque data aproximada.",
+        });
+        continue;
+      }
+      const v = validateIsoDateString(dateIso, "event");
+      if (!v.ok) {
+        ctx.addIssue({ code: "custom", path: ["timeline", i, "date"], message: v.message });
+      }
+    }
+
+    for (let i = 0; i < (data.opposing.parties?.length ?? 0); i += 1) {
+      const p = data.opposing.parties[i]!;
+      const oppUf = (p.uf ?? "").trim();
+      if (oppUf.length > 0 && !isValidBrUf(oppUf)) {
+        ctx.addIssue({ code: "custom", path: ["opposing", "parties", i, "uf"], message: "UF inválida." });
+      }
+    }
 
     const clientName =
       data.clientKind === "PERSON"
         ? (data.clientPerson?.fullName ?? "").trim()
         : (data.clientCompany?.legalName ?? "").trim();
-    if (clientName.length < 2) {
+    if (!isBlankDraft && clientName.length < 2) {
       ctx.addIssue({
         code: "custom",
         path: data.clientKind === "PERSON" ? ["clientPerson", "fullName"] : ["clientCompany", "legalName"],
@@ -233,7 +330,12 @@ export const fundamentalIntakeFormSchema = z
       (data.narrative.whatHappened ?? "").trim().length >= 10 ||
       (data.narrative.freeText ?? "").trim().length >= 20;
     const hasTimelineFact = (data.timeline ?? []).some((r) => (r.event ?? "").trim().length >= 8);
-    if (!data.freeNarrativeOnly && !hasNarrativeBlock && !hasTimelineFact) {
+    if (
+      !isBlankDraft &&
+      !data.freeNarrativeOnly &&
+      !hasNarrativeBlock &&
+      !hasTimelineFact
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["narrative", "whatHappened"],
@@ -270,25 +372,25 @@ export function createDefaultFundamentalIntakeForm(): FundamentalIntakeForm {
   const todayIso = new Date().toISOString().slice(0, 10);
   return fundamentalIntakeFormSchema.parse({
     attend: {
-      suggestedTitle: "Novo caso",
+      suggestedTitle: "",
       probableLegalArea: "",
       preOrProcess: "pre_processual",
       cnj: "",
       tribunalVara: "",
-      city: "Cidade do caso",
-      uf: "SP",
+      city: "",
+      uf: "",
       intakeDate: todayIso,
     },
     clientKind: "PERSON",
     clientPerson: {
-      fullName: "Nome completo do cliente",
+      fullName: "",
       cpf: "",
       phone: "",
       email: "",
+      maritalStatus: "nao_informado",
     },
     narrative: {
-      whatHappened:
-        "Descreva o problema com as palavras do cliente. Salve o caso quando quiser; a organização automática com Lex AI é opcional.",
+      whatHappened: "",
     },
     timeline: [],
   });
@@ -303,5 +405,10 @@ export function emptyTimelineRow(): z.infer<typeof timelineRowSchema> {
 }
 
 export function parseFundamentalIntakeForm(input: unknown) {
-  return fundamentalIntakeFormSchema.safeParse(input);
+  const parsed = fundamentalIntakeFormSchema.safeParse(input);
+  if (!parsed.success) return parsed;
+  return {
+    ...parsed,
+    data: normalizeIntakeFormPlaceholders(parsed.data),
+  };
 }

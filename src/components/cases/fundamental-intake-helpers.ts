@@ -49,6 +49,39 @@ function clientName(form: FundamentalIntakeForm): string {
     : (form.clientCompany?.legalName ?? "").trim();
 }
 
+const SECTION_LABEL: Record<IntakeSectionId, string> = {
+  attend: "Atendimento",
+  client: "Cliente",
+  opposing: "Parte contrária",
+  third: "Terceiros",
+  narrative: "Relato",
+  timeline: "Linha do tempo",
+  documents: "Provas",
+  goals: "Objetivo",
+  communication: "Gestão do atendimento",
+};
+
+/** Primeira pendência crítica ou próxima seção sugerida (sidebar compacta). */
+export function nextSuggestedQuestion(form: FundamentalIntakeForm): string {
+  const pending = pendingRequiredLabels(form);
+  if (pending.length > 0) return pending[0]!;
+  const nextId = nextRecommendedSection(form);
+  return `Continuar em ${SECTION_LABEL[nextId]}`;
+}
+
+/** Até N itens para destaque na sidebar (pendências + lacunas, sem duplicar). */
+export function topIntakeHighlightItems(form: FundamentalIntakeForm, max = 3): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const label of [...pendingRequiredLabels(form), ...lacunaLabels(form)]) {
+    if (seen.has(label)) continue;
+    seen.add(label);
+    out.push(label);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 export function pendingRequiredLabels(form: FundamentalIntakeForm): string[] {
   const out: string[] = [];
   if ((form.attend.suggestedTitle ?? "").trim().length < 2) out.push("Título sugerido do caso");
@@ -80,7 +113,7 @@ export function interviewProgressPercent(form: FundamentalIntakeForm): number {
   if (form.opposing.unknown) p += 4;
   if ((form.goals.clientWants ?? "").trim().length > 5) p += 8;
   if (Object.values(form.documents.checklist ?? {}).some(Boolean)) p += 7;
-  if ((form.communication.preferredChannel ?? "").length) p += 5;
+  if ((form.communication.internalNextTask ?? "").trim().length > 2) p += 2;
   if ((form.thirdParties.beneficiary ?? "").trim() || (form.thirdParties.witnesses ?? "").trim()) p += 5;
   if ((form.attend.intakeDate ?? "").trim()) p += 5;
   if (!cnjVisualError(form.attend.cnj) && digitsOnly(form.attend.cnj).length === 20) p += 5;
@@ -113,10 +146,7 @@ export function sectionStatuses(form: FundamentalIntakeForm): Record<IntakeSecti
     attend: sectionAttend(form),
     client: sectionClient(form),
     opposing: sectionOpposing(form),
-    third:
-      Object.values(form.thirdParties).some((v) => (v ?? "").trim().length > 2) || narrativeOk
-        ? "complete"
-        : "incomplete",
+    third: "complete",
     narrative: narrativeOk ? "complete" : "incomplete",
     timeline: narrativeOk || timelineOk ? "complete" : "incomplete",
     documents: Object.values(form.documents.checklist ?? {}).some(Boolean) ? "complete" : "incomplete",
@@ -129,12 +159,10 @@ const NAV_ORDER: IntakeSectionId[] = [
   "attend",
   "client",
   "opposing",
-  "third",
   "narrative",
   "timeline",
   "documents",
   "goals",
-  "communication",
 ];
 
 export function nextRecommendedSection(form: FundamentalIntakeForm): IntakeSectionId {
@@ -142,7 +170,7 @@ export function nextRecommendedSection(form: FundamentalIntakeForm): IntakeSecti
   for (const id of NAV_ORDER) {
     if (st[id] !== "complete") return id;
   }
-  return "communication";
+  return "goals";
 }
 
 /**

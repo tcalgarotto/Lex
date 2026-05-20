@@ -2,6 +2,21 @@
 
 **Status:** F-1 sign-off provisório. Release público bloqueado. Owners Legal / Security / QA Lead: **PROVISÓRIO** (dupla revisão Thales PO + Cursor CTO interim).
 
+## Atualização (2026-05-19) — Case Cockpit: caso ≠ processo (Fase 1)
+
+- **Frente:** produto/UX do fluxo do caso (release monitoring congelado).
+- **Plano:** `docs/plans/CASE_COCKPIT_2026_05_19.md`.
+- **Entregue (Fase 1):** aba **Processo vinculado** (`/cases/[id]/processo`, `CaseProcessTab`); subnav com 7 seções (“Fatos e partes”, “Processo vinculado”); CNJ/tribunal/vara na entrevista **somente** se “Sim — já há autos”; links de pesquisa recomendada e menu cockpit apontam para rotas do caso; rótulo **Excluir** visível em documentos (sm+).
+- **Pendente (Fases 3–4):** stepper entrevista por tópicos, revisão prompt estruturação, E2E pré-processual sem CNJ.
+
+## Atualização (2026-05-19) — Case Cockpit Fase 2 (tabs + CTAs + documentos)
+
+- **Subnav (8):** Visão geral · Entrevista · Fatos e partes · Documentos · Pesquisa jurídica · **Estratégia** · **Peças e minutas** · Processo vinculado.
+- **Rotas:** `src/lib/cases/case-cockpit-routes.ts`; nova `/cases/[id]/pecas` (`CasePiecesTab`).
+- **CTAs:** overview, copiloto, chips, pesquisa do caso, `next-actions`, morning briefing — sem `/strategy` ou `/pesquisa-juridica` soltos nos fluxos do caso; CNJ via `/cases/[id]/processo`.
+- **Documentos:** botão **Excluir** com rótulo visível + `title` / `aria-label` dinâmico; `DELETE /api/documents/[id]` inalterado.
+- **Testes:** `tests/ui/case-flow.test.ts`, `tests/lib/case-cockpit-next-actions.test.ts`.
+
 ## P0.2 Lazy Intake
 
 - **Salvar caso não chama IA:** `POST /api/cases/fundamental-intake` com `action=save` (ou `draft`) persiste `metadataJson.intakeForm`, campos determinísticos do caso (`uf`, `summary`, `intakeLegalArea`) e timeline “Entrevista salva”, sem `runDeepseekFundamentalStructure`.
@@ -202,6 +217,19 @@ Ordem fixa na subnavegação persistente (`CaseSubnav`):
 - `src/components/cases/case-overview-tab.tsx`, `case-documents-tab.tsx`, `case-tabs.tsx`
 - `src/lib/ui/product-terminology.ts`
 - `docs/UX_FLOW_AUDIT.md`
+
+## Case Cockpit — Fase 3 (entrevista guiada + IA, 2026-05-19)
+
+| Entrega | Detalhe |
+|---------|---------|
+| Stepper guiado | 9 etapas (`intake-guided-flow.ts`, `IntakeGuidedStepper`); revisão com checklist complementar MVP |
+| Caso ≠ processo | Card na entrevista; CNJ/tribunal/vara só se `preOrProcess === "existing_process"` |
+| IA estrutura | `structured-output-schema` (+ lacunas, relações, provas, confirmações); `sanitizeStructuredSummary`; `intakeFundamental` em metadata |
+| Fatos e partes | `buildCaseDisplaySnapshot` deriva fatos por categoria; `CaseIntakeDerivedSections` + banner insuficiência |
+| Compat | `save`/`draft` sem IA; `REORGANIZE_REQUIRED` + dialog na UI; checklist legado em `/entrevista` sem fluxo fundamental |
+| Testes | `tests/cases/case-cockpit-phase3-intake.test.ts` + suíte lazy-intake/case-flow (60 testes na rodada 2026-05-19) |
+
+**Pendente Fase 4:** E2E autenticado pré-processual; `?q=` na pesquisa do caso; `COMMERCIAL_UX_P0_AUDIT.md`.
 
 ## Riscos abertos
 

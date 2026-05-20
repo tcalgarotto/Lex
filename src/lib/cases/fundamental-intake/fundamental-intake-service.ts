@@ -18,6 +18,8 @@ import { computeCaseFingerprint } from "@/lib/cases/case-brain/fingerprint";
 import { prisma } from "@/lib/prisma";
 import { buildIntakeNarrativeForModel } from "./build-narrative";
 import type { FundamentalIntakeForm } from "./form-schema";
+import { normalizeIntakeFormPlaceholders } from "./intake-placeholder-guard";
+import { mergeInformationGaps, sanitizeStructuredSummary } from "./structure-quality";
 import type { DeepseekStructureResponse } from "./structured-output-schema";
 
 function roleToBrainPartyRole(
@@ -207,21 +209,21 @@ export function mergeStructureWithForm(
     mergedParties.push(p);
   }
 
-  const locked = new Set(form.userConfirmedPaths ?? []);
   const outFacts = [...ai.facts];
-  if (!locked.has("timeline")) {
-    for (const row of form.timeline ?? []) {
-      const t = (row.event ?? "").trim();
-      if (t.length < 4) continue;
-      outFacts.push({
-        text: [row.date && `Em ${row.date}:`, t, row.who && `Quem: ${row.who}`, row.note && `Obs.: ${row.note}`]
-          .filter(Boolean)
-          .join(" "),
-        dates: row.date ? [row.date] : [],
-        confidence: 0.75,
-        sourceText: "Linha do tempo preenchida no formulário.",
-      });
-    }
+  for (const row of form.timeline ?? []) {
+    const t = (row.event ?? "").trim();
+    if (t.length < 4) continue;
+    const dateLabel = row.dateUncertain
+      ? (row.dateApproximate ?? "").trim() || "data aproximada"
+      : row.date;
+    outFacts.push({
+      text: [dateLabel && `Em ${dateLabel}:`, t, row.who && `Quem: ${row.who}`, row.note && `Obs.: ${row.note}`]
+        .filter(Boolean)
+        .join(" "),
+      dates: row.date ? [row.date] : [],
+      confidence: 0.75,
+      sourceText: "Linha do tempo preenchida no formulário.",
+    });
   }
 
   const outRisks = [...ai.risks];
@@ -244,10 +246,24 @@ export function mergeStructureWithForm(
       : [],
   ];
 
-  let summary = ai.case_summary.trim();
-  if (summary.length < 20 && (form.narrative.freeText ?? "").trim().length >= 20) {
-    summary = (form.narrative.freeText ?? "").trim().slice(0, 1200);
-  }
+  const narrativeForSummary = buildIntakeNarrativeForModel(form);
+  const fallbackSummary = [
+    clientName ? `Demanda de ${clientName}.` : "",
+    outFacts.length ? `${outFacts.length} fato(s) estruturado(s).` : "",
+    form.attend.preOrProcess === "pre_processual"
+      ? "Caso pré-processual (sem CNJ obrigatório)."
+      : "Processo judicial indicado na entrevista.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const summary = sanitizeStructuredSummary(
+    ai.case_summary.trim(),
+    narrativeForSummary,
+    fallbackSummary || "Caso em estruturação a partir da entrevista.",
+  );
+
+  const infoGaps = mergeInformationGaps(ai);
 
   return {
     ...ai,
@@ -255,7 +271,8 @@ export function mergeStructureWithForm(
     facts: outFacts,
     risks: outRisks,
     missing_documents: Array.from(new Set(missingDocs.map((s) => s.trim()).filter(Boolean))).slice(0, 40),
-    case_summary: summary || ai.case_summary,
+    information_gaps: infoGaps,
+    case_summary: summary,
   };
 }
 
@@ -263,7 +280,7 @@ export function mergeStructureWithForm(
 export function buildDeterministicCaseFieldsFromIntake(form: FundamentalIntakeForm): {
   narrative: string;
   summary: string | null;
-  uf: string;
+  uf: string | null;
   processNumber: string | null;
   metaPatch: Record<string, unknown>;
 } {
@@ -296,7 +313,7 @@ export function buildDeterministicCaseFieldsFromIntake(form: FundamentalIntakeFo
   return {
     narrative,
     summary: summary || null,
-    uf: form.attend.uf,
+    uf: form.attend.uf.trim().length === 2 ? form.attend.uf : null,
     processNumber,
     metaPatch,
   };
@@ -308,16 +325,17 @@ export async function persistFundamentalDraft(args: {
   caseId?: string | null;
   form: FundamentalIntakeForm;
 }): Promise<{ id: string }> {
+  const form = normalizeIntakeFormPlaceholders(args.form);
   const { narrative, summary, uf, processNumber, metaPatch } =
-    buildDeterministicCaseFieldsFromIntake(args.form);
+    buildDeterministicCaseFieldsFromIntake(form);
 
   const caseData = {
-    title: args.form.attend.suggestedTitle.trim(),
+    title: form.attend.suggestedTitle.trim() || "Caso em elaboração",
     rawInput: narrative,
     summary,
     uf,
     processNumber,
-    metadataJson: metaPatch as Prisma.InputJsonValue,
+    metadataJson: { ...metaPatch, intakeForm: form } as Prisma.InputJsonValue,
     status: CaseStatus.INTAKE,
   };
 
@@ -389,10 +407,11 @@ export async function applyFundamentalStructure(args: {
   form: FundamentalIntakeForm;
   structured: DeepseekStructureResponse;
 }): Promise<void> {
-  const merged = mergeStructureWithForm(args.form, args.structured);
-  const narrative = buildIntakeNarrativeForModel(args.form);
-  const cnjDigits = stripCnj(args.form.attend.cnj);
-  const processNumberFinal = cnjDigits.length === 20 ? formatCnj(args.form.attend.cnj) : null;
+  const form = normalizeIntakeFormPlaceholders(args.form);
+  const merged = mergeStructureWithForm(form, args.structured);
+  const narrative = buildIntakeNarrativeForModel(form);
+  const cnjDigits = stripCnj(form.attend.cnj);
+  const processNumberFinal = cnjDigits.length === 20 ? formatCnj(form.attend.cnj) : null;
 
   const brainParties: BrainParty[] = merged.parties.map((p) => ({
     role: roleToBrainPartyRole(prismaRoleFromAi(p.role)),
@@ -454,11 +473,11 @@ export async function applyFundamentalStructure(args: {
     origin: "input",
   }));
 
-  const evidence = buildChecklistEvidence(args.form);
+  const evidence = buildChecklistEvidence(form);
 
   const area = [
     merged.legal_area_suggestion?.trim(),
-    args.form.attend.probableLegalArea?.trim(),
+    form.attend.probableLegalArea?.trim(),
   ].filter((s): s is string => !!s && s.length > 0);
   const dedupedArea = Array.from(new Set(area.map((a) => a.trim()))).slice(0, 8);
 
@@ -495,11 +514,11 @@ export async function applyFundamentalStructure(args: {
     brainVersion: nextVersion,
     inputHash,
     degraded: false,
-    title: args.form.attend.suggestedTitle.trim(),
+    title: form.attend.suggestedTitle.trim() || "Caso em elaboração",
     area: dedupedArea.length ? dedupedArea : ["A classificar"],
-    phase: args.form.attend.preOrProcess === "existing_process" ? "judicial" : "pre_processual",
+    phase: form.attend.preOrProcess === "existing_process" ? "judicial" : "pre_processual",
     problem: merged.case_summary.slice(0, 400) || "Caso em estruturação a partir da entrevista fundamental.",
-    objective: (args.form.goals.clientWants ?? "").trim() || "A definir com o cliente.",
+    objective: (form.goals.clientWants ?? "").trim() || "A definir com o cliente.",
     thesis: "Tese a consolidar após provas e fundamentos.",
     probableMeasure: { kind: "OUTRO", rationale: "Medida provável a refinar após análise." },
     narrative: merged.case_summary || narrative.slice(0, 4000),
@@ -542,7 +561,7 @@ export async function applyFundamentalStructure(args: {
     await tx.case.update({
       where: { id: args.caseId },
       data: {
-        title: args.form.attend.suggestedTitle.trim(),
+        title: form.attend.suggestedTitle.trim() || "Caso em elaboração",
         summary: merged.case_summary.slice(0, 2000) || null,
         rawInput: narrative,
         status: CaseStatus.RESEARCH,
@@ -660,7 +679,7 @@ export async function applyFundamentalStructure(args: {
       await tx.caseTimelineEvent.createMany({ data: timelinePayloads });
     }
 
-    const ids = args.form.documents.documentIds ?? [];
+    const ids = form.documents.documentIds ?? [];
     if (ids.length) {
       await tx.document.updateMany({
         where: {
@@ -674,7 +693,7 @@ export async function applyFundamentalStructure(args: {
     }
 
     const meta = mergeCaseMetadataJson(caseRow.metadataJson as Record<string, unknown>, {
-      intakeForm: args.form,
+      intakeForm: form,
       intakeStructuredAt: new Date().toISOString(),
       intakeStructureSource: "deepseek_structuring",
       brain,
@@ -682,6 +701,10 @@ export async function applyFundamentalStructure(args: {
       intakeFundamental: {
         nextSteps: merged.next_steps.slice(0, 16),
         missingQuestions: merged.missing_questions.slice(0, 24),
+        informationGaps: mergeInformationGaps(merged).slice(0, 24),
+        partyRelations: (merged.party_relations ?? []).slice(0, 12),
+        evidenceMentioned: (merged.evidence_mentioned ?? []).slice(0, 20),
+        needsConfirmation: (merged.needs_confirmation ?? []).slice(0, 20),
         urgencyScore: merged.urgency_score ?? null,
         readinessScore: merged.readiness_score ?? readiness.score,
       },

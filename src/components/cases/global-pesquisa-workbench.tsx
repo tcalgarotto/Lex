@@ -301,10 +301,11 @@ function ResultsColumn({
  <Button type="button" size="sm" variant="secondary" asChild>
  <Link href={`/cases/${caseId}/pesquisa-juridica`}>Adicionar ao caso</Link>
  </Button>
- ) : null}
+ ) : (
  <Button type="button" size="sm" variant="ghost" asChild>
- <Link href="/pesquisa-juridica">Adicionar à peça</Link>
+ <Link href="/pesquisa-juridica">Abrir pesquisa global</Link>
  </Button>
+ )}
  <Button type="button" size="sm" variant="ghost" onClick={() => void navigator.clipboard.writeText(f.id)}>
  <Pin className="mr-1 size-3" aria-hidden />
  {translateTerm("Pin")}

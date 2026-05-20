@@ -932,7 +932,7 @@ function buildMorningBriefingPayloadFromParts(
       title: `Associar processo — ${c.title}`,
       reason: "Quando existir número CNJ, fica mais fácil acompanhar prazos e movimentações.",
       cta: "Importar CNJ",
-      href: `/processos?returnCase=${c.id}`,
+      href: `/cases/${c.id}/processo`,
       priority: "low",
       eisenhowerBucket: "important",
       discreteOrigin: "aguardando_cliente",

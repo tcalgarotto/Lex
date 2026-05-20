@@ -268,9 +268,9 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  <div className="flex flex-wrap gap-2">
  {reco.suggestedSearches.map((q) => (
  <Button key={q} type="button" size="sm" variant="secondary" asChild className="rounded-full text-xs font-normal">
- <Link
- href={`/pesquisa-juridica?caseId=${encodeURIComponent(caseId)}&q=${encodeURIComponent(q)}`}
- >
+                <Link
+                  href={`/cases/${caseId}/pesquisa-juridica?q=${encodeURIComponent(q)}`}
+                >
  {q}
  </Link>
  </Button>
@@ -311,7 +311,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  {translateTerm("Pin")}
  </Button>
  <Button type="button" size="sm" variant="ghost" onClick={() => void goToStrategy()}>
- Abrir Estratégia e peças
+ Abrir estratégia
  </Button>
  <Button type="button" size="sm" variant="ghost" asChild>
  <Link href={`/cases/${caseId}/estrategia`}>Usar na minuta</Link>
@@ -365,7 +365,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  Fixar julgado
  </Button>
  <Button type="button" size="sm" variant="ghost" onClick={() => void goToStrategy()}>
- Estratégia e peças
+ Abrir estratégia
  </Button>
  </div>
  </div>
@@ -487,7 +487,7 @@ export function CaseResearchTab({ caseId, legalSources, caseRecord }: Props) {
  <Search className="size-3" aria-hidden /> Buscar no acervo e na biblioteca
  </div>
  <Button asChild size="sm" variant="ghost" className="text-[11px] text-muted-foreground">
- <Link href={`/pesquisa-juridica?caseId=${caseId}`}>
+ <Link href={`/cases/${caseId}/pesquisa-juridica`}>
  Abrir pesquisa em tela cheia <ArrowRight className="ml-1 size-3" aria-hidden />
  </Link>
  </Button>

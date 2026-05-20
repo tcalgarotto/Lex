@@ -276,11 +276,13 @@ export function CaseDocumentsTab({ caseId, documents }: Props) {
  size="sm"
  disabled={busy === d.id}
  onClick={() => setConfirmDelete(d)}
- aria-label="Excluir documento"
- className="text-rose-300 hover:text-rose-200"
+ aria-label={`Excluir documento ${d.originalName}`}
+ title="Excluir documento permanentemente"
+ className="gap-1 text-rose-300 hover:text-rose-200"
  data-testid={`document-delete-${d.id}`}
  >
- <Trash2 className="size-3" aria-hidden />
+ <Trash2 className="size-3 shrink-0" aria-hidden />
+ <span>Excluir</span>
  </Button>
  </div>
  </div>

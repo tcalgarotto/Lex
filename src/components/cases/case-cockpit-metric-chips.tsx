@@ -42,7 +42,7 @@ export function CaseCockpitMetricChips({
       <Link href={`/cases/${caseId}/pesquisa-juridica`} className={chipClass}>
         Pesquisa {c.legalSources.length}
       </Link>
-      <Link href={`/cases/${caseId}/estrategia`} className={chipClass}>
+      <Link href={`/cases/${caseId}/pecas`} className={chipClass}>
         Peças {c.drafts.length}
       </Link>
     </div>

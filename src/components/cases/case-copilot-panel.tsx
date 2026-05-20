@@ -44,7 +44,7 @@ export function CaseCopilotPanel({
   const shortcuts = [
     { href: `/cases/${c.id}/entrevista`, label: "Entrevista" },
     { href: `/cases/${c.id}/documentos`, label: "Enviar documento" },
-    { href: `/processos?returnCase=${c.id}`, label: "Importar CNJ" },
+    { href: `/cases/${c.id}/processo`, label: "Processo vinculado" },
     { href: `/cases/${c.id}/pesquisa-juridica`, label: "Pesquisa" },
   ].slice(0, SHORTCUTS_MAX);
 
@@ -88,7 +88,7 @@ export function CaseCopilotPanel({
             href={`/cases/${c.id}/partes-fatos`}
             className="text-[color:var(--brand-text)] underline-offset-2 hover:underline"
           >
-            Partes e fatos
+            Fatos e partes
           </Link>
         </p>
       ) : null}

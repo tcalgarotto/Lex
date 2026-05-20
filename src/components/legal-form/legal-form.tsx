@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Check, AlertTriangle, Circle } from "lucide-react";
 import {
   maskCepInput,
@@ -16,10 +15,13 @@ import {
   maskCurrencyBrlInput,
   maskDateBrInput,
   maskPhoneBrInput,
-  parseBrDateToIso,
   formatIsoToBrDate,
   digitsOnly,
 } from "@/lib/forms/legal-input-masks";
+import {
+  validateBrDateString,
+  type BrDateValidationMode,
+} from "@/lib/forms/br-date-validation";
 
 export type FieldRequirement = "required" | "optional" | "lacuna";
 
@@ -61,6 +63,7 @@ export function LegalSectionCard({
   children,
   className,
   footer,
+  tone = "default",
 }: {
   id: string;
   step: number | string;
@@ -71,40 +74,63 @@ export function LegalSectionCard({
   children: React.ReactNode;
   className?: string;
   footer?: React.ReactNode;
+  /** `essential` destaque moderado; `optional` card mais leve. */
+  tone?: "default" | "essential" | "optional";
 }) {
   return (
     <Card
       id={id}
       className={cn(
-        "scroll-mt-[calc(var(--app-header-h,5.5rem)+5.25rem)] p-4 shadow-none md:p-5",
-        "transition-shadow hover:shadow-md",
+        "scroll-mt-[calc(var(--app-header-h,5.5rem)+4.5rem)] shadow-none",
+        tone === "essential" && "border-[color:var(--border-default)]/70 p-4 md:p-5",
+        tone === "optional" && "border-dashed border-[color:var(--border-default)]/35 bg-white/[0.01] p-3 md:p-4",
+        tone === "default" && "border-[color:var(--border-default)]/50 p-4 md:p-5",
         className,
       )}
     >
-      <header className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-[color:var(--border-default)]/80 pb-3">
-        <div className="min-w-0 space-y-1">
+      <header
+        className={cn(
+          "mb-3 flex flex-wrap items-start justify-between gap-2",
+          tone !== "optional" && "border-b border-[color:var(--border-default)]/50 pb-2.5",
+        )}
+      >
+        <div className="min-w-0 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="shrink-0 font-mono text-caption font-semibold">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-white/[0.04] font-mono text-[11px] font-semibold text-muted-foreground">
               {step}
-            </Badge>
-            <h2 className="text-lg font-semibold leading-snug tracking-tight text-[color:var(--text-primary)] md:text-xl">
+            </span>
+            <h2
+              className={cn(
+                "font-semibold leading-snug tracking-tight text-[color:var(--text-primary)]",
+                tone === "essential" ? "text-base md:text-lg" : "text-base",
+              )}
+            >
               {title}
             </h2>
           </div>
           {subtitle ? (
-            <p className="text-base leading-relaxed text-[color:var(--text-secondary)]">{subtitle}</p>
+            <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{subtitle}</p>
           ) : null}
           {requirementNote ? (
-            <p className="text-sm leading-relaxed text-[color:var(--text-muted)]">{requirementNote}</p>
+            <p className="text-xs leading-relaxed text-[color:var(--text-muted)]">{requirementNote}</p>
           ) : null}
         </div>
-        <span className="flex shrink-0 items-center gap-1 rounded-md border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide",
+            status === "complete" && "text-emerald-300/90",
+            status === "lacuna" && "text-amber-300/90",
+            status === "incomplete" && "text-muted-foreground",
+          )}
+        >
           {statusIcon[status]}
-          {status === "complete" ? "Completo" : status === "lacuna" ? "Lacunas" : "Incompleto"}
+          <span className="hidden sm:inline">
+            {status === "complete" ? "Ok" : status === "lacuna" ? "Lacuna" : "Pendente"}
+          </span>
         </span>
       </header>
-      <div className="space-y-4">{children}</div>
-      {footer ? <div className="mt-4 border-t border-[color:var(--border-default)]/60 pt-3">{footer}</div> : null}
+      <div className="space-y-3">{children}</div>
+      {footer ? <div className="mt-3 border-t border-[color:var(--border-default)]/40 pt-2">{footer}</div> : null}
     </Card>
   );
 }
@@ -365,6 +391,7 @@ export function LegalDateInput({
   error,
   requirement = "optional",
   disabled,
+  validationMode = "general",
 }: {
   id: string;
   label: string;
@@ -374,11 +401,16 @@ export function LegalDateInput({
   error?: React.ReactNode;
   requirement?: FieldRequirement;
   disabled?: boolean;
+  validationMode?: BrDateValidationMode;
 }) {
   const [br, setBr] = React.useState(() => (isoValue ? formatIsoToBrDate(isoValue) : ""));
+  const [localError, setLocalError] = React.useState<string | null>(null);
   React.useEffect(() => {
     setBr(isoValue ? formatIsoToBrDate(isoValue) : "");
+    setLocalError(null);
   }, [isoValue]);
+
+  const displayError = error ?? localError;
 
   return (
     <LegalFieldGroup>
@@ -393,27 +425,44 @@ export function LegalDateInput({
         autoComplete="off"
         disabled={disabled}
         aria-required={requirement === "required"}
-        aria-invalid={error ? true : undefined}
+        aria-invalid={displayError ? true : undefined}
         value={br}
         onChange={(e) => {
           const m = maskDateBrInput(e.target.value);
           setBr(m);
-          const iso = parseBrDateToIso(m);
-          onIsoChange(iso);
-        }}
-        onBlur={() => {
-          const iso = parseBrDateToIso(br);
-          if (iso) {
-            setBr(formatIsoToBrDate(iso));
-            onIsoChange(iso);
-          } else if (digitsOnly(br).length === 0) {
+          setLocalError(null);
+          if (digitsOnly(m).length === 0) {
             onIsoChange("");
+            return;
+          }
+          if (digitsOnly(m).length === 8) {
+            const v = validateBrDateString(m, validationMode);
+            if (v.ok) onIsoChange(v.iso);
           }
         }}
-        className={cn("w-full max-w-[11rem] font-mono text-[0.9375rem] leading-snug tabular-nums", error && "border-rose-500/50")}
+        onBlur={() => {
+          if (digitsOnly(br).length === 0) {
+            onIsoChange("");
+            setLocalError(null);
+            return;
+          }
+          const v = validateBrDateString(br, validationMode);
+          if (!v.ok) {
+            setLocalError(v.message);
+            onIsoChange("");
+            return;
+          }
+          setLocalError(null);
+          setBr(formatIsoToBrDate(v.iso));
+          onIsoChange(v.iso);
+        }}
+        className={cn(
+          "w-full max-w-[11rem] font-mono text-[0.9375rem] leading-snug tabular-nums",
+          displayError && "border-rose-500/50",
+        )}
       />
       {hint ? <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">{hint}</p> : null}
-      <LegalValidationMessage>{error}</LegalValidationMessage>
+      <LegalValidationMessage id={`${id}-err`}>{displayError}</LegalValidationMessage>
     </LegalFieldGroup>
   );
 }

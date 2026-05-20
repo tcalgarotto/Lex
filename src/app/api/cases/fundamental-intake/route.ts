@@ -60,6 +60,8 @@ function revalidateCaseSurface(caseId: string) {
   revalidatePath(`/cases/${caseId}/documentos`);
   revalidatePath(`/cases/${caseId}/pesquisa-juridica`);
   revalidatePath(`/cases/${caseId}/estrategia`);
+  revalidatePath(`/cases/${caseId}/processo`);
+  revalidatePath(`/cases/${caseId}/pecas`);
 }
 
 export async function POST(req: Request) {

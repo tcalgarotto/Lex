@@ -76,7 +76,7 @@ export function resolveCaseCockpitPrimaryAction(
       kind: "link",
       href: seg(caseId, "partes-fatos"),
       label: "Extrair fatos e partes",
-      description: "Os documentos já estão prontos. Consolide fatos, partes e pedidos na aba Partes e fatos.",
+      description: "Os documentos já estão prontos. Consolide fatos, partes e pedidos na aba Fatos e partes.",
     };
   }
 
