@@ -25,12 +25,11 @@ for (const key of Object.keys(VIEWPORTS) as ViewportKey[]) {
         await expectMarketingWellMinWidth(page, 320);
         await page.locator("#landing-mobile-menu summary").click();
         await expect(page.locator("#landing-mobile-nav")).toBeVisible();
-        await expect(
-          page.getByRole("navigation", { name: /principal mobile/i }).getByRole("link", {
-            name: "Acesso",
-            exact: true,
-          }),
-        ).toBeVisible();
+        const mobileNav = page.getByRole("navigation", { name: /principal mobile/i });
+        for (const label of ["Pilares", "Recursos", "Preços"] as const) {
+          await expect(mobileNav.getByRole("link", { name: label, exact: true })).toBeVisible();
+        }
+        await expect(mobileNav.getByRole("link", { name: "Solicitar acesso" })).toBeVisible();
       }
     });
 
