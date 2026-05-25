@@ -1,4 +1,17 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { workspaceFindMany } = vi.hoisted(() => ({
+  workspaceFindMany: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    workspace: {
+      findMany: workspaceFindMany,
+      findUnique: vi.fn(),
+    },
+  },
+}));
 import {
   isAsaasBillingConfigured,
   isAsaasBillingImmediateMode,
@@ -99,6 +112,7 @@ describe("getJustosProEntitlement (Asaas pending)", () => {
 
 describe("applyAsaasWebhookToWorkspace", () => {
   it("ignora evento sem workspace", async () => {
+    workspaceFindMany.mockResolvedValue([]);
     const result = await applyAsaasWebhookToWorkspace({
       event: "PAYMENT_RECEIVED",
       payment: {

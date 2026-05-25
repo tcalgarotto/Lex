@@ -49,7 +49,7 @@ describe("P0 Case Flow QA — contratos no código-fonte", () => {
     const chrome = read("src/components/cases/fundamental-intake-chrome.tsx");
     expect(chrome).toMatch(/data-testid="save-case-sidebar"/);
     expect(chrome).toMatch(/Salvar caso/);
-    expect(chrome).toMatch(/Organizar caso com Lex AI/);
+    expect(chrome).toMatch(/Organizar caso com JustOS AI/);
   });
 
   it("applyFundamentalStructure: dedupe de partes por role+name antes de createMany", () => {

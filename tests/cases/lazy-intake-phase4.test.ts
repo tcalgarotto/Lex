@@ -4,7 +4,10 @@ import {
   formatCaseTaskContextForPrompt,
   pickStructuredSource,
 } from "@/lib/cases/intake/case-intake-context";
-import { createDefaultFundamentalIntakeForm } from "@/lib/cases/fundamental-intake/form-schema";
+import {
+  createDefaultFundamentalIntakeForm,
+  parseFundamentalIntakeForm,
+} from "@/lib/cases/fundamental-intake/form-schema";
 import { runDraftingGuard } from "@/lib/cases/drafting/drafting-guard";
 import type { CaseBrainSnapshot } from "@/lib/cases/case-brain/snapshot";
 
@@ -63,9 +66,12 @@ describe("Lazy intake P0.2 — Fase 4", () => {
 
   it("buildCaseDisplaySnapshot deriva dados para caso não organizado", () => {
     const form = createDefaultFundamentalIntakeForm();
-    form.narrative.whatHappened = "Relato principal.";
+    form.clientPerson!.fullName = "Cliente Teste";
+    form.narrative.whatHappened = "Relato principal com contexto suficiente para validação.";
+    const parsed = parseFundamentalIntakeForm(form);
+    expect(parsed.success).toBe(true);
     const display = buildCaseDisplaySnapshot({
-      metadataJson: { intakeForm: form, intakeFormSource: "intake_form" },
+      metadataJson: { intakeForm: parsed.data, intakeFormSource: "intake_form" },
     });
     expect(display?.source).toBe("intake_form");
     expect(display?.facts.length).toBeGreaterThan(0);

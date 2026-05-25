@@ -7,8 +7,8 @@ describe("prompts", () => {
     expect(PROMPT_VERSION.length).toBeGreaterThan(0);
   });
 
-  it("SYSTEM_BASE mentions Lex and fontes", () => {
-    expect(SYSTEM_BASE).toContain("Lex");
+  it("SYSTEM_BASE mentions JustOS and fontes", () => {
+    expect(SYSTEM_BASE).toContain("JustOS");
     expect(SYSTEM_BASE).toContain("FONTES");
   });
 
