@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -319,19 +318,18 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
 
   const stepperActive = activeScrollSection;
 
-  const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   /** Alinha com margem do AppChrome; 0 em viewport &lt; lg (drawer). */
   const [appMainInset, setAppMainInset] = React.useState("0px");
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
     const update = () => {
       if (mq.matches) setAppMainInset("0px");
-      else setAppMainInset(sidebarCollapsed ? "80px" : "268px");
+      else setAppMainInset("var(--app-sidebar-width)");
     };
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
-  }, [sidebarCollapsed]);
+  }, []);
 
   return (
     <div

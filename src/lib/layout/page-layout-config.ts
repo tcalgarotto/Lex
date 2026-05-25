@@ -66,13 +66,13 @@ export function matchRouteLayout(pathname: string): RouteLayoutSpec {
     return {
       bleed: false,
       contentMode: "standard",
-      frame: "center-grid",
-      centerWidth: "wide",
-      usesLexPageFrame: true,
-      usesLexCenterGrid: true,
+      frame: "standard",
+      centerWidth: "full",
+      usesLexPageFrame: false,
+      usesLexCenterGrid: false,
       leftRail: "none",
       rightRail: "none",
-      notes: "LexPageFrame + LexCenterGrid na página.",
+      notes: "Cockpit JustOS full-width — justos-dashboard.css",
     };
   }
 

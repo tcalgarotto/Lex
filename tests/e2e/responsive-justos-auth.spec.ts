@@ -12,9 +12,8 @@ test.describe("responsivo — app autenticado", () => {
   test("dashboard — menu mobile e conteúdo", async ({ page }, testInfo) => {
     await page.goto("/dashboard");
     await expectNoHorizontalOverflow(page);
-    await expect(page.getByRole("heading", { name: /hoje no escritório — justos/i })).toBeVisible({
-      timeout: 60_000,
-    });
+    await expect(page.getByTestId("justos-dashboard")).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "O que fazer agora" })).toBeVisible();
 
     if (testInfo.project.name === "auth-mobile") {
       await expect(page.getByRole("button", { name: /abrir menu/i })).toBeVisible();
@@ -26,11 +25,10 @@ test.describe("responsivo — app autenticado", () => {
 
     if (testInfo.project.name === "auth-laptop-14") {
       await expectAppMainMinWidth(page, 720);
-      const pulseGrid = page.locator(".dashboard-pulse-cards");
-      if ((await pulseGrid.count()) > 0) {
-        const box = await pulseGrid.boundingBox();
-        expect(box?.width ?? 0).toBeGreaterThan(600);
-      }
+      const board = page.getByTestId("dashboard-kanban-board");
+      await expect(board).toBeVisible({ timeout: 15_000 });
+      const box = await board.boundingBox();
+      expect(box?.width ?? 0).toBeGreaterThan(500);
     }
   });
 

@@ -12,8 +12,6 @@ import {
   Library,
   FolderKanban,
   Home,
-  PanelLeft,
-  PanelLeftClose,
   Search,
   ScrollText,
   Users,
@@ -21,7 +19,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { useUiStore } from "@/stores/ui-store";
 import { useWorkspaceContext } from "@/components/app/workspace-context";
 import { SidebarAccountFooter } from "@/components/app/sidebar-account-footer";
@@ -59,12 +56,10 @@ function isAdmin(role: MembershipRole | undefined): boolean {
 const NavLink = memo(function NavLink({
   item,
   pathname,
-  collapsed,
   muted = false,
 }: {
   item: NavItem;
   pathname: string;
-  collapsed: boolean;
   muted?: boolean;
 }) {
   const router = useRouter();
@@ -82,27 +77,21 @@ const NavLink = memo(function NavLink({
       <span
         className={cn(
           "relative flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-base font-semibold leading-snug transition-colors hover:bg-[var(--bg-hover)]",
-          muted && !active && "text-[color:var(--text-muted)]",
+          muted && !active && "text-[color:var(--text-secondary)]",
           !muted && !active && "text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]",
           active &&
             "bg-[rgba(124,58,237,0.08)] text-[color:var(--violet-400)] before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-r-sm before:bg-[var(--violet-500)] before:content-['']",
-          collapsed && "justify-center px-0",
         )}
       >
         <Icon className={cn("size-5 shrink-0", active ? "opacity-100" : "opacity-80")} />
-        {!collapsed ? item.label : null}
+        {item.label}
       </span>
     </Link>
   );
 });
 NavLink.displayName = "NavLink";
 
-/** Só esta árvore re-renderiza quando a rota muda (pathname). */
-const SidebarMainNav = memo(function SidebarMainNav({
-  collapsed,
-}: {
-  collapsed: boolean;
-}) {
+const SidebarMainNav = memo(function SidebarMainNav() {
   const pathname = usePathname();
   const ws = useWorkspaceContext();
   const admin = isAdmin(ws?.current.role);
@@ -115,7 +104,7 @@ const SidebarMainNav = memo(function SidebarMainNav({
   return (
     <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
       {CORE_NAV.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
+        <NavLink key={item.href} item={item} pathname={pathname} />
       ))}
 
       {admin ? (
@@ -123,10 +112,7 @@ const SidebarMainNav = memo(function SidebarMainNav({
           <button
             type="button"
             onClick={() => setWorkspaceOpen((v) => !v)}
-            className={cn(
-              "mt-3 flex min-h-[40px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--text-secondary)] hover:bg-[var(--bg-hover)]",
-              collapsed && "justify-center px-0",
-            )}
+            className="mt-3 flex min-h-[40px] items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--text-secondary)] hover:bg-[var(--bg-hover)]"
             aria-expanded={workspaceOpen}
           >
             {workspaceOpen ? (
@@ -134,17 +120,11 @@ const SidebarMainNav = memo(function SidebarMainNav({
             ) : (
               <ChevronRight className="size-4 shrink-0" />
             )}
-            {!collapsed ? <span>Workspace</span> : null}
+            <span>Workspace</span>
           </button>
           {workspaceOpen
             ? WORKSPACE_ADMIN_NAV.map((item) => (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  pathname={pathname}
-                  collapsed={collapsed}
-                  muted
-                />
+                <NavLink key={item.href} item={item} pathname={pathname} muted />
               ))
             : null}
         </>
@@ -154,7 +134,7 @@ const SidebarMainNav = memo(function SidebarMainNav({
 });
 SidebarMainNav.displayName = "SidebarMainNav";
 
-const SidebarFooter = memo(function SidebarFooter({ collapsed }: { collapsed: boolean }) {
+const SidebarFooter = memo(function SidebarFooter() {
   const ws = useWorkspaceContext();
   if (!ws?.viewer || !ws.current) return null;
   return (
@@ -162,7 +142,6 @@ const SidebarFooter = memo(function SidebarFooter({ collapsed }: { collapsed: bo
       <SidebarAccountFooter
         viewer={ws.viewer}
         role={ws.current.role}
-        collapsed={collapsed}
         workspace={
           ws.workspaces?.length ? { current: ws.current, workspaces: ws.workspaces } : null
         }
@@ -173,10 +152,8 @@ const SidebarFooter = memo(function SidebarFooter({ collapsed }: { collapsed: bo
 SidebarFooter.displayName = "SidebarFooter";
 
 export const AppSidebar = memo(function AppSidebar() {
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const sidebarMobileOpen = useUiStore((s) => s.sidebarMobileOpen);
   const setSidebarMobileOpen = useUiStore((s) => s.setSidebarMobileOpen);
-  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   return (
     <>
@@ -190,40 +167,16 @@ export const AppSidebar = memo(function AppSidebar() {
       ) : null}
       <aside
         className={cn(
-          "fixed left-0 z-40 flex flex-col border-r border-[color:var(--border-subtle)] bg-[color:var(--bg-sidebar)]",
+          "fixed left-0 z-40 flex w-[var(--app-sidebar-width)] flex-col border-r border-[color:var(--border-subtle)] bg-[color:var(--bg-sidebar)]",
           "top-[var(--app-header-h)] h-[calc(100svh-var(--app-header-h))]",
-          "w-[min(100vw,268px)] transition-[transform,width] duration-200 ease-out motion-reduce:transition-none",
+          "transition-transform duration-200 ease-out motion-reduce:transition-none",
           "max-lg:-translate-x-full",
           sidebarMobileOpen && "max-lg:translate-x-0",
-          "lg:w-[268px]",
-          collapsed && "lg:w-20",
         )}
       >
-      <SidebarMainNav collapsed={collapsed} />
-      <SidebarFooter collapsed={collapsed} />
-      <div
-        className={cn(
-          "shrink-0 border-t border-[color:var(--border-subtle)] p-2",
-          collapsed ? "flex justify-center" : "flex justify-end",
-        )}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 shrink-0 text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-overlay)] hover:text-[color:var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[color:var(--brand-border)]"
-          onClick={() => toggleSidebar()}
-          aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-          title={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-        >
-          {collapsed ? (
-            <PanelLeft className="size-6 stroke-2" aria-hidden />
-          ) : (
-            <PanelLeftClose className="size-6 stroke-2" aria-hidden />
-          )}
-        </Button>
-      </div>
-    </aside>
+        <SidebarMainNav />
+        <SidebarFooter />
+      </aside>
     </>
   );
 });

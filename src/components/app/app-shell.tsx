@@ -41,15 +41,13 @@ const MainColumn = memo(function MainColumn({
 }: {
   children: React.ReactNode;
 }) {
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const pathname = usePathname() ?? "";
   const { bleed: routeBleed } = getPageLayoutConfig(pathname);
   return (
     <div
       className={cn(
-        "flex min-h-[calc(100svh-var(--app-header-h))] flex-1 flex-col transition-[margin] duration-200",
-        "max-lg:ml-0",
-        collapsed ? "lg:ml-[80px]" : "lg:ml-[268px]",
+        "flex min-h-[calc(100svh-var(--app-header-h))] flex-1 flex-col",
+        "max-lg:ml-0 lg:ml-[var(--app-sidebar-width)]",
       )}
     >
       <main
@@ -104,7 +102,6 @@ function AppShellFrame({
   title: string;
   children: React.ReactNode;
 }) {
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const ws = useWorkspaceContext();
   return (
     <div
@@ -127,9 +124,8 @@ function AppShellFrame({
         <AppSidebar />
         <div
           className={cn(
-            "flex min-h-[calc(100svh-var(--app-header-h))] flex-1 flex-col transition-[margin] duration-200",
-            "max-lg:ml-0",
-        collapsed ? "lg:ml-[80px]" : "lg:ml-[268px]",
+            "flex min-h-[calc(100svh-var(--app-header-h))] flex-1 flex-col",
+            "max-lg:ml-0 lg:ml-[var(--app-sidebar-width)]",
           )}
         >
           <main
@@ -159,9 +155,7 @@ function useMobileShellDefaults() {
     const mq = window.matchMedia("(max-width: 1023px)");
     const apply = () => {
       if (!mq.matches) return;
-      const store = useUiStore.getState();
-      store.setSidebarCollapsed(true);
-      store.setSidebarMobileOpen(false);
+      useUiStore.getState().setSidebarMobileOpen(false);
     };
     apply();
     mq.addEventListener("change", apply);

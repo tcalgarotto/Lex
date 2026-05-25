@@ -46,12 +46,10 @@ function initialsFrom(name: string, email: string): string {
 export function SidebarAccountFooter({
   viewer,
   role,
-  collapsed,
   workspace,
 }: {
   viewer: SidebarViewer;
   role: MembershipRole;
-  collapsed: boolean;
   workspace: { current: WorkspaceOption; workspaces: WorkspaceOption[] } | null;
 }) {
   const router = useRouter();
@@ -111,19 +109,14 @@ export function SidebarAccountFooter({
             className={cn(
               "h-auto min-h-[3rem] w-full min-w-0 justify-start gap-2 rounded-xl px-2 py-2 text-left font-normal",
               "text-[color:var(--text-primary)] hover:bg-[color:var(--surface-overlay-strong)]",
-              collapsed && "justify-center px-0",
             )}
           >
             {avatarEl}
-            {!collapsed ? (
-              <>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-medium leading-snug">{viewer.displayName}</p>
-                  <p className="truncate text-sm font-medium leading-snug text-[color:var(--text-secondary)]">{roleLabel}</p>
-                </div>
-                <ChevronsUpDown className="size-4 shrink-0 text-[color:var(--text-muted)]" aria-hidden />
-              </>
-            ) : null}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-medium leading-snug">{viewer.displayName}</p>
+              <p className="truncate text-sm font-medium leading-snug text-[color:var(--text-secondary)]">{roleLabel}</p>
+            </div>
+            <ChevronsUpDown className="size-4 shrink-0 text-[color:var(--text-muted)]" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
       </div>

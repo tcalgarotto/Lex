@@ -68,23 +68,24 @@
     --lex-type-phase-size: var(--text-micro);
     --lex-type-ultra-size: var(--text-micro);
 
+    /** Sidebar fixa (sempre expandida) — sem modo colapsado. */
+    --app-sidebar-width: 248px;
+
     /**
-     * Faixa central (70% de (100vw − 268px)): `--lex-app-central-well-calc` sem `100%`
-     * (evita ciclos em `grid-template-columns`); `--lex-app-central-well-max` = cap ao contentor.
+     * Área útil do app: largura total após sidebar + gutters (sem poço 70% / rails vazios).
      */
-    --lex-app-central-well-calc: max(0px, calc((100vw - 268px) * 0.7));
+    --lex-app-central-well-calc: max(
+      0px,
+      calc(100vw - var(--app-sidebar-width) - 2 * var(--lex-page-gap))
+    );
     --lex-app-central-well-max: min(100%, var(--lex-app-central-well-calc));
 
     /** Landing: conteúdo da página 70%; header/footer internos 90%. */
     --lex-marketing-well-max: min(100%, max(0px, 70vw));
     --lex-marketing-bar-max: min(100%, max(0px, 96vw));
 
-    /**
-     * Layout P1 — faixa central e rails (base = Agenda; 268px = sidebar expandida no cálculo do centro).
-     * O centro mantém a mesma largura ao recolher a sidebar; os `1fr` laterais absorvem o espaço extra.
-     */
     --lex-content-default: var(--lex-app-central-well-max);
-    --lex-content-wide: min(100%, max(0px, calc((100vw - 268px) * 0.78)));
+    --lex-content-wide: var(--lex-app-central-well-max);
     --lex-content-full: 100%;
     --lex-rail-min: 0px;
     --lex-rail-left: minmax(0, 1fr);
@@ -100,7 +101,10 @@
     :root {
       --lex-page-gap: 0.75rem;
       /* 14": poço central um pouco mais largo que 70% fixo */
-      --lex-app-central-well-calc: max(0px, min(52rem, calc((100vw - 268px) * 0.82)));
+      --lex-app-central-well-calc: max(
+        0px,
+        calc(100vw - var(--app-sidebar-width) - 2 * var(--lex-page-gap))
+      );
       --lex-app-central-well-max: min(100%, var(--lex-app-central-well-calc));
       --dashboard-rail-width: 17.5rem;
     }

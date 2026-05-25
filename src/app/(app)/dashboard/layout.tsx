@@ -1,10 +1,5 @@
-import { LexCenterGrid } from "@/components/layout/lex-center-grid";
-import { LexPageFrame } from "@/components/layout/lex-page-frame";
+import "@/styles/justos-dashboard.css";
 
 export default function DashboardSegmentLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <LexPageFrame centerWidth="wide">
-      <LexCenterGrid>{children}</LexCenterGrid>
-    </LexPageFrame>
-  );
+  return <div className="w-full min-w-0 max-w-none">{children}</div>;
 }

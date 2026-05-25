@@ -56,7 +56,7 @@ export default defineConfig({
           name: "chromium",
           use: { ...devices["Desktop Chrome"] },
           dependencies: [],
-          testIgnore: [/auth\.setup\.ts/, authE2eSpecs, /responsive-justos/],
+          testIgnore: [/auth\.setup\.ts/, authE2eSpecs, /responsive-justos/, /justos-dashboard-layout/],
         },
         {
           name: "chromium-auth",
@@ -89,6 +89,12 @@ export default defineConfig({
           },
           dependencies: ["setup"],
           testMatch: /responsive-justos-auth\.spec\.ts/,
+        },
+        {
+          name: "dashboard-layout",
+          use: { ...devices["Desktop Chrome"], storageState: authFile },
+          dependencies: ["setup"],
+          testMatch: /justos-dashboard-layout\.spec\.ts/,
         },
         {
           name: "auth-desktop",

@@ -23,10 +23,10 @@ describe("matchRouteLayout", () => {
     expect(s.rightRail).toBe("required");
   });
 
-  it("classifica dashboard (center-grid)", () => {
+  it("classifica dashboard (cockpit full-width)", () => {
     const s = matchRouteLayout("/dashboard");
-    expect(s.usesLexCenterGrid).toBe(true);
-    expect(s.centerWidth).toBe("wide");
+    expect(s.usesLexCenterGrid).toBe(false);
+    expect(s.centerWidth).toBe("full");
     expect(s.bleed).toBe(false);
   });
 

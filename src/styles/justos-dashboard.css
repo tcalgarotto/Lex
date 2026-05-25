@@ -1,0 +1,228 @@
+/**
+ * Cockpit operacional /dashboard — tokens e layout (sem sidebar collapse).
+ */
+.justos-dashboard {
+  --dashboard-content-gap: clamp(1rem, 2vw, 1.5rem);
+  --dashboard-card-radius: 1rem;
+  --dashboard-card-padding: 1rem;
+  --dashboard-column-min: 16.5rem;
+  --dashboard-board-column-width: min(18rem, 42vw);
+  --dashboard-density: comfortable;
+
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dashboard-content-gap);
+  padding-bottom: 1.5rem;
+}
+
+.justos-dashboard__main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--dashboard-content-gap);
+  align-items: start;
+}
+
+@media (min-width: 1280px) {
+  .justos-dashboard__main-grid {
+    grid-template-columns: minmax(0, 1fr) min(22rem, 28vw);
+  }
+}
+
+.justos-dashboard__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .justos-dashboard__metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .justos-dashboard__metrics {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.justos-dashboard__metric-card {
+  border-radius: var(--dashboard-card-radius);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  padding: 0.75rem 1rem;
+}
+
+.justos-dashboard__metric-value {
+  font-size: 1.375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.justos-dashboard__metric-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.justos-dashboard__section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.justos-dashboard__section-lead {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.justos-dashboard__panel {
+  border-radius: var(--dashboard-card-radius);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.justos-dashboard__panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1.125rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.justos-dashboard__board-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 1rem 1.125rem 1.25rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.justos-dashboard__board-columns {
+  display: flex;
+  gap: 0.75rem;
+  min-height: 12rem;
+  width: max-content;
+  min-width: 100%;
+}
+
+.justos-dashboard__board-column {
+  flex: 0 0 var(--dashboard-board-column-width);
+  min-width: var(--dashboard-column-min);
+  max-width: 20rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--surface-overlay) 40%, transparent);
+  border: 1px solid var(--border-subtle);
+  padding: 0.5rem;
+}
+
+.justos-dashboard__board-column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+}
+
+.justos-dashboard__board-column-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.justos-dashboard__board-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.justos-dashboard__case-card {
+  border-radius: 0.625rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-elevated);
+  padding: 0.75rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.justos-dashboard__case-card:focus-visible {
+  outline: 2px solid var(--brand-border);
+  outline-offset: 2px;
+}
+
+.justos-dashboard__case-card[data-dragging="true"] {
+  opacity: 0.55;
+  cursor: grabbing;
+}
+
+.justos-dashboard__case-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.justos-dashboard__case-meta {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.justos-dashboard__now-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem 1.125rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 640px) {
+  .justos-dashboard__now-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.justos-dashboard__quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 1rem 1.125rem;
+}
+
+.justos-dashboard__activity-list {
+  padding: 0.5rem 1.125rem 1rem;
+}
+
+.justos-dashboard__activity-item {
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.justos-dashboard__activity-item:last-child {
+  border-bottom: none;
+}
+
+.justos-dashboard__empty {
+  padding: 2rem 1.125rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
