@@ -30,7 +30,7 @@ export function LoginForm() {
  return;
  }
  await fetch("/api/auth/sync", { method: "POST" });
- toast.success("Bem-vindo ao Lex.");
+ toast.success("Bem-vindo ao JustOS.");
  router.replace(next);
  router.refresh();
  } catch (err) {
@@ -47,13 +47,12 @@ export function LoginForm() {
  }
 
  return (
- <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.15),transparent_50%),radial-gradient(ellipse_at_bottom,_rgba(59,130,246,0.12),transparent_45%)] px-4">
- <div className="pointer-events-none absolute inset-0 bg-[length:40px_40px] opacity-[0.03] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)]" />
+ <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[color:var(--surface-base)] px-4">
  <Card className="relative z-10 w-full max-w-md">
  <CardHeader className="space-y-1">
- <CardTitle className="text-2xl tracking-tight">Entrar no Lex</CardTitle>
+ <CardTitle className="text-2xl tracking-tight">Entrar no JustOS</CardTitle>
  <CardDescription>
- Copiloto jurídico com memória persistente e pesquisa assistida por IA.
+ Sistema operacional do escritório: casos, documentos, pesquisa com fontes e minutas no mesmo fluxo.
  </CardDescription>
  </CardHeader>
  <CardContent>

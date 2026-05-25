@@ -42,7 +42,7 @@ export async function createProcessAction(formData: FormData) {
     data: {
       processId: proc.id,
       title: "Processo cadastrado",
-      description: "Registro criado no Lex.",
+      description: "Registro criado no JustOS.",
     },
   });
 

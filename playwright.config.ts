@@ -50,12 +50,13 @@ export default defineConfig({
         {
           name: "setup",
           testMatch: /auth\.setup\.ts/,
+          timeout: 90_000,
         },
         {
           name: "chromium",
           use: { ...devices["Desktop Chrome"] },
           dependencies: [],
-          testIgnore: [/auth\.setup\.ts/, authE2eSpecs],
+          testIgnore: [/auth\.setup\.ts/, authE2eSpecs, /responsive-justos/],
         },
         {
           name: "chromium-auth",
@@ -67,12 +68,49 @@ export default defineConfig({
           testMatch: authE2eSpecs,
           timeout: 240_000,
         },
+        {
+          name: "responsive",
+          use: { ...devices["Desktop Chrome"] },
+          dependencies: [],
+          testMatch: /responsive-justos\.spec\.ts/,
+        },
+        {
+          name: "auth-mobile",
+          use: { ...devices["Pixel 5"], storageState: authFile },
+          dependencies: ["setup"],
+          testMatch: /responsive-justos-auth\.spec\.ts/,
+        },
+        {
+          name: "auth-laptop-14",
+          use: {
+            ...devices["Desktop Chrome"],
+            viewport: { width: 1366, height: 768 },
+            storageState: authFile,
+          },
+          dependencies: ["setup"],
+          testMatch: /responsive-justos-auth\.spec\.ts/,
+        },
+        {
+          name: "auth-desktop",
+          use: {
+            ...devices["Desktop Chrome"],
+            viewport: { width: 1440, height: 900 },
+            storageState: authFile,
+          },
+          dependencies: ["setup"],
+          testMatch: /responsive-justos-auth\.spec\.ts/,
+        },
       ]
     : [
         {
           name: "chromium",
           use: { ...devices["Desktop Chrome"] },
-          testIgnore: [/auth\.setup\.ts/, authE2eSpecs],
+          testIgnore: [/auth\.setup\.ts/, authE2eSpecs, /responsive-justos/],
+        },
+        {
+          name: "responsive",
+          use: { ...devices["Desktop Chrome"] },
+          testMatch: /responsive-justos\.spec\.ts/,
         },
       ],
   webServer: process.env["E2E_BASE_URL"]

@@ -1,0 +1,52 @@
+# JustOS dev stack — referência (app pode rodar fora do compose)
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5678/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  justos-command:
+    image: node:22-alpine
+    working_dir: /app
+    command: ["node", "index.js"]
+    volumes:
+      - ../local-ai-control/services/justos-command:/app:ro
+    ports:
+      - "3301:3301"
+    environment:
+      JUSTOS_COMMAND_PORT: "3301"
+      JUSTOS_API_BASE_URL: "http://host.docker.internal:3000"
+      OPENCLAW_BRIDGE_URL: "http://host.docker.internal:3310"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3301/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+# Portas documentadas:
+#   JustOS app     :3000 (host)
+#   JustOS Command :3301
+#   n8n            :5678
+#   OpenClaw       :3310 (host, opcional)

@@ -35,6 +35,22 @@ describe("computeCaseLegalWorkflow", () => {
     expect(w.currentPhaseId).toBe("documentos");
   });
 
+  it("entrevista fundamental salva avança para documentos sem materializar partes", () => {
+    const w = computeCaseLegalWorkflow(
+      baseCtx({
+        intakeMode: "fundamental_draft",
+        checklistMissingCount: 0,
+        checklistAnsweredAt: null,
+        metadataJson: { intakeForm: { attend: { suggestedTitle: "Teste" } } },
+        documents: [],
+        facts: [],
+        parties: [],
+        requests: [],
+      }),
+    );
+    expect(w.currentPhaseId).toBe("documentos");
+  });
+
   it("entrevista pendente mantém fase Coleta", () => {
     const w = computeCaseLegalWorkflow(
       baseCtx({

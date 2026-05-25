@@ -17,7 +17,7 @@ export function LandingSection({ id, className, children, variant = "default" }:
       className={cn(
         "w-full scroll-mt-[4.75rem] sm:scroll-mt-[5.25rem]",
         variant === "muted" &&
-          "border-y border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/65 backdrop-blur-sm",
+          "border-y border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]",
         variant === "accent" &&
           "border-y border-[color:var(--border-subtle)] bg-[radial-gradient(ellipse_90%_70%_at_50%_-30%,var(--brand-subtle),transparent)]",
         variant === "cta" &&
@@ -58,9 +58,7 @@ export function LandingSectionHeader({
       )}
     >
       {eyebrow ? (
-        <p className="lex-marketing-eyebrow mb-4 text-[color:var(--brand-text)]">
-          {eyebrow}
-        </p>
+        <p className="landing-section-kicker mb-3">{eyebrow}</p>
       ) : null}
       <h2 className="lex-marketing-section-title text-[color:var(--text-primary)]">
         {title}

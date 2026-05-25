@@ -20,7 +20,7 @@ export default async function DemoPage() {
  <CardHeader>
  <CardTitle className="text-base">Demo guiada — narrativa (5 minutos)</CardTitle>
  <p className="text-sm text-muted-foreground">
- Objetivo: mostrar que o Lex não é “chat com PDF”: ele mantém <span className="text-[color:var(--text-primary)]">fontes</span>, <span className="text-[color:var(--text-primary)]">confiança jurídica</span> e <span className="text-[color:var(--text-primary)]">guardrails</span>.
+ Objetivo: mostrar que o JustOS não é “chat com PDF”: ele mantém <span className="text-[color:var(--text-primary)]">fontes</span>, <span className="text-[color:var(--text-primary)]">confiança jurídica</span> e <span className="text-[color:var(--text-primary)]">guardrails</span>.
  </p>
  </CardHeader>
  <CardContent className="space-y-3 text-sm">
@@ -126,7 +126,7 @@ export default async function DemoPage() {
  - <span className="text-[color:var(--text-primary)]">Confiança jurídica</span>: label + justificativa curta.
  </p>
  <p>
- - <span className="text-[color:var(--text-primary)]">Guardrail</span>: se a base for insuficiente, o Lex inicia avisando e evita afirmar artigos/prazos.
+ - <span className="text-[color:var(--text-primary)]">Guardrail</span>: se a base for insuficiente, o JustOS inicia avisando e evita afirmar artigos/prazos.
  </p>
  </CardContent>
  </Card>

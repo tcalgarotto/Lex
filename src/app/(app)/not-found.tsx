@@ -24,7 +24,7 @@ export default function AppNotFound() {
  <h1 className="text-xl font-semibold">Não encontramos esta página</h1>
  <p className="max-w-md text-sm text-muted-foreground">
  O recurso pode ter sido movido, arquivado ou pertence a outro workspace. Você pode
- voltar ao início ou ir direto para uma das áreas principais do Lex.
+ voltar ao início ou ir direto para uma das áreas principais do JustOS.
  </p>
  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
  <Button asChild>

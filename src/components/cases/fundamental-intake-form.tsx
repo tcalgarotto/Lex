@@ -146,7 +146,7 @@ export type FundamentalIntakeFormContentProps = {
    * (evita sobrepor o rail direito do caso). `standalone` — `/cases/new` com layout completo.
    */
   mode?: "standalone" | "embedded";
-  /** Caso já passou por "Organizar com Lex AI" — botão vira reorganizar + confirmação. */
+  /** Caso já passou por "Organizar com JustOS AI" — botão vira reorganizar + confirmação. */
   intakeAlreadyOrganized?: boolean;
 };
 
@@ -224,8 +224,8 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
   }
 
   const organizeButtonLabel = intakeAlreadyOrganized
-    ? "Reorganizar com Lex AI"
-    : "Organizar caso com Lex AI";
+    ? "Reorganizar com JustOS AI"
+    : "Organizar caso com JustOS AI";
 
   function requestOrganize() {
     if (intakeAlreadyOrganized) {
@@ -251,7 +251,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
     }
     if (action === "structure" && !isReadyForLexStructure(payload)) {
       toast.error(
-        lexStructureBlockedReason(form) ?? "Complete o formulário antes de organizar com a Lex AI.",
+        lexStructureBlockedReason(form) ?? "Complete o formulário antes de organizar com a JustOS AI.",
       );
       return;
     }
@@ -306,7 +306,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
         );
       } else {
         toast.success(
-          opts?.reorganize ? "Caso reorganizado com Lex AI." : "Caso organizado com Lex AI.",
+          opts?.reorganize ? "Caso reorganizado com JustOS AI." : "Caso organizado com JustOS AI.",
         );
         if (id) router.push(`/cases/${id}`);
       }
@@ -320,8 +320,18 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
   const stepperActive = activeScrollSection;
 
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
-  /** Alinha com `ml-[268px]` / `ml-[80px]` do AppChrome (só modo standalone). */
-  const appMainInset = sidebarCollapsed ? "80px" : "268px";
+  /** Alinha com margem do AppChrome; 0 em viewport &lt; lg (drawer). */
+  const [appMainInset, setAppMainInset] = React.useState("0px");
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const update = () => {
+      if (mq.matches) setAppMainInset("0px");
+      else setAppMainInset(sidebarCollapsed ? "80px" : "268px");
+    };
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, [sidebarCollapsed]);
 
   return (
     <div
@@ -989,7 +999,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
                 onChange={(e) => patchForm((p) => ({ ...p, freeNarrativeOnly: e.target.checked }))}
               />
               <span>
-                Tenho só um relato livre — a Lex AI organiza depois
+                Tenho só um relato livre — a JustOS AI organiza depois
                 <span className="mt-0.5 block text-sm leading-relaxed text-[color:var(--text-secondary)]">
                   Ative para priorizar o campo de relato livre; os demais blocos ficam opcionais neste envio.
                 </span>
@@ -1594,7 +1604,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
       <Dialog open={reorganizeDialogOpen} onOpenChange={setReorganizeDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reorganizar com Lex AI?</DialogTitle>
+            <DialogTitle>Reorganizar com JustOS AI?</DialogTitle>
           </DialogHeader>
           <p className="text-sm leading-relaxed text-[color:var(--text-secondary)]">
             Isso pode atualizar partes, fatos, pedidos e riscos derivados da entrevista. A entrevista
@@ -1612,7 +1622,7 @@ export default function FundamentalIntakeFormContent(props: FundamentalIntakeFor
               }}
               disabled={loading !== null}
             >
-              Reorganizar com Lex AI
+              Reorganizar com JustOS AI
             </Button>
           </div>
         </DialogContent>

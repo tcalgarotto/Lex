@@ -3,10 +3,11 @@
 import { memo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LexLogoMark } from "@/components/brand/lex-logo-mark";
-import { LexWordmark } from "@/components/brand/lex-wordmark";
+import { JustOSLogoMark } from "@/components/brand/justos-logo-mark";
+import { JustOSWordmark } from "@/components/brand/justos-wordmark";
+import { PRODUCT_NAME } from "@/lib/brand/justos";
 import { useUiStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 import { prefetchOnce } from "@/lib/navigation/prefetch-routes";
@@ -21,6 +22,7 @@ export const AppTopbar = memo(function AppTopbar({
 }) {
   const setCmd = useUiStore((s) => s.setCommandOpen);
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebarMobile = useUiStore((s) => s.toggleSidebarMobile);
   const router = useRouter();
   const officeLine = workspaceLabel?.trim() || "Escritório";
   const warmDashboard = () => prefetchOnce(router, "/dashboard");
@@ -35,21 +37,37 @@ export const AppTopbar = memo(function AppTopbar({
       <div className="flex h-[var(--app-header-h)] w-full max-w-[100vw] min-w-0 items-stretch">
         <div
           className={cn(
-            "flex shrink-0 items-center transition-[width,padding] duration-200 motion-reduce:transition-none",
-            sidebarCollapsed ? "w-20 justify-center px-1" : "w-[268px] pl-4 md:pl-6 lg:pl-8 pr-2",
+            "flex shrink-0 items-center gap-1 transition-[width,padding] duration-200 motion-reduce:transition-none",
+            "w-auto pl-3 pr-1 lg:pr-2",
+            !sidebarCollapsed && "lg:w-[268px] lg:pl-6 lg:pr-2 xl:pl-8",
+            sidebarCollapsed && "lg:w-20 lg:justify-center lg:px-1",
           )}
         >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 lg:hidden"
+            aria-label="Abrir menu"
+            onClick={() => toggleSidebarMobile()}
+          >
+            <Menu className="size-5" aria-hidden />
+          </Button>
           <Link
             href="/dashboard"
             prefetch={false}
             onMouseEnter={warmDashboard}
             onFocus={warmDashboard}
             className="flex min-w-0 shrink-0 items-center gap-2 rounded-lg p-1 text-[color:var(--text-primary)] transition-colors hover:bg-[color:var(--surface-overlay-strong)] md:gap-2.5"
-            title="Lex — ir ao briefing"
-            aria-label="Lex — ir ao briefing"
+            title={`${PRODUCT_NAME} — ir ao briefing`}
+            aria-label={`${PRODUCT_NAME} — ir ao briefing`}
           >
-            <LexLogoMark className="size-10 md:size-11" />
-            {!sidebarCollapsed ? <LexWordmark /> : null}
+            <JustOSLogoMark className="size-9 text-[color:var(--brand-primary)] md:size-10" />
+            {!sidebarCollapsed ? (
+              <span className="hidden min-w-0 lg:inline">
+                <JustOSWordmark />
+              </span>
+            ) : null}
           </Link>
         </div>
 

@@ -4,25 +4,27 @@ import { useEffect, useState } from "react";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const THEME_STORAGE_KEY = "lex-theme";
+export const THEME_STORAGE_KEY = "justos-theme";
+const LEGACY_THEME_STORAGE_KEY = "lex-theme";
 
 export type ThemePreference = "light" | "dark" | "auto";
 
 export function resolveDataTheme(pref: ThemePreference): "light" | "dark" {
  if (pref === "light" || pref === "dark") return pref;
- if (typeof window === "undefined") return "dark";
+ if (typeof window === "undefined") return "light";
  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function readThemePreference(): ThemePreference {
- if (typeof window === "undefined") return "dark";
+ if (typeof window === "undefined") return "light";
  try {
- const t = localStorage.getItem(THEME_STORAGE_KEY);
+ const t =
+ localStorage.getItem(THEME_STORAGE_KEY) ?? localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
  if (t === "light" || t === "dark" || t === "auto") return t;
  } catch {
  /* ignore */
  }
- return "dark";
+ return "light";
 }
 
 function installAutoThemeListenerOnce() {
@@ -61,7 +63,7 @@ export function LexSidebarThemeToggle({
  /** Sem `w-full`: encaixa no ancho do trigger (ex.: popup da conta). */
  compact?: boolean;
 }) {
- const [preference, setPreference] = useState<ThemePreference>("dark");
+ const [preference, setPreference] = useState<ThemePreference>("light");
 
  useEffect(() => {
  setPreference(readThemePreference());
@@ -138,7 +140,7 @@ export function LexSidebarThemeToggle({
 }
 
 export function LexThemeToggle({ className }: { className?: string }) {
- const [preference, setPreference] = useState<ThemePreference>("dark");
+ const [preference, setPreference] = useState<ThemePreference>("light");
 
  useEffect(() => {
  const p = readThemePreference();

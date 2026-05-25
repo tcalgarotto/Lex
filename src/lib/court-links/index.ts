@@ -51,7 +51,7 @@ export function buildCourtPublicQueryUrl(input: BuildCourtPublicQueryUrlInput): 
     return {
       label: `Portal ${system}`,
       url: systemUrl,
-      instruction: "Abra o portal oficial do sistema identificado e pesquise pelo CNJ. O Lex não automatiza login, captcha ou certificado.",
+      instruction: "Abra o portal oficial do sistema identificado e pesquise pelo CNJ. O JustOS não automatiza login, captcha ou certificado.",
       requiresManualSearch: true,
     };
   }

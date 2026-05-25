@@ -12,12 +12,13 @@ describe("middleware security guards", () => {
   it("bloqueia mutações cross-origin (CSRF guard)", () => {
     expect(SRC).toMatch(/cross-origin blocked/);
     expect(SRC).toMatch(/status:\s*403/);
-    expect(SRC).toMatch(/originHost\s*!==\s*url\.host/);
+    expect(SRC).toMatch(/isAllowedBrowserMutationOrigin/);
   });
 
   it("isenta apenas webhooks que usam assinatura própria", () => {
     expect(SRC).toMatch(/\/api\/inngest/);
-    expect(SRC).toMatch(/\/api\/stripe\/webhook/);
+    expect(SRC).toMatch(/\/api\/asaas\/webhook/);
+    expect(SRC).not.toMatch(/\/api\/stripe\/webhook/);
   });
 
   it("aplica CSP", () => {

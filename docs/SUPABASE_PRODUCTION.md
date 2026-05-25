@@ -20,6 +20,8 @@ http://localhost:3000/auth/callback
 http://localhost:3000/**
 ```
 
+**Dev na LAN (opcional):** se testar pelo IP da máquina (`http://192.168.x.x:3000`), adicione também `http://<SEU_IP>:3000/auth/callback` e `http://<SEU_IP>:3000/**`. Passo a passo: `docs/DEV_LAN_ACCESS.md`.
+
 > Sem `/auth/callback` na lista, o login com OAuth/magic link falha em produção.
 
 ## 2. OAuth providers

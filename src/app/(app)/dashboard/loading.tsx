@@ -10,7 +10,7 @@ export default function DashboardLoading() {
   return (
     <>
       <div className="col-span-full xl:col-span-4">
-        <h1 className="sr-only">Hoje no escritório — Lex</h1>
+        <h1 className="sr-only">Hoje no escritório — JustOS</h1>
 
         <header className="space-y-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">

@@ -36,7 +36,7 @@ export type DisplayFact = { text: string; category?: string };
 export type DisplayRequest = { text: string; kind?: string };
 export type DisplayRisk = { title: string; detail: string; severity?: string };
 
-/** Vista read-only para UI quando o caso ainda não foi organizado com Lex AI. */
+/** Vista read-only para UI quando o caso ainda não foi organizado com JustOS AI. */
 export type CaseDisplaySnapshot = {
   source: "structured" | "intake_form" | "intake_structured";
   parties: DisplayParty[];

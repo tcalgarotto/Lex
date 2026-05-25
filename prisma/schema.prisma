@@ -307,6 +307,11 @@ model Workspace {
   libraryFoundations       LibraryFoundation[]
   officeMemories           OfficeMemory[]
   calendarEvents           CalendarEvent[]
+  crmContacts              CrmContact[]
+  crmConversations         CrmConversation[]
+  crmMessages              CrmMessage[]
+  crmActivities            CrmActivity[]
+  justosWhatsappSession    JustosWhatsappSession?
 }
 
 enum LibraryFoundationScope {
@@ -333,7 +338,7 @@ model LibraryFoundation {
   contentMd   String                 @db.Text
   tags        String[]               @default([])
   sourceJson  Json?
-  optInSearch    Boolean                @default(false) @map("optInRag")
+  optInSearch Boolean                @default(false) @map("optInRag")
   optInMemory Boolean                @default(false)
   useAsModel  Boolean                @default(false)
   useAsStyle  Boolean                @default(false)
@@ -390,17 +395,18 @@ model Membership {
 }
 
 model Client {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   workspaceId String
   name        String
   documentId  String?
   email       String?
   phone       String?
   notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   processes   Process[]
+  crmContacts CrmContact[]
 
   @@index([workspaceId])
 }
@@ -879,33 +885,35 @@ enum CalendarEventSource {
  * P1 — Agenda jurídica interna (sem Google Calendar). Multi-tenant por workspace.
  */
 model CalendarEvent {
-  id                    String               @id @default(cuid())
-  workspaceId         String
-  caseId              String?
-  legalProcessId      String?
-  processId           String?
-  documentId          String?
-  title               String
-  description         String?              @db.Text
-  /** Local físico ou sala (UI agenda LEX / schedule). */
-  location            String?
-  eventType           CalendarEventType    @default(OTHER)
-  status              CalendarEventStatus  @default(PENDING)
-  startsAt            DateTime
-  endsAt              DateTime?
-  allDay              Boolean              @default(false)
-  timezone            String               @default("America/Sao_Paulo")
-  assignedToUserId    String?
-  createdByUserId     String
-  source              CalendarEventSource  @default(MANUAL)
-  sourceRefId         String?
+  id                    String              @id @default(cuid())
+  workspaceId           String
+  caseId                String?
+  legalProcessId        String?
+  processId             String?
+  documentId            String?
+  title                 String
+  description           String?             @db.Text
+  /**
+   * Local físico ou sala (UI agenda LEX / schedule).
+   */
+  location              String?
+  eventType             CalendarEventType   @default(OTHER)
+  status                CalendarEventStatus @default(PENDING)
+  startsAt              DateTime
+  endsAt                DateTime?
+  allDay                Boolean             @default(false)
+  timezone              String              @default("America/Sao_Paulo")
+  assignedToUserId      String?
+  createdByUserId       String
+  source                CalendarEventSource @default(MANUAL)
+  sourceRefId           String?
   /**
    * Quando o evento vem de comunicação oficial, exige revisão humana (não gera prazo automático).
    */
-  requiresHumanReview Boolean              @default(false)
+  requiresHumanReview   Boolean             @default(false)
   reminderMinutesBefore Int?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   case         Case?         @relation(fields: [caseId], references: [id], onDelete: SetNull)
@@ -1521,6 +1529,7 @@ model Case {
   officialCommunications OfficialCommunication[]
   officeMemories         OfficeMemory[]
   calendarEvents         CalendarEvent[]
+  crmContacts            CrmContact[]
 
   @@index([workspaceId, status])
   @@index([workspaceId, updatedAt])
@@ -1539,7 +1548,7 @@ model OfficeMemory {
   contentMd   String            @db.Text
   useAsModel  Boolean           @default(false)
   useAsStyle  Boolean           @default(false)
-  optInSearch    Boolean           @default(false) @map("optInRag")
+  optInSearch Boolean           @default(false) @map("optInRag")
   private     Boolean           @default(false)
   originType  String?
   originId    String?
@@ -2014,7 +2023,189 @@ enum BetaLeadStatus {
   DISCARDED
 }
 
-/** Lead público da landing (beta / demonstração) — sem vínculo a workspace. */
+// —— JustOS Pro CRM (multi-tenant por workspaceId) ——
+
+enum CrmContactKind {
+  CLIENT
+  LEAD
+  COUNTERPARTY
+  WITNESS
+  OTHER
+}
+
+enum CrmPipelineStage {
+  NEW
+  QUALIFIED
+  ACTIVE
+  WAITING_CLIENT
+  PROPOSAL
+  WON
+  LOST
+  ARCHIVED
+}
+
+enum CrmChannel {
+  WHATSAPP
+  EMAIL
+  PHONE
+  IN_PERSON
+  SYSTEM
+}
+
+enum CrmMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CrmActivityType {
+  NOTE
+  CALL
+  WHATSAPP_INBOUND
+  WHATSAPP_OUTBOUND
+  STAGE_CHANGE
+  TASK
+  FOLLOW_UP
+  SYSTEM
+}
+
+model CrmContact {
+  id             String           @id @default(cuid())
+  workspaceId    String
+  kind           CrmContactKind   @default(CLIENT)
+  displayName    String
+  phoneE164      String?
+  email          String?
+  documentId     String?
+  pipelineStage  CrmPipelineStage @default(NEW)
+  clientId       String?
+  caseId         String?
+  optOutWhatsapp   Boolean          @default(false)
+  assignedToUserId String?
+  metadataJson     Json?
+  deletedAt        DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  workspace     Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client        Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  case          Case?             @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  conversations CrmConversation[]
+  activities    CrmActivity[]
+
+  @@unique([workspaceId, phoneE164])
+  @@index([workspaceId, pipelineStage])
+  @@index([workspaceId, email])
+  @@index([workspaceId, caseId])
+  @@index([workspaceId, deletedAt])
+}
+
+model CrmConversation {
+  id             String     @id @default(cuid())
+  workspaceId    String
+  contactId      String
+  caseId         String?
+  channel        CrmChannel @default(WHATSAPP)
+  externalChatId String?
+  lastMessageAt  DateTime?
+  unreadCount        Int        @default(0)
+  assignedToUserId   String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact   CrmContact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages  CrmMessage[]
+  activities CrmActivity[]
+
+  @@index([workspaceId, lastMessageAt])
+  @@index([workspaceId, contactId])
+  @@index([workspaceId, caseId])
+}
+
+model CrmMessage {
+  id             String              @id @default(cuid())
+  workspaceId    String
+  conversationId String
+  direction      CrmMessageDirection
+  body           String              @db.Text
+  sentAt         DateTime
+  traceId        String?
+  deliveryStatus String?
+  metaJson       Json?
+  createdAt      DateTime            @default(now())
+
+  workspace    Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  conversation CrmConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, sentAt])
+  @@index([conversationId, sentAt])
+}
+
+model CrmActivity {
+  id               String          @id @default(cuid())
+  workspaceId      String
+  contactId        String
+  caseId           String?
+  conversationId   String?
+  messageId        String?
+  type             CrmActivityType
+  title            String
+  body             String?         @db.Text
+  dueAt            DateTime?
+  doneAt           DateTime?
+  assignedToUserId String?
+  metadataJson     Json?
+  createdByUserId  String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contact      CrmContact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  conversation CrmConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, contactId, createdAt])
+  @@index([workspaceId, caseId, createdAt])
+  @@index([workspaceId, type, dueAt])
+  @@index([workspaceId, assignedToUserId, doneAt])
+}
+
+model JustosWhatsappSession {
+  id           String    @id @default(cuid())
+  workspaceId  String    @unique
+  sessionKey   String
+  openclawPort Int?
+  status       String
+  connectedAt  DateTime?
+  phoneE164    String?
+  lastHealthAt DateTime?
+  metaJson     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([sessionKey])
+  @@index([status])
+}
+
+/** Idempotência webhooks Asaas (e futuros providers). */
+model JustosBillingEvent {
+  id          String   @id @default(cuid())
+  provider    String   @default("asaas")
+  eventId     String
+  eventType   String
+  workspaceId String?
+  rawHash     String
+  processedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([workspaceId, createdAt])
+}
+
+/**
+ * Lead público da landing (beta / demonstração) — sem vínculo a workspace.
+ */
 model BetaLeadRequest {
   id             String         @id @default(cuid())
   name           String

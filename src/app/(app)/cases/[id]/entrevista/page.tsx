@@ -38,8 +38,8 @@ export default async function CaseInterviewPage({ params }: { params: Promise<{ 
             <h2 className="text-sm font-semibold text-foreground">Entrevista fundamental</h2>
             <p className="max-w-3xl text-sm text-muted-foreground">
               {structured
-                ? "A entrevista salva foi preservada. Você pode revisar o relato, salvar alterações ou reorganizar partes, fatos, pedidos e riscos com a Lex AI."
-                : "Mesmo formulário da criação do caso, sincronizado com a entrevista salva. Salvar caso ou organizar com Lex AI atualiza este registo."}
+                ? "A entrevista salva foi preservada. Você pode revisar o relato, salvar alterações ou reorganizar partes, fatos, pedidos e riscos com a JustOS AI."
+                : "Mesmo formulário da criação do caso, sincronizado com a entrevista salva. Salvar caso ou organizar com JustOS AI atualiza este registo."}
             </p>
           </header>
           <FundamentalIntakeFormContent

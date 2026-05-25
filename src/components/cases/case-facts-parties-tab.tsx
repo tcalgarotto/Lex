@@ -38,7 +38,7 @@ export function CaseFactsPartiesTab(props: {
         <div className="rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-4 text-sm">
           <p className="font-medium text-foreground">Informação insuficiente</p>
           <p className="mt-1 text-muted-foreground">
-            Complete a entrevista ou organize com Lex AI para estruturar partes, fatos e lacunas.
+            Complete a entrevista ou organize com JustOS AI para estruturar partes, fatos e lacunas.
           </p>
           {derived.pendingQuestions.length > 0 ? (
             <ul className="mt-2 list-disc space-y-1 pl-4 text-amber-100/90">
@@ -74,7 +74,7 @@ export function CaseFactsPartiesTab(props: {
         </>
       ) : !showIntakeFallback && !derived?.insufficient ? (
         <p className="text-sm text-muted-foreground">
-          Nenhum dado em partes, fatos, pedidos ou riscos. Complete a entrevista ou organize com Lex
+          Nenhum dado em partes, fatos, pedidos ou riscos. Complete a entrevista ou organize com JustOS AI
           AI.
         </p>
       ) : null}

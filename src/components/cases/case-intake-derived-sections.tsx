@@ -26,7 +26,7 @@ export function IntakeOrganizeBanner({
         >
           <Link href={`/cases/${caseId}/entrevista`}>
             <Sparkles className="mr-2 size-4" />
-            Organizar com Lex AI
+            Organizar com JustOS AI
           </Link>
         </Button>
       ) : null}
@@ -73,7 +73,7 @@ export function CaseIntakeDerivedSections({ display }: { display: CaseDisplaySna
         <p className="text-sm font-medium text-foreground">Informação insuficiente</p>
         <p className="mt-1 text-sm text-muted-foreground">
           A entrevista ainda não traz elementos mínimos para estruturar partes e fatos. Complete o
-          relato na aba Entrevista ou organize com Lex AI.
+          relato na aba Entrevista ou organize com JustOS AI.
         </p>
         {display.pendingQuestions.length > 0 ? (
           <ReadOnlyList title="Perguntas pendentes" items={display.pendingQuestions} />
@@ -86,8 +86,8 @@ export function CaseIntakeDerivedSections({ display }: { display: CaseDisplaySna
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
         {display.source === "intake_structured"
-          ? "Vista estruturada pela Lex AI (somente leitura). Confirme itens marcados como sugeridos antes de citar em peça."
-          : "Vista derivada da entrevista salva (somente leitura). Organize com Lex AI para editar em tabelas."}
+          ? "Vista estruturada pela JustOS AI (somente leitura). Confirme itens marcados como sugeridos antes de citar em peça."
+          : "Vista derivada da entrevista salva (somente leitura). Organize com JustOS AI para editar em tabelas."}
       </p>
 
       <ReadOnlyList title="Partes" items={partyLines} />

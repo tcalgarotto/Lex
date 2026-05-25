@@ -66,6 +66,7 @@ export default async function CaseDetailLayout({
   const actionCtx: CaseCockpitActionContext = {
     caseId: c.id,
     checklistMissingCount,
+    intakeMode: caseBootstrap.checklist.intakeMode,
     documents: c.documents.map((d) => ({ status: d.status, updatedAt: d.updatedAt })),
     facts: c.facts,
     parties: c.parties,
@@ -86,6 +87,7 @@ export default async function CaseDetailLayout({
     rawInput: c.rawInput ?? null,
     checklistMissingCount,
     checklistAnsweredAt: caseBootstrap.checklist.answeredAt,
+    intakeMode: caseBootstrap.checklist.intakeMode,
     documents: c.documents.map((d) => ({ status: d.status, updatedAt: d.updatedAt })),
     facts: c.facts,
     parties: c.parties,

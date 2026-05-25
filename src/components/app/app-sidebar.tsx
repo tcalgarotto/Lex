@@ -17,6 +17,7 @@ import {
   Search,
   ScrollText,
   Users,
+  LayoutGrid,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ interface NavItem {
 const CORE_NAV: NavItem[] = [
   { href: "/dashboard", label: "Início", icon: Home },
   { href: "/cases", label: "Casos", icon: Briefcase },
+  { href: "/crm", label: "CRM Pro", icon: LayoutGrid },
   { href: "/agenda", label: "Agenda", icon: Calendar },
   { href: "/documentos", label: "Documentos", icon: FileText },
   { href: "/biblioteca", label: "Biblioteca", icon: Library },
@@ -70,7 +72,13 @@ const NavLink = memo(function NavLink({
   const Icon = item.icon;
   const warm = () => prefetchOnce(router, item.href);
   return (
-    <Link href={item.href} prefetch={false} onMouseEnter={warm} onFocus={warm}>
+    <Link
+      href={item.href}
+      prefetch={false}
+      onMouseEnter={warm}
+      onFocus={warm}
+      onClick={() => useUiStore.getState().setSidebarMobileOpen(false)}
+    >
       <span
         className={cn(
           "relative flex min-h-[44px] items-center gap-3 rounded-md px-3 py-2.5 text-base font-semibold leading-snug transition-colors hover:bg-[var(--bg-hover)]",
@@ -166,17 +174,31 @@ SidebarFooter.displayName = "SidebarFooter";
 
 export const AppSidebar = memo(function AppSidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const sidebarMobileOpen = useUiStore((s) => s.sidebarMobileOpen);
+  const setSidebarMobileOpen = useUiStore((s) => s.setSidebarMobileOpen);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 z-40 flex flex-col border-r border-[color:var(--border-subtle)] bg-[color:var(--bg-sidebar)]",
-        "top-[var(--app-header-h)] h-[calc(100svh-var(--app-header-h))]",
-        "w-[268px] transition-[width] duration-200 ease-out motion-reduce:transition-none",
-        collapsed && "w-20",
-      )}
-    >
+    <>
+      {sidebarMobileOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          aria-label="Fechar menu"
+          onClick={() => setSidebarMobileOpen(false)}
+        />
+      ) : null}
+      <aside
+        className={cn(
+          "fixed left-0 z-40 flex flex-col border-r border-[color:var(--border-subtle)] bg-[color:var(--bg-sidebar)]",
+          "top-[var(--app-header-h)] h-[calc(100svh-var(--app-header-h))]",
+          "w-[min(100vw,268px)] transition-[transform,width] duration-200 ease-out motion-reduce:transition-none",
+          "max-lg:-translate-x-full",
+          sidebarMobileOpen && "max-lg:translate-x-0",
+          "lg:w-[268px]",
+          collapsed && "lg:w-20",
+        )}
+      >
       <SidebarMainNav collapsed={collapsed} />
       <SidebarFooter collapsed={collapsed} />
       <div
@@ -202,6 +224,7 @@ export const AppSidebar = memo(function AppSidebar() {
         </Button>
       </div>
     </aside>
+    </>
   );
 });
 AppSidebar.displayName = "AppSidebar";

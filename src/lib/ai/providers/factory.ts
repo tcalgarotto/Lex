@@ -71,7 +71,7 @@ export function getChatLanguageModel(): LanguageModel {
         baseURL: "https://openrouter.ai/api/v1",
         headers: {
           "HTTP-Referer": env.NEXT_PUBLIC_APP_URL,
-          "X-Title": "Lex",
+          "X-Title": "JustOS",
         },
       })(modelId) as unknown as LanguageModel;
     default:
@@ -98,7 +98,7 @@ export function getPieceLanguageModel(): LanguageModel {
         baseURL: "https://openrouter.ai/api/v1",
         headers: {
           "HTTP-Referer": env.NEXT_PUBLIC_APP_URL,
-          "X-Title": "Lex",
+          "X-Title": "JustOS",
         },
       })(modelId) as unknown as LanguageModel;
     default:

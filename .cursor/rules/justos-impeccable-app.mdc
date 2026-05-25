@@ -1,0 +1,13 @@
+---
+description: Impeccable + JustOS no app logado (rebrand gradual)
+globs: src/app/(app)/**,src/components/app/**,src/lib/ui/**
+alwaysApply: false
+---
+
+# JustOS no app
+
+Rebrand total: substituir **Lex** por **JustOS** em títulos de página (`app-chrome-titles`), topbar, login, onboarding, mensagens `USER_FACING_MESSAGES` quando visíveis.
+
+Manter `translateTerm` e jargão técnico mapeado; não renomear rotas `/api` nem eventos `lex.*` nesta camada sem tarefa de backend explícita.
+
+Consultar `PRODUCT.md` para tom e `DESIGN.md` para tokens. Preferir `JustOSLogo` onde hoje há marca textual "Lex".

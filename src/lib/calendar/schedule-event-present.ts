@@ -2,7 +2,7 @@ import type { CalendarEventSource } from "@prisma/client";
 import type { ScheduleEventDto, ScheduleEventType } from "@/lib/calendar/schedule-shapes";
 
 export const SCHEDULE_PORTAL_DISCLAIMER =
-  "Revise no portal oficial. Este registo é controlo interno do Lex e não substitui prazo processual nem prova ciência em juízo.";
+  "Revise no portal oficial. Este registo é controlo interno do JustOS e não substitui prazo processual nem prova ciência em juízo.";
 
 /** Labels orientados a produto jurídico (não copiar Google literalmente). */
 export const SCHEDULE_TYPE_LABEL: Record<ScheduleEventType, string> = {

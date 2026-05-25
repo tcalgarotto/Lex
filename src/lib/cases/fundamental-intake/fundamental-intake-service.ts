@@ -389,7 +389,7 @@ export async function persistFundamentalDraft(args: {
       data: {
         caseId: c.id,
         kind: CaseTimelineKind.NOTE,
-        message: "Entrevista salva. A organização automática com Lex AI é opcional.",
+        message: "Entrevista salva. A organização automática com JustOS AI é opcional.",
         userId: args.userId,
         payloadJson: { source: "intake_form" },
       },

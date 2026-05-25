@@ -16,6 +16,7 @@ import { chunkLegalText } from "@/lib/parsers/legal-chunker";
 import { embedTexts } from "@/lib/ai/embeddings";
 import { getQdrantVectorStore } from "@/lib/retrieval/vector-store/qdrant-store";
 import { sha256Hex } from "@/lib/util/content-hash";
+import { fireLexJustosEventForCase } from "@/lib/justos/emit-for-case";
 
 const log = getLogger("lex.inngest.ingest-document");
 
@@ -268,6 +269,12 @@ export const ingestDocument = inngest.createFunction(
     // (incorpora trechos extraídos como evidência) e roda checagem de
     // consistência. Ambos eventos são idempotentes (cache + Levenshtein).
     if (doc.caseId) {
+      fireLexJustosEventForCase({
+        event: "lex.document.indexed",
+        workspaceId: doc.workspaceId,
+        caseId: doc.caseId,
+        meta: { documentId: doc.id, originalName: doc.originalName },
+      });
       await step.sendEvent("trigger-case-brain", {
         name: "lex/case.brain",
         data: { caseId: doc.caseId, source: "document_indexed" },

@@ -108,7 +108,7 @@ export default async function ReadinessPage() {
  <CardHeader>
  <CardTitle className="text-base">Checklist</CardTitle>
  <p className="text-sm text-muted-foreground">
- Ajuda a validar se o Lex está pronto para uma demo com advogado (sem surpresas).
+ Ajuda a validar se o JustOS está pronto para uma demo com advogado (sem surpresas).
  </p>
  </CardHeader>
  <CardContent className="space-y-2 text-sm">

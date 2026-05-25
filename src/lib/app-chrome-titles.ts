@@ -40,5 +40,5 @@ export function matchPathTitle(pathname: string): string {
   for (const { prefix, title } of PREFIX_TITLES) {
     if (n === prefix || n.startsWith(`${prefix}/`)) return title;
   }
-  return "Lex";
+  return "JustOS";
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getWorkspaceContext } from "@/lib/auth/session";
 import { CaseOverviewTab } from "@/components/cases/case-overview-tab";
+import { CrmCaseSummary } from "@/components/crm/crm-case-summary";
 import { CaseCalendarSection } from "@/components/calendar/case-calendar-section";
 import { loadCaseForWorkspace } from "./_load-case";
 import { loadCaseLinkedProcesses } from "@/lib/cases/load-case-linked-processes";
@@ -53,6 +54,7 @@ export default async function CaseOverviewPage({ params }: { params: Promise<{ i
         <CaseCalendarSection workspaceId={workspaceId} caseId={id} compact />
       </div>
 
+      <CrmCaseSummary workspaceId={workspaceId} caseId={id} />
       <CaseOverviewTab caseData={c} />
     </div>
   );

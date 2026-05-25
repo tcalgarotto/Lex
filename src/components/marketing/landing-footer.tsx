@@ -1,21 +1,23 @@
 import Link from "next/link";
+import { JustOSLogo } from "@/components/brand/justos-logo";
+import { PRODUCT_LEGAL_DISCLAIMER, PRODUCT_NAME } from "@/lib/brand/justos";
 import { LANDING_BAR_INNER, LANDING_SHELL_FULL } from "@/lib/marketing/landing-copy";
 
 const FOOTER_COLUMNS = [
   {
     title: "Produto",
     links: [
-      { href: "#inicio", label: "Início" },
-      { href: "#recursos", label: "Recursos" },
-      { href: "#como-funciona", label: "Como funciona" },
+      { href: "/#inicio", label: "Início" },
+      { href: "/produto", label: "Recursos" },
+      { href: "/#pilares", label: "Pilares" },
+      { href: "/#como-funciona", label: "Como funciona" },
       { href: "/pricing", label: "Preços" },
     ],
   },
   {
-    title: "Recursos",
+    title: "Institucional",
     links: [
-      { href: "#seguranca", label: "Segurança" },
-      { href: "#para-escritorios", label: "Para escritórios" },
+      { href: "/#seguranca", label: "Segurança" },
       { href: "/manifesto", label: "Manifesto" },
       { href: "/register", label: "Criar conta" },
     ],
@@ -23,7 +25,7 @@ const FOOTER_COLUMNS = [
   {
     title: "Empresa",
     links: [
-      { href: "#beta", label: "Solicitar acesso" },
+      { href: "/#beta", label: "Solicitar acesso" },
       { href: "/login", label: "Entrar" },
     ],
   },
@@ -42,18 +44,10 @@ export function LandingFooter() {
       <div className={`${LANDING_BAR_INNER} py-12 md:py-14`}>
         <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-12 md:gap-8">
           <div className="md:col-span-4">
-            <div className="flex items-center gap-2.5">
-              <span
-                className="flex size-9 items-center justify-center rounded-lg text-sm font-semibold text-[color:var(--text-inverse)]"
-                style={{ background: "var(--brand-primary)", boxShadow: "var(--shadow-violet)" }}
-              >
-                L
-              </span>
-              <span className="text-lg font-semibold text-[color:var(--text-primary)]">Lex</span>
-            </div>
+            <JustOSLogo href="/#inicio" markTone="neutral" />
             <p className="mt-4 max-w-sm text-[14px] leading-relaxed text-[color:var(--text-secondary)]">
-              Plataforma jurídica inteligente para organizar casos, documentos, fundamentos e minutas com
-              mais controle.
+              Casos, documentos, pesquisa com fontes e minutas no fluxo do escritório — com revisão
+              profissional no centro.
             </p>
           </div>
           {FOOTER_COLUMNS.map((col) => (
@@ -64,21 +58,12 @@ export function LandingFooter() {
               <ul className="mt-4 space-y-2.5 text-[14px]">
                 {col.links.map((link) => (
                   <li key={link.href}>
-                    {link.href.startsWith("#") ? (
-                      <a
-                        href={link.href}
-                        className="text-[color:var(--text-secondary)] transition-colors hover:text-[color:var(--text-primary)]"
-                      >
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link
-                        href={link.href}
-                        className="text-[color:var(--text-secondary)] transition-colors hover:text-[color:var(--text-primary)]"
-                      >
-                        {link.label}
-                      </Link>
-                    )}
+                    <Link
+                      href={link.href}
+                      className="text-[color:var(--text-secondary)] transition-colors hover:text-[color:var(--text-primary)]"
+                    >
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -88,12 +73,11 @@ export function LandingFooter() {
       </div>
       <div className="w-full border-t border-[color:var(--border-subtle)]">
         <div className={`${LANDING_BAR_INNER} py-6`}>
-          <p className="mx-auto max-w-2xl text-center text-caption leading-relaxed text-[color:var(--text-muted)]">
-            O Lex é uma ferramenta de apoio à atividade jurídica. Toda minuta e orientação deve ser
-            revisada por profissional habilitado.
+          <p className="landing-footer-disclaimer mx-auto max-w-prose text-center text-caption leading-relaxed text-[color:var(--text-muted)]">
+            {PRODUCT_LEGAL_DISCLAIMER}
           </p>
           <p className="mt-4 text-center text-caption text-[color:var(--text-muted)]">
-            Lex © {new Date().getFullYear()}
+            {PRODUCT_NAME} © {new Date().getFullYear()}
           </p>
         </div>
       </div>

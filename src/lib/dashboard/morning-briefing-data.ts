@@ -327,7 +327,7 @@ function statusLabelUser(status: CaseStatus): string {
 function badgeForCase(status: CaseStatus, hasStrategy: boolean, docCount: number): string {
   if (status === CaseStatus.INTAKE) return "Coleta inicial";
   if (docCount === 0) return "Aguardando documentos";
-  if (status === CaseStatus.RESEARCH && !hasStrategy) return "Pesquisa Lex AI";
+  if (status === CaseStatus.RESEARCH && !hasStrategy) return "Pesquisa JustOS AI";
   if (status === CaseStatus.RESEARCH && hasStrategy) return "Estratégia";
   if (status === CaseStatus.DRAFTING) return "Minuta";
   if (status === CaseStatus.REVIEW) return "Revisão";
@@ -888,7 +888,7 @@ function buildMorningBriefingPayloadFromParts(
         unnamedCases.length > 1
           ? `${unnamedCases.length} casos aguardam nome e entrevista`
           : "Caso aguarda nome e entrevista",
-      reason: "Sem entrevista completa, o Lex não consegue organizar fatos, partes e pedidos.",
+      reason: "Sem entrevista completa, o JustOS não consegue organizar fatos, partes e pedidos.",
       cta: "Continuar entrevista",
       href: `/cases/${oldest.id}/entrevista`,
       priority: unnamedCases.length === 1 ? "urgent" : "normal",
@@ -1147,7 +1147,7 @@ function buildMorningBriefingPayloadFromParts(
     docPhases,
     piecesThisMonth: piecesMonth,
     copilotMessage,
-    copilotTitle: "Copiloto Lex",
+    copilotTitle: "Copiloto JustOS",
   };
 }
 

@@ -25,6 +25,7 @@ import { prisma } from "@/lib/prisma";
 import { listCases } from "@/lib/cases/repository";
 import { intakeWorkflow } from "@/lib/cases/orchestrator";
 import { inngest } from "@/lib/inngest/client";
+import { fireLexJustosEventForCase } from "@/lib/justos";
 
 
 const RawSchema = z.object({
@@ -81,6 +82,15 @@ const EmptySchema = z.object({
   tribunalCode: z.never().optional(),
   uf: z.never().optional(),
 });
+
+function notifyCaseCreated(workspaceId: string, caseId: string, title?: string) {
+  fireLexJustosEventForCase({
+    event: "lex.case.created",
+    workspaceId,
+    caseId,
+    title,
+  });
+}
 
 const PostBody = z.union([
   RawSchema,
@@ -153,6 +163,7 @@ export async function POST(req: Request) {
     } catch {
       /* noop */
     }
+    notifyCaseCreated(workspaceId, c.id, c.title);
     return NextResponse.json({ case: c, intake, mode: "raw" }, { status: 201 });
   }
 
@@ -184,6 +195,7 @@ export async function POST(req: Request) {
         });
         return created;
       });
+      notifyCaseCreated(workspaceId, c.id, c.title);
       return NextResponse.json({ case: c, mode: "interview" }, { status: 201 });
     }
 
@@ -231,6 +243,7 @@ export async function POST(req: Request) {
         });
         return created;
       });
+      notifyCaseCreated(workspaceId, c.id, c.title);
       return NextResponse.json({ case: c, mode: "document" }, { status: 201 });
     }
 
@@ -295,6 +308,7 @@ export async function POST(req: Request) {
           /* noop */
         }
       }
+      notifyCaseCreated(workspaceId, c.id, c.title);
       return NextResponse.json({ case: c, mode: "existing_process" }, { status: 201 });
     }
 
@@ -320,6 +334,7 @@ export async function POST(req: Request) {
         });
         return created;
       });
+      notifyCaseCreated(workspaceId, c.id, c.title);
       return NextResponse.json({ case: c, mode: "empty" }, { status: 201 });
     }
   }

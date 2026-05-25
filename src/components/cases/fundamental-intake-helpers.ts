@@ -198,7 +198,7 @@ export function fundamentalIntakeUiRequiredLabels(form: FundamentalIntakeForm): 
 }
 
 /**
- * Habilita "Organizar caso com Lex AI" quando os campos com * na UI estão
+ * Habilita "Organizar caso com JustOS AI" quando os campos com * na UI estão
  * ok, o CNJ (se preenchido) é válido e o restante do formulário passa no Zod.
  */
 export function isReadyForLexStructure(form: FundamentalIntakeForm): boolean {
@@ -207,7 +207,7 @@ export function isReadyForLexStructure(form: FundamentalIntakeForm): boolean {
   return parseFundamentalIntakeForm(form).success;
 }
 
-/** Mensagem curta para tooltip quando o botão Lex está desativado. */
+/** Mensagem curta para tooltip quando o botão JustOS está desativado. */
 export function lexStructureBlockedReason(form: FundamentalIntakeForm): string | null {
   const cnjErr = cnjVisualError(form.attend.cnj);
   if (cnjErr) return cnjErr;

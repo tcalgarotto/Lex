@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   LANDING_CONTENT,
   LANDING_HERO,
-  LANDING_HERO_STATS,
   LANDING_PROOF_POINTS,
   LANDING_SHELL_FULL,
 } from "@/lib/marketing/landing-copy";
@@ -21,45 +20,30 @@ export function LandingHero() {
   const isClient = useIsClient();
 
   return (
-    <section id="inicio" className={`${LANDING_SHELL_FULL} relative scroll-mt-[4.75rem] overflow-hidden`}>
+    <section id="inicio" className={`${LANDING_SHELL_FULL} relative scroll-mt-[4.75rem] overflow-x-clip`}>
       <div
-        className="landing-hero-glow pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_70%_-10%,var(--brand-subtle),transparent_55%)]"
+        id="hero-scroll-marker"
+        className="pointer-events-none absolute top-[4.75rem] left-0 h-px w-full"
         aria-hidden
       />
       <div className={`relative ${LANDING_CONTENT} pb-14 pt-10 sm:pb-20 sm:pt-12 md:pb-24 md:pt-16`}>
         <div className="grid gap-12 lg:items-center lg:gap-14 xl:grid-cols-[minmax(0,1fr)_minmax(0,min(100%,520px))] xl:gap-16">
-          <LandingReveal className="space-y-5 sm:space-y-6">
-            <p
-              className="lex-marketing-eyebrow inline-flex w-fit items-center rounded-full border border-[color:var(--brand-border)] px-3.5 py-2 text-[color:var(--brand-text)]"
-              style={{ background: "var(--brand-subtle)" }}
-            >
-              {LANDING_HERO.badge}
-            </p>
+          <LandingReveal className="landing-hero-copy-stack max-w-2xl space-y-5 sm:max-w-[42rem] sm:space-y-6">
+            <p className="landing-hero-kicker">{LANDING_HERO.badge}</p>
             <h1 className="lex-marketing-display landing-hero-title text-[color:var(--text-primary)]">
               {LANDING_HERO.title}
             </h1>
-            <p className="lex-marketing-lead text-[color:var(--text-secondary)]">
+            <p className="lex-marketing-lead max-w-[42rem]">
               {LANDING_HERO.subtitle}
             </p>
-            <p className="lex-marketing-body text-[color:var(--text-muted)]">
+            <p className="lex-marketing-body landing-hero-copy-muted max-md:hidden">
               {LANDING_HERO.microcopy}
             </p>
-            <div className="grid gap-3 pt-2 sm:grid-cols-3">
-              {LANDING_HERO_STATS.map((stat) => (
-                <div
-                  key={stat.label}
-                  className="landing-hero-stat rounded-2xl border border-[color:var(--border-subtle)] px-4 py-3.5"
-                >
-                  <p className="text-control font-bold text-[color:var(--brand-text)]">{stat.value}</p>
-                  <p className="lex-marketing-caption mt-1 text-[color:var(--text-muted)]">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-col gap-3 pt-1 sm:flex-row">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <Link href="#beta" className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="h-13 min-h-[3.25rem] w-full gap-2 rounded-xl border border-[color:var(--brand-border)] px-8 text-control text-[color:var(--text-inverse)] shadow-[var(--shadow-violet)] lex-transition hover:opacity-95 sm:w-auto"
+                  className="h-13 min-h-[3.25rem] w-full gap-2 rounded-xl border border-[color:var(--brand-border)] px-8 text-control text-[color:var(--text-inverse)] shadow-[var(--shadow-sm)] lex-transition hover:opacity-95 sm:w-auto"
                   style={{ background: "var(--brand-primary)" }}
                 >
                   {LANDING_HERO.ctaPrimary}
@@ -70,27 +54,28 @@ export function LandingHero() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-13 min-h-[3.25rem] w-full rounded-xl border border-[color:var(--border-default)] bg-[color:var(--glass-bg)]/80 px-8 text-control backdrop-blur-xl hover:bg-[color:var(--surface-overlay-strong)] sm:w-auto"
+                  className="h-13 min-h-[3.25rem] w-full rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-card)] px-8 text-control hover:bg-[color:var(--surface-overlay)] sm:w-auto"
                 >
                   {LANDING_HERO.ctaSecondary}
                 </Button>
               </Link>
             </div>
-            <ul className="grid gap-2 pt-3 sm:grid-cols-2">
-              {LANDING_PROOF_POINTS.map((point) => (
+            <ul className="landing-hero-proof-list flex w-full max-w-md flex-col gap-2 pt-3">
+              {LANDING_PROOF_POINTS.slice(0, 3).map((point) => (
                 <li
                   key={point}
-                  className="landing-hero-proof flex items-center gap-2.5 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/60 px-3.5 py-2.5 text-caption font-medium text-[color:var(--text-secondary)]"
+                  className="landing-hero-proof flex w-full items-center gap-2.5 border-t border-[color:var(--border-subtle)] py-2.5 text-caption font-medium first:border-t-0 first:pt-0"
                 >
                   <Check className="size-4 shrink-0 text-[color:var(--brand-text)]" aria-hidden />
-                  {point}
+                  <span className="min-w-0">{point}</span>
                 </li>
               ))}
             </ul>
           </LandingReveal>
-          <LandingReveal delay={0.12} className="lg:justify-self-end">
+          <LandingReveal delay={0.12} className="relative min-w-0 lg:justify-self-end">
             {isClient && !reduce ? (
               <motion.div
+                className="relative z-[1]"
                 initial={false}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
@@ -98,7 +83,9 @@ export function LandingHero() {
                 <LandingHeroMockup />
               </motion.div>
             ) : (
-              <LandingHeroMockup />
+              <div className="relative z-[1]">
+                <LandingHeroMockup />
+              </div>
             )}
           </LandingReveal>
         </div>

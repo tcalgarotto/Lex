@@ -27,9 +27,9 @@ describe("morning briefing UI helpers", () => {
   it("keeps user-visible copy free of infra jargon", () => {
     const forbidden = /\b(Qdrant|chunk|embedding|pipeline|workspace)\b/i;
     const samples = [
-      "Sem entrevista completa, o Lex não consegue organizar fatos, partes e pedidos.",
+      "Sem entrevista completa, o JustOS não consegue organizar fatos, partes e pedidos.",
       "Fluxo de documentos",
-      "Pesquisa Lex AI",
+      "Pesquisa JustOS AI",
       "Coleta inicial",
     ];
     for (const s of samples) {

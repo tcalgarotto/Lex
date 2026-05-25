@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { useUiStore } from "@/stores/ui-store";
 import { useAppChromeTitleStore } from "@/stores/app-chrome-title-store";
 import { matchPathTitle } from "@/lib/app-chrome-titles";
@@ -48,7 +48,8 @@ const MainColumn = memo(function MainColumn({
     <div
       className={cn(
         "flex min-h-[calc(100svh-var(--app-header-h))] flex-1 flex-col transition-[margin] duration-200",
-        collapsed ? "ml-[80px]" : "ml-[268px]",
+        "max-lg:ml-0",
+        collapsed ? "lg:ml-[80px]" : "lg:ml-[268px]",
       )}
     >
       <main
@@ -127,7 +128,8 @@ function AppShellFrame({
         <div
           className={cn(
             "flex min-h-[calc(100svh-var(--app-header-h))] flex-1 flex-col transition-[margin] duration-200",
-            collapsed ? "ml-[80px]" : "ml-[268px]",
+            "max-lg:ml-0",
+        collapsed ? "lg:ml-[80px]" : "lg:ml-[268px]",
           )}
         >
           <main
@@ -152,7 +154,23 @@ function AppShellFrame({
  * Chrome persistente do grupo `(app)` — montado uma vez no layout.
  * Título/topbar atualizam isoladamente; sidebar só reage a pathname na zona de links.
  */
+function useMobileShellDefaults() {
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const apply = () => {
+      if (!mq.matches) return;
+      const store = useUiStore.getState();
+      store.setSidebarCollapsed(true);
+      store.setSidebarMobileOpen(false);
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+}
+
 export function AppChrome({ children }: { children: React.ReactNode }) {
+  useMobileShellDefaults();
   return (
     <div
       className={cn(

@@ -5,6 +5,8 @@
 
 import type { DocumentStatus } from "@prisma/client";
 import type { ProceduralReadiness } from "@/lib/cases/brain-types";
+import type { CaseChecklistIntakeMode } from "@/lib/cases/case-checklist-state";
+import { isFundamentalIntakeStructured, usesFundamentalIntakeFlow } from "@/lib/cases/case-intake-source";
 import { hasStrategy } from "@/lib/cases/case-progress-model";
 import { deriveDocumentDisplayStatus } from "@/lib/documents/status-display";
 
@@ -34,6 +36,8 @@ export type CaseLegalWorkflowInput = {
   rawInput: string | null;
   checklistMissingCount: number;
   checklistAnsweredAt: string | null;
+  /** Derivado do bootstrap do checklist (fluxo fundamental vs legado). */
+  intakeMode?: CaseChecklistIntakeMode;
   documents: Array<{ status: DocumentStatus; updatedAt: Date }>;
   facts: { id: string }[];
   parties: { id: string }[];
@@ -88,15 +92,36 @@ function readProtocolManualConfirmed(metadataJson: unknown): boolean {
   return Boolean((workflow as { protocolReadyConfirmed?: unknown }).protocolReadyConfirmed);
 }
 
+function resolveIntakeMode(ctx: CaseLegalWorkflowInput): CaseChecklistIntakeMode {
+  if (ctx.intakeMode) return ctx.intakeMode;
+  const meta = ctx.metadataJson;
+  if (usesFundamentalIntakeFlow(meta)) {
+    return isFundamentalIntakeStructured(meta) ? "fundamental_done" : "fundamental_draft";
+  }
+  return "legacy";
+}
+
 function phaseSatisfied(id: WorkflowPhaseId, ctx: CaseLegalWorkflowInput): { ok: boolean; pending: string[] } {
   const pending: string[] = [];
   const raw = (ctx.rawInput ?? "").trim();
   const hasRelatoMin = raw.length >= 20;
   const checklistOk = ctx.checklistMissingCount === 0;
   const answered = Boolean(ctx.checklistAnsweredAt);
+  const intakeMode = resolveIntakeMode(ctx);
+  const fundamentalSaved = intakeMode === "fundamental_draft" && checklistOk;
+  const fundamentalStructured = intakeMode === "fundamental_done";
 
   switch (id) {
     case "coleta": {
+      if (fundamentalStructured) {
+        return { ok: true, pending: [] };
+      }
+      if (intakeMode === "fundamental_draft") {
+        if (!checklistOk) {
+          pending.push(`Completar entrevista (${ctx.checklistMissingCount} campo(s) obrigatório(s))`);
+        }
+        return { ok: checklistOk, pending };
+      }
       if (!checklistOk) pending.push(`Concluir entrevista (${ctx.checklistMissingCount} pendência(s))`);
       if (!hasRelatoMin && !answered) pending.push("Relato mínimo ou entrevista concluída");
       return { ok: checklistOk && (hasRelatoMin || answered), pending };
@@ -120,10 +145,21 @@ function phaseSatisfied(id: WorkflowPhaseId, ctx: CaseLegalWorkflowInput): { ok:
       return { ok, pending };
     }
     case "fatos": {
+      const relationalOk =
+        ctx.facts.length > 0 && ctx.parties.length > 0 && ctx.requests.length > 0;
+      if (relationalOk) return { ok: true, pending: [] };
+
+      if (fundamentalSaved || fundamentalStructured) {
+        if (ctx.parties.length === 0) pending.push("Organizar com JustOS AI ou cadastrar partes (opcional para avançar)");
+        if (ctx.facts.length === 0) pending.push("Fatos ainda não materializados — use Partes e fatos ou pesquisa com contexto da entrevista");
+        if (ctx.requests.length === 0) pending.push("Pedidos podem ser definidos na estratégia");
+        return { ok: true, pending };
+      }
+
       if (ctx.facts.length === 0) pending.push("Registrar fatos (extração ou manual)");
       if (ctx.parties.length === 0) pending.push("Identificar partes principais");
       if (ctx.requests.length === 0) pending.push("Indicar pedidos preliminares");
-      return { ok: ctx.facts.length > 0 && ctx.parties.length > 0 && ctx.requests.length > 0, pending };
+      return { ok: false, pending };
     }
     case "pesquisa": {
       if (ctx.legalSources.length === 0) pending.push("Salvar ou pinar ao menos 1 fundamento");
@@ -163,8 +199,17 @@ function firstOpenPhase(ctx: CaseLegalWorkflowInput): WorkflowPhaseId | null {
 
 function buildBlockers(ctx: CaseLegalWorkflowInput, current: WorkflowPhaseId | null): string[] {
   const out: string[] = [];
+  const intakeMode = resolveIntakeMode(ctx);
+  const fundamentalReady =
+    intakeMode === "fundamental_done" ||
+    (intakeMode === "fundamental_draft" && ctx.checklistMissingCount === 0);
+
   if (ctx.checklistMissingCount > 0) {
     out.push("Peça e revisão bloqueadas: entrevista incompleta.");
+  } else if (fundamentalReady && intakeMode === "fundamental_draft" && current && current !== "coleta") {
+    out.push(
+      "Entrevista salva. Organizar com JustOS AI em Partes e fatos é opcional; pesquisa e estratégia usam o relato salvo.",
+    );
   }
   if (ctx.documents.length === 0 && current && current !== "coleta") {
     out.push("Fases seguintes bloqueadas: nenhum documento anexado.");

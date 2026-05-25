@@ -11,7 +11,7 @@ import { BibliotecaOfficeDocumentCard } from "@/components/biblioteca/biblioteca
 
 export const metadata: Metadata = {
   title: "Livros em destaque",
-  description: "Catálogo público de leituras na plataforma Lex.",
+  description: "Catálogo público de leituras na plataforma JustOS.",
 };
 
 const shelfBooks = { libraryShelf: DocumentLibraryShelf.SHARED_BOOKS } satisfies Prisma.DocumentWhereInput;

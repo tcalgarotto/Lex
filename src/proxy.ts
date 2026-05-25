@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAllowedBrowserMutationOrigin } from "@/lib/security/browser-mutation-origin";
 
 type CookieToSet = {
   name: string;
@@ -7,13 +8,49 @@ type CookieToSet = {
   options?: Record<string, unknown>;
 };
 
-const PUBLIC_PREFIXES = ["/", "/pricing", "/manifesto", "/termos", "/privacidade", "/docs"];
+const PUBLIC_PREFIXES = [
+  "/",
+  "/pricing",
+  "/produto",
+  "/manifesto",
+  "/termos",
+  "/privacidade",
+  "/docs",
+];
 const AUTH_ROUTES = [
   "/login",
   "/register",
   "/forgot-password",
   "/reset-password",
 ] as const;
+
+function isLexN8nCaseCallbackPath(pathname: string): boolean {
+  return /^\/api\/cases\/[^/]+\/(draft|brain|review|case-brain)$/.test(pathname);
+}
+
+function isLexN8nIntegrationPath(pathname: string): boolean {
+  if (pathname.startsWith("/api/integrations/justos/")) return true;
+  if (/^\/api\/cases\/[^/]+\/justos-(secretary|notification-log)$/.test(pathname)) return true;
+  return isLexN8nCaseCallbackPath(pathname);
+}
+
+function isLexN8nServiceRequest(request: NextRequest): boolean {
+  const token = process.env["LEX_N8N_SERVICE_TOKEN"]?.trim();
+  if (!token) return false;
+  const auth = request.headers.get("authorization");
+  if (!auth?.startsWith("Bearer ")) return false;
+  if (auth.slice(7).trim() !== token) return false;
+  return isLexN8nIntegrationPath(request.nextUrl.pathname);
+}
+
+function isJustosCommandInbound(request: NextRequest): boolean {
+  if (!request.nextUrl.pathname.startsWith("/api/justos/whatsapp/inbound")) return false;
+  const secret =
+    process.env["JUSTOS_COMMAND_SECRET"]?.trim() ??
+    process.env["LEX_N8N_SERVICE_TOKEN"]?.trim();
+  if (!secret) return false;
+  return request.headers.get("x-justos-command-secret") === secret;
+}
 
 function isPublicPath(pathname: string): boolean {
   if (pathname.startsWith("/auth/callback")) return true;
@@ -118,16 +155,13 @@ export async function proxy(request: NextRequest) {
     const origin = request.headers.get("origin");
     if (origin) {
       try {
-        const url = new URL(request.url);
-        const originHost = new URL(origin).host;
-        // Permite quando vem do mesmo host. Cross-origin mutations são bloqueadas (CSRF guard).
-        if (originHost !== url.host) {
-          // Exceção: webhooks externos que não usam cookie (ex.: Inngest, Stripe) precisam
-          // estar abaixo de `/api/inngest`, `/api/stripe/webhook`, etc., e usar verificação
-          // de assinatura própria — aqui só bloqueamos mutações que tentariam sequestrar a sessão.
-          const path = url.pathname;
+        if (!isAllowedBrowserMutationOrigin(request, origin)) {
+          const path = new URL(request.url).pathname;
           const isWebhook =
-            path.startsWith("/api/inngest") || path.startsWith("/api/stripe/webhook");
+            path.startsWith("/api/inngest") ||
+            path.startsWith("/api/asaas/webhook") ||
+            isJustosCommandInbound(request) ||
+            isLexN8nServiceRequest(request);
           if (!isWebhook) {
             return new NextResponse(JSON.stringify({ error: "cross-origin blocked" }), {
               status: 403,
@@ -183,14 +217,19 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // /api/* exigem auth, exceto webhooks/health
+  // /api/* exigem auth, exceto webhooks/health e callbacks n8n (Bearer service token)
   if (pathname.startsWith("/api")) {
+    if (isLexN8nServiceRequest(request) || isJustosCommandInbound(request)) {
+      applySecurityHeaders(response, request);
+      return response;
+    }
     const isPublicApi =
       pathname.startsWith("/api/inngest") ||
       pathname.startsWith("/api/health") ||
       pathname.startsWith("/api/ready") ||
       pathname.startsWith("/api/marketing/") ||
-      pathname.startsWith("/api/stripe/webhook");
+      pathname.startsWith("/api/asaas/webhook") ||
+      pathname.startsWith("/api/justos/whatsapp/inbound");
     if (!isPublicApi && !user) {
       const res = NextResponse.json(
         {

@@ -2,7 +2,7 @@ import type { RetrievedChunk } from "@/lib/retrieval/hybrid-retriever";
 
 export const PROMPT_VERSION = "lex-v1";
 
-export const SYSTEM_BASE = `Você é Lex, copiloto jurídico brasileiro para advogados.
+export const SYSTEM_BASE = `Você é assistente JustOS, copiloto jurídico brasileiro para advogados.
 Regras obrigatórias:
 - Baseie-se apenas nas fontes fornecidas na seção FONTES. Se algo não estiver nas fontes, diga claramente que não há base documental suficiente.
 - Use linguagem jurídica técnica em português do Brasil.

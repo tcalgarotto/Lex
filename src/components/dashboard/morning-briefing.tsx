@@ -206,7 +206,7 @@ export function MorningBriefingHeaderShell(
 
   return (
     <>
-      <h1 className="sr-only">Hoje no escritório — Lex</h1>
+      <h1 className="sr-only">Hoje no escritório — JustOS</h1>
 
       <header className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -227,7 +227,7 @@ export function MorningBriefingHeaderShell(
         <div className="lex-glass-card rounded-2xl px-5 py-10 text-center">
           <p className="text-base font-medium text-[color:var(--text-primary)]">Ainda não há casos neste escritório</p>
           <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
-            Comece por criar um caso e seguir a entrevista guiada. Depois envie os documentos para o Lex organizar fatos e peças.
+            Comece por criar um caso e seguir a entrevista guiada. Depois envie os documentos para o JustOS organizar fatos e peças.
           </p>
           <Button className="mt-6" asChild>
             <HoverPrefetchLink href="/cases/new">Criar primeiro caso</HoverPrefetchLink>
@@ -286,7 +286,7 @@ function sortResumePhaseKey(label: string): number {
   const order = [
     "Coleta inicial",
     "Aguardando documentos",
-    "Pesquisa Lex AI",
+    "Pesquisa JustOS AI",
     "Estratégia",
     "Minuta",
     "Revisão",
@@ -394,7 +394,7 @@ export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPay
   const important = briefingActions.filter((a) => actionBucket(a) === "important");
 
   const cardsGrid = (
-    <div className="grid items-stretch gap-5 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="dashboard-pulse-cards grid items-stretch gap-5 sm:grid-cols-2">
       <PulseBriefCard icon={Briefcase} label="Casos" variant="cases" detail={pulseCases} />
       <PulsePiecesBriefCard detail={pulsePieces} />
       <PulseBriefCard icon={Library} label="Biblioteca do escritório" variant="library" detail={pulseLibrary} />
@@ -527,7 +527,7 @@ export function MorningBriefingMainWithData({ data }: { data: MorningBriefingPay
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:grid-rows-[auto_1fr] lg:items-stretch lg:gap-5">
+      <div className="dashboard-briefing-layout flex flex-col gap-5 lg:grid lg:grid-rows-[auto_1fr] lg:items-stretch lg:gap-5">
         <div className="min-w-0 lg:col-start-1 lg:row-start-1">{cardsGrid}</div>
         <div className="flex min-w-0 flex-col gap-5 lg:col-start-1 lg:row-start-2 lg:min-h-0">{mainColumn}</div>
         <CopilotBlock
@@ -585,7 +585,7 @@ function QuickActionsBlock() {
       <div className="grid grid-cols-2 gap-2 p-[18px]">
         <QuickLink href="/cases/new" icon={Plus} iconClass="bg-violet-500/15 text-violet-300" label="Novo caso" />
         <QuickLink href="/documentos" icon={Upload} iconClass="bg-amber-500/15 text-amber-300" label="Upload" />
-        <QuickLink href="/pesquisa-juridica" icon={Search} iconClass="bg-emerald-500/15 text-emerald-300" label="Pesquisa Lex" />
+        <QuickLink href="/pesquisa-juridica" icon={Search} iconClass="bg-emerald-500/15 text-emerald-300" label="Pesquisa JustOS" />
         <QuickLink href="/editor" icon={FileText} iconClass="bg-blue-500/15 text-blue-300" label="Criar peça" />
       </div>
     </section>

@@ -33,7 +33,7 @@ export default async function PiecesIndexPage() {
  <header className="space-y-1">
  <h1 className="text-xl font-semibold">Peças</h1>
  <p className="text-sm text-muted-foreground">
- Petições, contestações, memoriais e demais peças geradas pelo Lex. As minutas
+ Petições, contestações, memoriais e demais peças geradas pelo JustOS. As minutas
  (versionadas) de um caso ficam dentro de Estratégia &amp; Peças do próprio caso.
  </p>
  </header>

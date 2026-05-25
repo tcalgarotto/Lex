@@ -55,7 +55,7 @@ export default function RegisterPage() {
  <div className="pointer-events-none absolute inset-0 bg-[length:40px_40px] opacity-[0.03] [background-image:linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)]" />
  <Card className="relative z-10 w-full max-w-md">
  <CardHeader className="space-y-1">
- <CardTitle className="text-2xl tracking-tight">Criar conta Lex</CardTitle>
+ <CardTitle className="text-2xl tracking-tight">Criar conta JustOS</CardTitle>
  <CardDescription>
  Arquitetura séria para o advogado que exige contexto e precisão.
  </CardDescription>

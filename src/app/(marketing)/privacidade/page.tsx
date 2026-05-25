@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { LegalDocPage } from "@/components/marketing/legal-doc-page";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidade — Lex",
-  description: "Como o Lex trata dados pessoais e informações de escritórios na fase alfa.",
+  title: "Política de Privacidade — JustOS",
+  description: "Como o JustOS trata dados pessoais e informações de escritórios na fase alfa.",
 };
 
 export default function PrivacidadePage() {
@@ -12,7 +12,7 @@ export default function PrivacidadePage() {
       <section>
         <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">1. Quem somos</h2>
         <p>
-          O Lex (Second Brain Jurídico) é operado para escritórios e profissionais do Direito no Brasil.
+          O JustOS (Second Brain Jurídico) é operado para escritórios e profissionais do Direito no Brasil.
           Esta política descreve, de forma objetiva, como tratamos dados na fase alfa — sem substituir
           assessoria jurídica específica nem afirmar certificações que ainda não possuímos.
         </p>
@@ -38,7 +38,7 @@ export default function PrivacidadePage() {
           2.1. Leads beta e contato comercial
         </h2>
         <p>
-          Ao enviar o formulário da landing, você autoriza contato da equipe Lex sobre o beta privado ou
+          Ao enviar o formulário da landing, você autoriza contato da equipe JustOS sobre o beta privado ou
           demonstrações. Usamos esses dados apenas para triagem comercial e operação do programa beta, não
           para venda a terceiros. Você pode revogar o consentimento para novas comunicações a qualquer momento
           respondendo ao e-mail de contato ou solicitando exclusão quando aplicável.

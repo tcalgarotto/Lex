@@ -1,17 +1,21 @@
-import Link from "next/link";
+import { LegalDocPage } from "@/components/marketing/legal-doc-page";
 
 export default function ManifestoPage() {
- return (
- <div className="mx-auto max-w-3xl px-6 py-16 text-[color:var(--text-primary)]">
- <h1 className="text-3xl font-semibold tracking-tight">Manifesto Lex</h1>
- <p className="mt-6 leading-relaxed text-[color:var(--text-secondary)]">
- Lex não é um chat genérico com PDF. É um sistema operacional jurídico: memória de caso,
- recuperação híbrida (semântica + lexical), reranking, fundamentação com fontes e geração no
- seu estilo — com arquitetura multi-tenant desde o primeiro deploy.
- </p>
- <Link href="/" className="mt-8 inline-block text-violet-400 hover:underline">
- ← Início
- </Link>
- </div>
- );
+  return (
+    <LegalDocPage title="Manifesto JustOS" updatedLabel="JustOS">
+      <p className="lex-marketing-body text-[color:var(--text-secondary)]">
+        O JustOS não é um chat genérico com PDF. É o sistema operacional do escritório: memória de
+        caso, pesquisa com fontes, minutas conectadas ao que está aberto e revisão sempre nas suas
+        mãos.
+      </p>
+      <p className="lex-marketing-body mt-4 text-[color:var(--text-secondary)]">
+        Construímos para advogados autônomos e equipes que precisam de disciplina no fluxo — do
+        primeiro contato à peça protocolada — sem prometer substituir o profissional habilitado.
+      </p>
+      <p className="lex-marketing-body mt-4 text-[color:var(--text-secondary)]">
+        Transparência, controle e clareza guiam cada decisão de produto até termos de parceiros e
+        histórias de escritório que possamos citar com permissão.
+      </p>
+    </LegalDocPage>
+  );
 }

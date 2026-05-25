@@ -113,7 +113,7 @@ export default async function BibliotecaPage() {
       <BibliotecaShelfSection
         id="shelf-leis-codigos-normas"
         title="Leis, códigos e normas"
-        subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
+        subtitle="Catálogo JustOS na plataforma (público para todos os utilizadores)."
         verMaisHref={leisCatalogoCount > 0 ? "/biblioteca/leis" : null}
         verMaisLabel={
           leisCatalogoCount > BIBLIOTECA_HOME_SHELF_PREVIEW
@@ -124,7 +124,7 @@ export default async function BibliotecaPage() {
         {leisCatalogoCount === 0 ? (
           <p className="rounded-xl border border-dashed border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 px-4 py-8 text-center text-sm leading-relaxed text-[color:var(--text-secondary)]">
             Ainda não há entradas nesta prateleira. O catálogo global é preenchido pela
-            operação Lex (scripts de upload para o workspace de plataforma), não pelo
+            operação JustOS (scripts de upload para o workspace de plataforma), não pelo
             envio em Documentos.
             {!platformCatalogId ? (
               <span className="mt-3 block text-xs text-[color:var(--text-secondary)]/90">
@@ -157,7 +157,7 @@ export default async function BibliotecaPage() {
       <BibliotecaShelfSection
         id="shelf-livros-recomendados"
         title="Livros em destaque"
-        subtitle="Catálogo Lex na plataforma (público para todos os utilizadores)."
+        subtitle="Catálogo JustOS na plataforma (público para todos os utilizadores)."
         verMaisHref={livrosCatalogoCount > 0 ? "/biblioteca/livros" : null}
         verMaisLabel={
           livrosCatalogoCount > BIBLIOTECA_HOME_SHELF_PREVIEW

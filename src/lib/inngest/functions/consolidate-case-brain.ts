@@ -15,6 +15,7 @@ import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { consolidateCaseBrain, persistBrainEntities } from "@/lib/cases/brain";
 import { mergeCaseMetadataJson } from "@/lib/cases/case-brain/case-metadata-merge";
+import { fireLexJustosEventForCase } from "@/lib/justos/emit-for-case";
 
 export const consolidateCaseBrainFn = inngest.createFunction(
   { id: "consolidate-case-brain", retries: 2 },
@@ -101,6 +102,20 @@ export const consolidateCaseBrainFn = inngest.createFunction(
         });
       });
     });
+
+    if (!result.cached) {
+      fireLexJustosEventForCase({
+        event: "lex.brain.consolidated",
+        workspaceId: ctx.workspaceId,
+        caseId,
+        meta: {
+          brainVersion: brain.brainVersion,
+          readinessScore: brain.proceduralReadiness.score,
+          readinessStatus: brain.proceduralReadiness.status,
+          source: source ?? "manual",
+        },
+      });
+    }
 
     return {
       ok: true,

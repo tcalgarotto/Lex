@@ -1,4 +1,6 @@
-# Lex — Sistema operacional jurídico com IA
+# JustOS — Sistema operacional jurídico
+
+> Marca oficial **JustOS** (ex-Lex). JustOS Core = casos, peças, Case Brain. JustOS Pro = CRM + automação + WhatsApp.
 
 Copiloto jurídico **caso-cêntrico** com **pesquisa e fundamentação assistidas** (Lex AI / DeepSeek, com validação humana), **Case Brain** (partes, fatos, pedidos, riscos, timeline), **memória e estilo do escritório**, **processos judiciais** (CNJ / integrações oficiais), **pesquisa jurídica** no produto e **editor de peças** com exportação.
 

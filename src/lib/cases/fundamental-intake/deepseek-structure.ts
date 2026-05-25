@@ -8,7 +8,7 @@ import {
   type DeepseekStructureResponse,
 } from "./structured-output-schema";
 
-const SYSTEM = `Você é assistente jurídico do Lex (Brasil). ESTRUTURE o relato — não copie parágrafos inteiros.
+const SYSTEM = `Você é assistente jurídico do JustOS (Brasil). ESTRUTURE o relato — não copie parágrafos inteiros.
 REGRAS OBRIGATÓRIAS:
 1) NÃO invente CPF, CNPJ, número de processo, documento, nome de pessoa ou fato que não esteja no texto de entrada.
 2) Se algo não constar, omita ou use null — registre lacunas em missing_questions, information_gaps ou missing_documents.

@@ -195,7 +195,7 @@ export function IntakeSidebarPanel({
   hideActions,
   structureLocked,
   structureLockTitle,
-  organizeButtonLabel = "Organizar caso com Lex AI",
+  organizeButtonLabel = "Organizar caso com JustOS AI",
 }: {
   progress: number;
   pending: string[];
@@ -206,9 +206,9 @@ export function IntakeSidebarPanel({
   loading: "save" | "structure" | "hydrate" | null;
   /** Mobile: só resumo; botões ficam na barra inferior. */
   hideActions?: boolean;
-  /** Quando true, desativa só o botão "Organizar caso com Lex AI" até o formulário estar completo. */
+  /** Quando true, desativa só o botão "Organizar caso com JustOS AI" até o formulário estar completo. */
   structureLocked?: boolean;
-  /** Texto para `title` / acessibilidade quando Lex está bloqueada. */
+  /** Texto para `title` / acessibilidade quando JustOS está bloqueada. */
   structureLockTitle?: string;
   organizeButtonLabel?: string;
 }) {
@@ -299,7 +299,7 @@ export function IntakeMobileActionBar({
   loading,
   structureLocked,
   structureLockTitle,
-  organizeButtonLabel = "Organizar caso com Lex AI",
+  organizeButtonLabel = "Organizar caso com JustOS AI",
 }: {
   onDraft: () => void;
   onStructure: () => void;

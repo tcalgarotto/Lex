@@ -44,34 +44,21 @@ export function LandingLiveCard({
       {featured ? (
         <div className="landing-live-card__shine pointer-events-none absolute inset-x-0 top-0 h-px" aria-hidden />
       ) : null}
-      <div
-        className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-100"
-        style={{ background: "var(--brand-subtle)" }}
-        aria-hidden
-      />
-      <div className="relative flex items-start justify-between gap-2">
-        <div
-          className="flex size-14 items-center justify-center rounded-xl border border-[color:var(--brand-border)] shadow-sm transition-transform duration-300 group-hover:scale-105"
-          style={{ background: "var(--brand-subtle)" }}
-        >
-          <Icon className="size-6 text-[color:var(--brand-text)]" aria-hidden />
-        </div>
+      <div className="relative flex items-start justify-between gap-3">
+        <h3 className="lex-marketing-card-title relative flex flex-1 items-start gap-3 text-[color:var(--text-primary)]">
+          <Icon className="mt-0.5 size-5 shrink-0 text-[color:var(--brand-text)]" aria-hidden />
+          <span>{title}</span>
+        </h3>
         {tag ? (
-          <span
-            className="shrink-0 rounded-full border border-[color:var(--brand-border)] px-3 py-1.5 text-caption font-semibold uppercase tracking-wide text-[color:var(--brand-text)]"
-            style={{ background: "var(--brand-subtle)" }}
-          >
+          <span className="shrink-0 rounded-md border border-[color:var(--border-subtle)] px-2.5 py-1 text-micro font-medium text-[color:var(--text-muted)]">
             {tag}
           </span>
         ) : null}
       </div>
-      <h3 className="lex-marketing-card-title relative mt-5 text-[color:var(--text-primary)]">
-        {title}
-      </h3>
-      <p className="lex-marketing-card-body relative mt-2.5 flex-1 text-[color:var(--text-secondary)]">
+      <p className="lex-marketing-card-body relative mt-3 flex-1 pl-8 text-[color:var(--text-secondary)]">
         {description}
       </p>
-      <p className="lex-marketing-example relative mt-5 rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/80 px-3.5 py-3 text-[color:var(--text-muted)] transition-colors duration-300 group-hover:border-[color:var(--brand-border)] group-hover:text-[color:var(--text-secondary)]">
+      <p className="lex-marketing-example relative mt-5 border-t border-[color:var(--border-subtle)] pt-4 pl-8 text-[color:var(--text-muted)]">
         {example}
       </p>
     </article>

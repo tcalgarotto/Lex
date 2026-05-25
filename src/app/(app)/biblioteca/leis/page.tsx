@@ -11,7 +11,7 @@ import { BibliotecaOfficeDocumentCard } from "@/components/biblioteca/biblioteca
 
 export const metadata: Metadata = {
   title: "Leis, códigos e normas",
-  description: "Catálogo público de leis e normas na plataforma Lex.",
+  description: "Catálogo público de leis e normas na plataforma JustOS.",
 };
 
 const shelfLegal = { libraryShelf: DocumentLibraryShelf.SHARED_LEGAL } satisfies Prisma.DocumentWhereInput;

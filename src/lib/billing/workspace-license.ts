@@ -49,7 +49,7 @@ export function workspaceWouldFitOccupancy(
 }
 
 /**
- * Preço mensal de referência (BRL), a parametrizar com o comercial / Stripe.
+ * Preço mensal de referência (BRL), a parametrizar com o comercial / Asaas.
  * Valor 0 = ainda não definido no produto.
  */
 export const WORKSPACE_LICENSE_REFERENCE_PRICE_MONTHLY_BRL: Record<WorkspaceLicense, number> = {

@@ -49,7 +49,7 @@ const disabledResponse = (meta: Record<string, unknown>): LegalResearchResponse 
   jurisprudenceCandidates: [],
   strategyNotes: [],
   draftingSuggestions: [],
-  riskFlags: ["Assistência Lex AI desativada (configuração do ambiente)."],
+  riskFlags: ["Assistência JustOS AI desativada (configuração do ambiente)."],
   missingInformation: [],
   providerMetadata: { ...meta, promptVersion, disabled: true },
 });

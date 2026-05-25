@@ -47,7 +47,7 @@ function buildHtml(lead: BetaLeadNotifyPayload): string {
     "—";
   const pain = lead.mainPain?.trim() ? lead.mainPain.slice(0, 500) : "—";
   return `
-    <h2>Novo lead — Lex</h2>
+    <h2>Novo lead — JustOS</h2>
     <p><strong>Intenção:</strong> ${intentLabel}</p>
     <p><strong>Nome:</strong> ${escapeHtml(lead.name)}</p>
     <p><strong>E-mail:</strong> ${escapeHtml(lead.email)}</p>
@@ -80,8 +80,8 @@ export async function notifyTeamOfBetaLead(lead: BetaLeadNotifyPayload): Promise
 
   const subject =
     lead.intent === "demo"
-      ? `[Lex] Demonstração — ${lead.company}`
-      : `[Lex] Beta — ${lead.company}`;
+      ? `[JustOS] Demonstração — ${lead.company}`
+      : `[JustOS] Beta — ${lead.company}`;
 
   try {
     const res = await fetch("https://api.resend.com/emails", {

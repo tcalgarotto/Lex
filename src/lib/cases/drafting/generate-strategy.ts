@@ -76,7 +76,7 @@ export async function generateStrategy(
 
   const caseContextBlock = formatCaseTaskContextForPrompt(taskCtx);
 
-  const prompt = `Você é assistente jurídico interno do Lex. Produza APENAS JSON válido (sem markdown ao redor) com o formato:
+  const prompt = `Você é assistente jurídico interno do JustOS. Produza APENAS JSON válido (sem markdown ao redor) com o formato:
 {
   "mainThesis": string,
   "theses": string[],

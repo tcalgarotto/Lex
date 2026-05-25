@@ -1,5 +1,5 @@
 /**
- * Catálogo oficial das leis/códigos federais que o Lex deve manter
+ * Catálogo oficial das leis/códigos federais que o JustOS deve manter
  * sempre indexados. URLs apontam pro Planalto (fonte primária).
  *
  * Cada item declara:

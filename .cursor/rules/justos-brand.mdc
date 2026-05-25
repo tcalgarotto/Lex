@@ -1,0 +1,37 @@
+---
+description: Rebrand JustOS — UI pública, marketing, copy e Impeccable
+globs: src/app/(marketing)/**,src/components/marketing/**,src/lib/marketing/**,src/components/brand/**,PRODUCT.md,DESIGN.md
+alwaysApply: false
+---
+
+# JustOS brand (marketing + UI pública)
+
+Leia `PRODUCT.md` e `DESIGN.md` na raiz antes de alterar landing ou marca.
+
+## Nome
+
+- UI voltada ao usuário: **JustOS** (nunca Lex em títulos, logos, consent, e-mail marketing).
+- Prefixos técnicos legados (`lex-*`, `LEX_*`) só em código interno/API; não expor na interface.
+
+## Tom
+
+Advogado para advogado: direto, sem hype de IA, sem prometer substituição do profissional. Sempre mencionar revisão e protocolo nas mãos do advogado quando falar de minuta ou assistência.
+
+## Visual (Impeccable + DESIGN.md)
+
+- **Color strategy:** Restrained (neutros tintados + accent ≤10%).
+- **Tema default:** light; dark só via toggle (`justos-theme`).
+- **Proibido:** glassmorphism como default, gradient text, side-stripe borders, hero-metric template, grids 11× card idênticos na home.
+- Logo: `JustOSLogo` / `JustOSLogoMark` em `src/components/brand/`.
+
+## Responsividade (obrigatório)
+
+Validar em **390px** (mobile), **1366px** (14") e **≥1440px** (desktop de dev). App: drawer &lt; lg, `ml-0` no main. Marketing: poço 100% width &lt;1024px. Não fechar fase sem teste fora do monitor 24".
+
+## Comandos
+
+Para trabalho de landing: seguir fluxo `impeccable teach` → `shape` → `craft` / `distill` → `quieter` → `adapt` → `critique` (meta ≥34/40). Snapshot em `.impeccable/critique/`.
+
+## Depoimentos
+
+Não inventar logos ou citações de clientes até material real existir.

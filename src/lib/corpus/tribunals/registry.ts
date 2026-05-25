@@ -1,5 +1,5 @@
 /**
- * Catálogo nacional de tribunais brasileiros para o corpus jurídico do Lex.
+ * Catálogo nacional de tribunais brasileiros para o corpus jurídico do JustOS.
  *
  * Cobre 92 tribunais:
  *   - 4 superiores (STF, STJ, TST, TSE)

@@ -2,7 +2,7 @@
  * POST /api/cases/fundamental-intake
  *
  * - action=save | draft: grava entrevista sem IA (cria caso ou atualiza `caseId`).
- * - action=structure | reorganize: persiste entrevista, depois organiza com Lex AI (opcional).
+ * - action=structure | reorganize: persiste entrevista, depois organiza com JustOS AI (opcional).
  *   Caso já organizado exige `reorganize: true` ou `action=reorganize` (sem 409).
  *
  * Save-first: estruturação nunca é pré-requisito para usar o caso.
@@ -30,6 +30,7 @@ import {
 import { assertDeepSeekConfigured } from "@/lib/ai/deepseek-provider";
 import { normalizeAiProviderError } from "@/lib/ai/normalize-ai-error";
 import { getLogger } from "@/lib/logger";
+import { fireLexJustosEventForCase } from "@/lib/justos";
 
 const log = getLogger("lex.api.cases.fundamental-intake");
 
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
       {
         error:
           lexStructureBlockedReason(form) ??
-          "Complete todas as secções obrigatórias antes de organizar com a Lex AI.",
+          "Complete todas as secções obrigatórias antes de organizar com a JustOS AI.",
       },
       { status: 400 },
     );
@@ -106,6 +107,11 @@ export async function POST(req: Request) {
       });
       const c = await getCaseById(workspaceId, id);
       revalidateCaseSurface(id);
+      fireLexJustosEventForCase({
+        event: "lex.intake.saved",
+        workspaceId,
+        caseId: id,
+      });
       return NextResponse.json(
         {
           case: c,
@@ -176,6 +182,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Caso não encontrado após organizar." }, { status: 500 });
     }
     revalidateCaseSurface(caseId);
+    fireLexJustosEventForCase({
+      event: "lex.intake.structured",
+      workspaceId,
+      caseId,
+    });
     return NextResponse.json({ case: c, mode: "fundamental_structured" }, { status: 200 });
   } catch (e) {
     const normalized = normalizeAiProviderError(e);

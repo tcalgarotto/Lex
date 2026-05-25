@@ -414,7 +414,7 @@ export default async function ProcessDetailPage({
 <CardHeader>
 <CardTitle className="text-base">Consultar na fonte oficial</CardTitle>
 <p className="text-sm text-muted-foreground">
-Abra fontes oficiais e registre no Lex apenas o que você conferiu. O Lex não armazena senha, PIN, certificado ou sessão de tribunal.
+Abra fontes oficiais e registre no JustOS apenas o que você conferiu. O JustOS não armazena senha, PIN, certificado ou sessão de tribunal.
 </p>
 </CardHeader>
 <CardContent className="grid gap-3 md:grid-cols-2">
@@ -575,7 +575,7 @@ Cole uma intimação, publicação ou movimentação obtida em fonte oficial. O 
  </div>
  {a.metaJson ? (
  <p className="mt-2 text-xs text-muted-foreground">
- origem: <span className="text-[color:var(--text-primary)]">Lex</span>
+ origem: <span className="text-[color:var(--text-primary)]">JustOS</span>
  </p>
  ) : null}
  </div>
@@ -670,7 +670,7 @@ Cole uma intimação, publicação ou movimentação obtida em fonte oficial. O 
  <div className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-4 text-sm text-muted-foreground">
  <p className="font-medium text-[color:var(--text-primary)]">Sem peças ainda</p>
  <p className="mt-1">
- Gere uma primeira manifestação com base nos documentos processuais. O Lex vai registrar fontes, confiança e alertas de revisão no editor.
+ Gere uma primeira manifestação com base nos documentos processuais. O JustOS vai registrar fontes, confiança e alertas de revisão no editor.
  </p>
  </div>
  ) : null}

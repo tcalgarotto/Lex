@@ -7,7 +7,7 @@ export default function ApresentacaoPage() {
  <div className="w-full min-w-0 space-y-6">
  <Card>
  <CardHeader>
- <CardTitle className="text-base">Lex — Sistema operacional jurídico</CardTitle>
+ <CardTitle className="text-base">JustOS — Sistema operacional jurídico</CardTitle>
  <p className="text-sm text-muted-foreground">
  Não é “chat com PDF”. É <span className="text-[color:var(--text-primary)]">memória jurídica + fontes verificáveis</span> + geração de peça no seu estilo, com guardrails contra alucinação.
  </p>
@@ -32,13 +32,13 @@ export default function ApresentacaoPage() {
  </CardHeader>
  <CardContent className="space-y-2 text-sm text-muted-foreground">
  <p>
- 1) Você envia documentos. O Lex extrai texto, separa em seções e indexa.
+ 1) Você envia documentos. O JustOS extrai texto, separa em seções e indexa.
  </p>
  <p>
- 2) No chat, o Lex recupera trechos relevantes com assistência de IA e responde com <span className="text-[color:var(--text-primary)]">fontes usadas</span>.
+ 2) No chat, o JustOS recupera trechos relevantes com assistência de IA e responde com <span className="text-[color:var(--text-primary)]">fontes usadas</span>.
  </p>
  <p>
- 3) Se a base for insuficiente, o Lex inicia com aviso e evita afirmar prazos/artigos/precedentes.
+ 3) Se a base for insuficiente, o JustOS inicia com aviso e evita afirmar prazos/artigos/precedentes.
  </p>
  <p>
  4) Você gera peça com base no processo e edita no editor com autosave e exportação.

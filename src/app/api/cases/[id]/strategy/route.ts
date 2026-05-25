@@ -107,7 +107,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       data: {
         caseId: c.id,
         kind: CaseTimelineKind.STRATEGY_GENERATED,
-        message: `Estratégia assistida (Lex AI): ${(draftingStrategy.mainThesis ?? draftingStrategy.theses[0] ?? "atualizada").slice(0, 120)}`,
+        message: `Estratégia assistida (JustOS AI): ${(draftingStrategy.mainThesis ?? draftingStrategy.theses[0] ?? "atualizada").slice(0, 120)}`,
         userId: user.id,
         retrievalChunkIds: [],
         payloadJson: {

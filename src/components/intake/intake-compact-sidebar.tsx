@@ -48,7 +48,7 @@ export function IntakeCompactSidebar({
   hideActions,
   structureLocked,
   structureLockTitle,
-  organizeButtonLabel = "Organizar caso com Lex AI",
+  organizeButtonLabel = "Organizar caso com JustOS AI",
 }: {
   progress: number;
   nextQuestion: string;

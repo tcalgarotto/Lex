@@ -59,7 +59,7 @@ export function inngestSecuritySnapshot(): {
   };
 }
 
-export const inngest = new Inngest({ id: INNGEST_APP_ID, name: "Lex" });
+export const inngest = new Inngest({ id: INNGEST_APP_ID, name: "JustOS" });
 
 export type IngestDocumentEvent = {
   name: "lex/document.ingest";

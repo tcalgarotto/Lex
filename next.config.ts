@@ -1,8 +1,21 @@
 import path from "node:path";
+import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import { parseAllowedDevOrigins } from "./config/allowed-dev-origins";
+
+// next.config é avaliado antes do Next injetar .env — carregar aqui para allowedDevOrigins na LAN.
+loadEnvConfig(process.cwd());
+
+/** Só `next dev` + IPs privados explícitos em ALLOWED_DEV_ORIGINS (ver docs/DEV_LAN_ACCESS.md). */
+const allowedDevOrigins = parseAllowedDevOrigins();
+if (process.env.NODE_ENV !== "production" && allowedDevOrigins?.length) {
+  console.log("[next.config] allowedDevOrigins:", allowedDevOrigins.join(", "));
+}
 
 const nextConfig: NextConfig = {
+  ...(allowedDevOrigins ? { allowedDevOrigins } : {}),
+
   // Habilita compressão Gzip/Brotli (padrão em Vercel, mas bom ser explícito)
   compress: true,
 
@@ -56,6 +69,15 @@ const nextConfig: NextConfig = {
       canvas: false,
     };
     return config;
+  },
+  async redirects() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/icon.svg",
+        permanent: false,
+      },
+    ];
   },
   async headers() {
     return [

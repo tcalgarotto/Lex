@@ -7,47 +7,42 @@ const appUrl = getPublicAppUrl();
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "Lex — Plataforma jurídica inteligente",
-    template: "%s · Lex",
+    default: "JustOS — Sistema operacional jurídico",
+    template: "%s · JustOS",
   },
   description:
-    "Organize casos, analise documentos, pesquise fundamentos e produza minutas com mais velocidade e controle. Solicite acesso ao Lex.",
+    "Casos, documentos, pesquisa com fontes e minutas no mesmo fluxo. Revisão sempre nas suas mãos. Solicite acesso ao JustOS.",
   keywords: [
+    "JustOS",
     "software jurídico",
-    "IA para advogados",
     "gestão de casos",
     "pesquisa jurídica",
-    "geração de peças",
     "escritório de advocacia",
+    "minutas advocatícias",
   ],
   openGraph: {
-    title: "Lex — Plataforma jurídica inteligente",
+    title: "JustOS — Sistema operacional do escritório",
     description:
-      "Organize casos, documentos e fundamentos. Produza minutas conectadas ao caso, com pesquisa com fontes e revisão profissional.",
+      "Centralize caso, fundamento e minuta. Pesquisa com fontes e revisão profissional antes do protocolo.",
     type: "website",
     locale: "pt_BR",
-    siteName: "Lex",
+    siteName: "JustOS",
     url: appUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lex — Plataforma jurídica inteligente",
+    title: "JustOS — Sistema operacional do escritório",
     description:
-      "Pesquisa com fontes, casos organizados e minutas conectadas ao caso. Solicite acesso.",
+      "Casos, fundamentos e minutas conectados. Solicite acesso ao JustOS.",
   },
   robots: { index: true, follow: true },
 };
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="lex-marketing-page relative min-h-screen overflow-x-hidden lex-hero-gradient">
-      <div className="lex-glass-mesh pointer-events-none fixed inset-0 z-0" aria-hidden>
-        <span className="lex-glass-mesh__blob lex-glass-mesh__blob--a" />
-        <span className="lex-glass-mesh__blob lex-glass-mesh__blob--b" />
-        <span className="lex-glass-mesh__blob lex-glass-mesh__blob--c" />
-        <span className="lex-glass-mesh__blob lex-glass-mesh__blob--d" />
-      </div>
-      <div className="relative z-10">{children}</div>
+    <div className="lex-marketing-page relative min-h-screen lex-hero-gradient">
+      {/* Mesh desligado na marketing (Fase 3 quieter) — ver .lex-marketing-page em globals.css */}
+      <div className="relative isolate z-10">{children}</div>
     </div>
   );
 }

@@ -116,13 +116,13 @@ export async function addPinnedFoundationToCase(
         chunkId,
         excerpt: excerpt.slice(0, 20_000),
         articleRef: articleRef?.slice(0, 500) ?? undefined,
-        query: "Pesquisa assistida (Lex AI) — fixado no caso",
+        query: "Pesquisa assistida (JustOS AI) — fixado no caso",
         pinnedById: pinnedByUserId ?? undefined,
       },
       update: {
         excerpt: excerpt.slice(0, 20_000),
         articleRef: articleRef?.slice(0, 500) ?? undefined,
-        query: "Pesquisa assistida (Lex AI) — fixado no caso",
+        query: "Pesquisa assistida (JustOS AI) — fixado no caso",
         pinnedById: pinnedByUserId ?? undefined,
       },
     });

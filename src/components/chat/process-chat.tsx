@@ -118,7 +118,7 @@ export function ProcessChat({
  <div className="rounded-xl border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-4 text-sm text-muted-foreground">
  <p className="font-medium text-[color:var(--text-primary)]">Inicie a análise contextual</p>
  <p className="mt-1">
- Pergunte algo sobre o processo. O Lex vai recuperar fontes, calcular confiança jurídica e responder com guardrails quando a base for insuficiente.
+ Pergunte algo sobre o processo. O JustOS vai recuperar fontes, calcular confiança jurídica e responder com guardrails quando a base for insuficiente.
  </p>
  <p className="mt-2 text-xs">
  Sugestão: <span className="text-[color:var(--text-primary)]">“O que devo fazer diante deste despacho?”</span>

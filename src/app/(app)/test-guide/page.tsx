@@ -90,7 +90,7 @@ export default async function TestGuidePage() {
  <ClipboardList className="size-3.5" /> Primeiro teste com advogado
  </div>
  <h1 className="text-2xl font-semibold leading-tight">
- Como testar o Lex (P0 comercial)
+ Como testar o JustOS (P0 comercial)
  </h1>
  <p className="max-w-3xl text-sm text-muted-foreground">
  Use as 6 jornadas sentinela (abaixo) para validar o fluxo caso-cêntrico de ponta a ponta:
@@ -111,7 +111,7 @@ export default async function TestGuidePage() {
  <strong className="text-foreground">Antes de começar</strong>
  <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
  <li>Não use dados reais sensíveis no teste inicial — prefira casos fictícios ou anonimizados.</li>
- <li>O Lex não substitui sua revisão. Toda peça gerada exige conferência humana.</li>
+ <li>O JustOS não substitui sua revisão. Toda peça gerada exige conferência humana.</li>
  <li>Você pode voltar a esta página quando quiser pelo sidebar (em breve) ou em <code>/test-guide</code>.</li>
  </ul>
  </Card>
@@ -175,7 +175,7 @@ export default async function TestGuidePage() {
  <section className="space-y-3 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-100">
  <h3 className="font-medium">Importante</h3>
  <p>
- O Lex está em primeira leva de testes reais. Você pode encontrar áreas com
+ O JustOS está em primeira leva de testes reais. Você pode encontrar áreas com
  cobertura parcial (jurisprudência regional, integrações ainda em modo mock)
  — isso é esperado. Ajude reportando exatamente o que travou e em qual passo.
  </p>

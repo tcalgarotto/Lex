@@ -233,7 +233,7 @@ function checkFalseProtocolPromise(content: string): ReviewItem {
     status: "fail",
     detail: "Texto contém promessa de protocolo (remover).",
     rationale:
-      "O Lex não pode sugerir que a peça está pronta para protocolo sem revisão humana e sem checagens completas.",
+      "O JustOS não pode sugerir que a peça está pronta para protocolo sem revisão humana e sem checagens completas.",
     weight: 0.05,
   };
 }

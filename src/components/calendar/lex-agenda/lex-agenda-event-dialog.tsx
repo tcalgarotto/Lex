@@ -199,7 +199,7 @@ export function LexAgendaEventDialog(props: LexAgendaEventDialogProps) {
           <DialogTitle className="text-lg font-semibold">{mode === "edit" ? "Editar compromisso" : "Novo compromisso"}</DialogTitle>
           <p className="text-sm font-normal text-muted-foreground">
             {mode === "edit"
-              ? "Altere os dados e salve. Controle interno do Lex — confirme prazos oficiais no tribunal."
+              ? "Altere os dados e salve. Controle interno do JustOS — confirme prazos oficiais no tribunal."
               : "Preencha os dados. Campos opcionais ampliam o contexto jurídico."}
           </p>
         </DialogHeader>
@@ -324,7 +324,7 @@ export function LexAgendaEventDialog(props: LexAgendaEventDialogProps) {
             </div>
             {legalHint ?? (
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Controle interno do Lex. Para prazos e comunicações oficiais, confirme sempre no portal do tribunal ou DJE.
+                Controle interno do JustOS. Para prazos e comunicações oficiais, confirme sempre no portal do tribunal ou DJE.
               </p>
             )}
           </div>

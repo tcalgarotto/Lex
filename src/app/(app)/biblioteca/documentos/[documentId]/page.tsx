@@ -19,8 +19,8 @@ import {
 function shelfLabel(shelf: DocumentLibraryShelf, scope: "workspace" | "lex-platform"): string {
   if (scope === "lex-platform") {
     return shelf === DocumentLibraryShelf.SHARED_LEGAL
-      ? "Catálogo Lex (plataforma): leis e normas"
-      : "Catálogo Lex (plataforma): livros";
+      ? "Catálogo JustOS (plataforma): leis e normas"
+      : "Catálogo JustOS (plataforma): livros";
   }
   switch (shelf) {
     case DocumentLibraryShelf.SHARED_LEGAL:

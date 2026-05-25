@@ -4,6 +4,7 @@
  */
 
 import type { DocumentStatus } from "@prisma/client";
+import type { CaseChecklistIntakeMode } from "@/lib/cases/case-checklist-state";
 import { deriveDocumentDisplayStatus } from "@/lib/documents/status-display";
 import { hasStrategy } from "@/lib/cases/case-progress-model";
 
@@ -15,6 +16,7 @@ export type CockpitPrimaryAction =
 export type CaseCockpitActionContext = {
   caseId: string;
   checklistMissingCount: number;
+  intakeMode?: CaseChecklistIntakeMode;
   documents: Array<{ status: DocumentStatus; updatedAt: Date | string }>;
   facts: { id: string }[];
   parties: { id: string }[];
@@ -34,6 +36,9 @@ export function resolveCaseCockpitPrimaryAction(
   opts: { draftBlocked: boolean },
 ): CockpitPrimaryAction {
   const { caseId, checklistMissingCount } = ctx;
+  const fundamentalReady =
+    ctx.intakeMode === "fundamental_done" ||
+    (ctx.intakeMode === "fundamental_draft" && checklistMissingCount === 0);
   const docsIndexed = ctx.documents.filter((d) => d.status === "INDEXED").length;
   const docsStalled = ctx.documents.some((d) => deriveDocumentDisplayStatus(d).stalled);
   const hasFacts = ctx.facts.length > 0;
@@ -71,6 +76,34 @@ export function resolveCaseCockpitPrimaryAction(
     };
   }
 
+  if (docsIndexed > 0 && !hasFacts && !fundamentalReady) {
+    return {
+      kind: "link",
+      href: seg(caseId, "partes-fatos"),
+      label: "Extrair fatos e partes",
+      description: "Os documentos já estão prontos. Consolide fatos, partes e pedidos na aba Fatos e partes.",
+    };
+  }
+
+  if (fundamentalReady && !hasFacts && !hasResearch && ctx.documents.length === 0) {
+    return {
+      kind: "link",
+      href: seg(caseId, "documentos"),
+      label: "Enviar documento",
+      description: "Entrevista salva. Anexe provas ou avance para pesquisa jurídica com o relato da entrevista.",
+    };
+  }
+
+  if (fundamentalReady && !hasFacts && !hasResearch) {
+    return {
+      kind: "link",
+      href: seg(caseId, "pesquisa-juridica"),
+      label: "Pesquisar fundamentos",
+      description:
+        "Use o relato da entrevista salva. Organizar com JustOS AI em Partes e fatos é opcional neste estágio.",
+    };
+  }
+
   if (docsIndexed > 0 && !hasFacts) {
     return {
       kind: "link",
@@ -80,7 +113,7 @@ export function resolveCaseCockpitPrimaryAction(
     };
   }
 
-  if (hasFacts && !hasRequests) {
+  if (hasFacts && !hasRequests && !fundamentalReady) {
     return {
       kind: "link",
       href: seg(caseId, "partes-fatos"),
@@ -89,7 +122,7 @@ export function resolveCaseCockpitPrimaryAction(
     };
   }
 
-  if (hasFacts && !hasResearch) {
+  if ((hasFacts || fundamentalReady) && !hasResearch) {
     return {
       kind: "link",
       href: seg(caseId, "pesquisa-juridica"),
@@ -98,7 +131,7 @@ export function resolveCaseCockpitPrimaryAction(
     };
   }
 
-  if (hasFacts && hasRequests && !strategy) {
+  if ((hasFacts || fundamentalReady) && !strategy) {
     return {
       kind: "link",
       href: seg(caseId, "estrategia"),

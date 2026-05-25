@@ -14,6 +14,7 @@ import {
   readReferrer,
   readUtmFromSearchParams,
 } from "@/lib/marketing/beta-lead-attribution";
+import { PRODUCT_NAME } from "@/lib/brand/justos";
 import { trackMarketingEvent } from "@/lib/marketing/analytics";
 
 const fieldClass =
@@ -43,8 +44,7 @@ const INITIAL: FormState = {
 
 export function LandingBetaCta() {
   const [form, setForm] = useState<FormState>(INITIAL);
-  const [intent, setIntent] = useState<"beta" | "demo">("beta");
-  const [loading, setLoading] = useState(false);
+  const [submittingIntent, setSubmittingIntent] = useState<"beta" | "demo" | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const attributionRef = useRef<BetaLeadAttribution>({
     utmSource: "",
@@ -73,8 +73,10 @@ export function LandingBetaCta() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const intent = submitter?.dataset["intent"] === "demo" ? "demo" : "beta";
     if (!form.contactConsent) {
       toast.error("Autorize o contato para continuar.");
       return;
@@ -84,7 +86,8 @@ export function LandingBetaCta() {
       return;
     }
 
-    setLoading(true);
+    setSubmittingIntent(intent);
+    if (intent === "demo") trackMarketingEvent("landing_demo_click");
     try {
       const res = await fetch("/api/marketing/beta-lead", {
         method: "POST",
@@ -105,17 +108,12 @@ export function LandingBetaCta() {
       trackMarketingEvent("landing_beta_form_submit_error", { reason: "network" });
       toast.error("Falha de conexão. Verifique sua internet e tente novamente.");
     } finally {
-      setLoading(false);
+      setSubmittingIntent(null);
     }
   }
 
-  function onDemoClick() {
-    setIntent("demo");
-    trackMarketingEvent("landing_demo_click");
-  }
-
   return (
-    <div className="lex-glass relative mx-auto max-w-2xl rounded-2xl border border-[color:var(--border-default)] p-5 shadow-[var(--shadow-lg),var(--glass-shadow)] sm:p-6 md:p-8">
+    <div className="landing-beta-form relative mx-auto max-w-2xl sm:px-2">
       {submitted ? (
         <div className="space-y-4 py-6 text-center">
           <p className="text-lg font-medium text-[color:var(--text-primary)]">Recebemos sua solicitação</p>
@@ -232,35 +230,47 @@ export function LandingBetaCta() {
             />
           </div>
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[color:var(--border-subtle)] p-3 text-[13px] leading-snug text-[color:var(--text-secondary)]">
+          <div className="flex items-start gap-3 border-t border-[color:var(--border-subtle)] pt-4">
             <input
+              id="beta-consent"
+              name="contactConsent"
               type="checkbox"
               className="mt-0.5 size-4 shrink-0 accent-[var(--brand-primary)]"
               checked={form.contactConsent}
               onChange={(e) => update("contactConsent", e.target.checked)}
               required
+              aria-required="true"
+              aria-describedby="beta-consent-hint"
             />
-            <span>
-              Autorizo o Lex a entrar em contato sobre acesso à plataforma e demonstrações, conforme a{" "}
-              <Link
-                href="/privacidade"
-                className="text-[color:var(--brand-text)] underline-offset-2 hover:underline"
+            <div className="min-w-0 space-y-2">
+              <Label
+                htmlFor="beta-consent"
+                className="cursor-pointer text-[13px] font-normal leading-snug text-[color:var(--text-secondary)]"
               >
-                Política de Privacidade
-              </Link>
-              .
-            </span>
-          </label>
+                Autorizo o {PRODUCT_NAME} a entrar em contato sobre acesso à plataforma e demonstrações, conforme a{" "}
+                <Link
+                  href="/privacidade"
+                  className="font-medium text-[color:var(--text-primary)] underline-offset-2 hover:underline"
+                >
+                  Política de Privacidade
+                </Link>
+                .
+              </Label>
+              <p id="beta-consent-hint" className="text-caption text-[color:var(--text-muted)]">
+                Obrigatório para enviar. Você pode revogar o contato a qualquer momento.
+              </p>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row">
             <Button
               type="submit"
-              disabled={loading}
-              onClick={() => setIntent("beta")}
+              data-intent="beta"
+              disabled={submittingIntent !== null}
               className="h-12 flex-1 gap-2 rounded-lg border border-[color:var(--brand-border)] text-[color:var(--text-inverse)]"
-              style={{ background: "var(--brand-primary)", boxShadow: "var(--shadow-violet)" }}
+              style={{ background: "var(--brand-primary)", boxShadow: "var(--shadow-sm)" }}
             >
-              {loading && intent === "beta" ? (
+              {submittingIntent === "beta" ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : (
                 <ArrowRight className="size-4" aria-hidden />
@@ -269,12 +279,12 @@ export function LandingBetaCta() {
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              data-intent="demo"
+              disabled={submittingIntent !== null}
               variant="outline"
-              onClick={onDemoClick}
               className="h-12 flex-1 gap-2 rounded-lg"
             >
-              {loading && intent === "demo" ? (
+              {submittingIntent === "demo" ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : (
                 <Calendar className="size-4" aria-hidden />

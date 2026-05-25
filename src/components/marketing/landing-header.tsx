@@ -1,73 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { JustOSLogo } from "@/components/brand/justos-logo";
 import { LexThemeToggle } from "@/components/ui/theme-toggle";
 import { LANDING_BAR_INNER, LANDING_NAV, LANDING_SHELL_FULL } from "@/lib/marketing/landing-copy";
 import { cn } from "@/lib/utils";
 
+const navLinkClass =
+  "text-[15px] font-medium text-[color:var(--text-secondary)] lex-transition hover:text-[color:var(--text-primary)]";
+
 export function LandingHeader() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [mobileOpen]);
-
   return (
     <header
-      className={cn(
-        `${LANDING_SHELL_FULL} sticky top-0 z-50 border-b transition-[background-color,backdrop-filter,box-shadow] duration-300`,
-        scrolled
-          ? "border-[color:var(--glass-border)] bg-[color:var(--glass-bg)]/90 shadow-sm backdrop-blur-xl"
-          : "border-transparent bg-[color:var(--surface-base)]/40 backdrop-blur-md",
-      )}
+      className={cn(`${LANDING_SHELL_FULL} landing-header-shell sticky top-0 isolate z-[100]`)}
     >
-      <div className={cn(LANDING_BAR_INNER, "flex items-center justify-between gap-3 py-4 md:py-5")}>
-        <Link
-          href="/#inicio"
-          className="flex items-center gap-2.5 font-semibold tracking-tight text-[color:var(--text-primary)] lex-transition hover:opacity-90"
-          aria-label="Lex — início"
-        >
-          <span
-            className="flex size-9 items-center justify-center rounded-lg text-sm font-semibold text-[color:var(--text-inverse)]"
-            style={{
-              background: "var(--brand-primary)",
-              boxShadow: "var(--shadow-violet)",
-            }}
-          >
-            L
-          </span>
-          <span className="text-readable md:text-lg">Lex</span>
-        </Link>
+      <div className={cn(LANDING_BAR_INNER, "flex items-center justify-between gap-4 py-3.5 md:py-4")}>
+        <JustOSLogo href="/#inicio" markTone="neutral" />
 
-        <nav className="hidden items-center gap-8 xl:flex" aria-label="Principal">
+        <nav
+          className="hidden min-w-0 flex-1 items-center justify-center gap-5 lg:flex lg:gap-8 xl:gap-10"
+          aria-label="Principal"
+        >
           {LANDING_NAV.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="text-body font-medium text-[color:var(--text-secondary)] lex-transition hover:text-[color:var(--text-primary)]"
-            >
+            <Link key={item.href} href={item.href} className={cn(navLinkClass, "shrink-0 whitespace-nowrap")}>
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <LexThemeToggle className="hidden shrink-0 md:inline-flex" />
           <Link href="/login" className="hidden md:block">
             <Button
@@ -78,65 +41,59 @@ export function LandingHeader() {
               Entrar
             </Button>
           </Link>
-          <Link href="#beta" className="hidden sm:block">
+          <Link href="/#beta" className="hidden sm:block">
             <Button
               size="sm"
-              className="h-11 rounded-xl text-control border border-[color:var(--brand-border)] px-5 text-[color:var(--text-inverse)] shadow-[var(--shadow-violet)]"
+              className="h-10 rounded-xl text-control border border-[color:var(--brand-border)] px-4 text-[color:var(--text-inverse)] shadow-[var(--shadow-sm)]"
               style={{ background: "var(--brand-primary)" }}
             >
               Solicitar acesso
             </Button>
           </Link>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="xl:hidden"
-            aria-expanded={mobileOpen}
-            aria-controls="landing-mobile-nav"
-            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </Button>
+
+          <details id="landing-mobile-menu" className="group relative lg:hidden">
+            <summary
+              className="flex size-10 cursor-pointer list-none items-center justify-center rounded-md hover:bg-[color:var(--surface-overlay)] [&::-webkit-details-marker]:hidden"
+              aria-label="Abrir menu"
+            >
+              <Menu className="size-5 group-open:hidden" aria-hidden />
+              <X className="hidden size-5 group-open:block" aria-hidden />
+            </summary>
+            <div
+              id="landing-mobile-nav"
+              className="absolute right-0 top-[calc(100%+0.25rem)] z-[110] w-[min(100vw,24rem)] border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)] shadow-lg"
+            >
+              <nav className="flex flex-col gap-1 p-3" aria-label="Principal mobile">
+                {LANDING_NAV.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-lg px-3 py-3.5 text-[16px] font-medium text-[color:var(--text-primary)] hover:bg-[color:var(--surface-overlay)]"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                <div className="mt-2 flex flex-col gap-2 border-t border-[color:var(--border-subtle)] pt-3">
+                  <LexThemeToggle className="w-fit" />
+                  <Link href="/login">
+                    <Button variant="outline" className="h-11 w-full">
+                      Entrar
+                    </Button>
+                  </Link>
+                  <Link href="/#beta">
+                    <Button
+                      className="h-11 w-full rounded-lg border border-[color:var(--brand-border)] text-[color:var(--text-inverse)]"
+                      style={{ background: "var(--brand-primary)" }}
+                    >
+                      Solicitar acesso
+                    </Button>
+                  </Link>
+                </div>
+              </nav>
+            </div>
+          </details>
         </div>
       </div>
-
-      {mobileOpen ? (
-        <div
-          id="landing-mobile-nav"
-          className="w-full border-t border-[color:var(--border-subtle)] bg-[color:var(--glass-bg)]/98 backdrop-blur-xl xl:hidden"
-        >
-          <nav className={cn(LANDING_BAR_INNER, "flex flex-col gap-1 py-4")} aria-label="Principal mobile">
-            {LANDING_NAV.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="rounded-lg px-3 py-3.5 text-[16px] font-medium text-[color:var(--text-primary)] hover:bg-[color:var(--surface-overlay)]"
-                onClick={() => setMobileOpen(false)}
-              >
-                {item.label}
-              </a>
-            ))}
-            <div className="mt-4 flex flex-col gap-2 border-t border-[color:var(--border-subtle)] pt-4">
-              <LexThemeToggle className="w-fit" />
-              <Link href="/login" onClick={() => setMobileOpen(false)}>
-                <Button variant="outline" className="h-11 w-full">
-                  Entrar
-                </Button>
-              </Link>
-              <Link href="#beta" onClick={() => setMobileOpen(false)}>
-                <Button
-                  className="h-11 w-full rounded-lg border border-[color:var(--brand-border)] text-[color:var(--text-inverse)]"
-                  style={{ background: "var(--brand-primary)" }}
-                >
-                  Solicitar acesso
-                </Button>
-              </Link>
-            </div>
-          </nav>
-        </div>
-      ) : null}
     </header>
   );
 }

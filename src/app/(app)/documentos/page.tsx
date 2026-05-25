@@ -124,7 +124,7 @@ export default async function DocumentosPage({ searchParams }: DocumentosPagePro
             className="w-full min-w-0"
             icon={<FileText className="size-5" />}
             title="Nenhum documento ainda"
-            description="Carregue petições, despachos, contratos ou provas para indexação e uso nas ferramentas do Lex."
+            description="Carregue petições, despachos, contratos ou provas para indexação e uso nas ferramentas do JustOS."
             fullHeight
           >
             <div className="mt-5 flex justify-center">

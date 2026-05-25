@@ -14,7 +14,7 @@ export default async function OnboardingPage() {
  <CardHeader>
  <CardTitle className="text-base">Comece em 2 minutos</CardTitle>
  <p className="text-sm text-muted-foreground">
- O Lex funciona com <span className="text-[color:var(--text-primary)]">memória + fontes</span>. Quando a base for insuficiente, ele avisa e evita “chutes”.
+ O JustOS funciona com <span className="text-[color:var(--text-primary)]">memória + fontes</span>. Quando a base for insuficiente, ele avisa e evita “chutes”.
  </p>
  </CardHeader>
  <CardContent>
@@ -104,7 +104,7 @@ export default async function OnboardingPage() {
  </div>
  <div className="rounded-lg border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-3">
  <p className="font-medium text-[color:var(--text-primary)]">2) Carregar o primeiro documento</p>
- <p className="text-xs">O Lex extrai, segmenta e indexa para recuperação semântica.</p>
+ <p className="text-xs">O JustOS extrai, segmenta e indexa para recuperação semântica.</p>
  </div>
  <div className="rounded-lg border border-[color:var(--border-default)] bg-[color:var(--surface-overlay-strong)] p-3">
  <p className="font-medium text-[color:var(--text-primary)]">3) Perguntar e gerar peça</p>

@@ -2,19 +2,19 @@ import { LANDING_CONTENT, LANDING_TRUST_STRIP } from "@/lib/marketing/landing-co
 
 export function LandingTrustStrip() {
   return (
-    <div className="w-full border-y border-[color:var(--border-subtle)] bg-[color:var(--surface-overlay)]/60 backdrop-blur-md">
-      <div className={`${LANDING_CONTENT} py-4 md:py-5`}>
-        <ul className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-          {LANDING_TRUST_STRIP.map((label) => (
-            <li
-              key={label}
-              className="rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--surface-card)]/70 px-3 py-1.5 lex-marketing-eyebrow text-[color:var(--text-muted)] sm:text-[11px]"
-            >
-              {label}
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="w-full border-y border-[color:var(--border-subtle)]">
+      <ul
+        className={`${LANDING_CONTENT} landing-trust-strip-list flex max-w-3xl flex-wrap items-center justify-center gap-x-3 gap-y-2 py-4 md:mx-auto md:max-w-2xl md:py-5`}
+      >
+        {LANDING_TRUST_STRIP.map((label) => (
+          <li
+            key={label}
+            className="max-w-[14rem] text-center text-micro font-medium leading-snug text-[color:var(--text-muted)] sm:max-w-none sm:text-caption"
+          >
+            {label}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

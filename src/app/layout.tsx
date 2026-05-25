@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { GeistMono } from "geist/font/mono";
-import { Toaster } from "sonner";
+import { SonnerToaster } from "@/components/ui/sonner-toaster";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
 export const metadata: Metadata = {
- title: "Lex — Copiloto jurídico com IA",
+ title: "JustOS — Sistema operacional jurídico",
  description:
- "Memória persistente, pesquisa jurídica assistida por IA e geração de peças no seu estilo.",
+ "Casos, documentos, pesquisa com fontes e minutas no mesmo fluxo. Revisão sempre nas suas mãos.",
+ icons: {
+ icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+ shortcut: "/icon.svg",
+ },
 };
 
-const themeInitScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem("lex-theme");var r="dark";if(t==="light")r="light";else if(t==="dark")r="dark";else if(t==="auto"&&typeof matchMedia!=="undefined")r=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.setAttribute("data-theme",r);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();`;
+const themeInitScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem("justos-theme")||localStorage.getItem("lex-theme");var r="light";if(t==="light")r="light";else if(t==="dark")r="dark";else if(t==="auto"&&typeof matchMedia!=="undefined")r=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";d.setAttribute("data-theme",r);}catch(e){document.documentElement.setAttribute("data-theme","light");}})();`;
 
 export default async function RootLayout({
  children,
@@ -24,7 +28,7 @@ export default async function RootLayout({
  return (
  <html
  lang="pt-BR"
- data-theme="dark"
+ data-theme="light"
  suppressHydrationWarning
  className={GeistMono.variable}
  >
@@ -37,7 +41,7 @@ export default async function RootLayout({
  dangerouslySetInnerHTML={{ __html: themeInitScript }}
  />
  <Providers>{children}</Providers>
- <Toaster richColors position="top-center" />
+ <SonnerToaster />
  <Analytics />
  </body>
  </html>

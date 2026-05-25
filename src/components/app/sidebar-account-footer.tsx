@@ -182,7 +182,7 @@ export function SidebarAccountFooter({
         <DropdownMenuItem asChild className="cursor-pointer rounded-lg py-2.5 text-base">
           <Link href="/test-guide" className="flex items-center gap-3">
             <HelpCircle className="size-5 shrink-0 opacity-80" />
-            Guia do Lex
+            Guia do JustOS
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-[color:var(--border-subtle)]" />
