@@ -22,7 +22,7 @@ export async function GET() {
     (await getWhatsappSession(workspaceId)) ?? (await ensureWhatsappSession(workspaceId));
   const commandOk = await pingJustosCommandHealth();
 
-  let remote = commandOk
+  const remote = commandOk
     ? await fetchCommandSessionStatus(workspaceId, local.sessionKey)
     : null;
 

@@ -53,7 +53,7 @@ export function JustosPlanPicker({
   const [pendingMsg, setPendingMsg] = useState<string | null>(
     initialPending ? "Conclua o pagamento abaixo para ativar o JustOS Pro." : null,
   );
-  const [reusedPayment, setReusedPayment] = useState(false);
+  const [, setReusedPayment] = useState(false);
   const showPayment = Boolean(paymentId ?? initialPending);
 
   async function subscribe(forceNew = false) {

@@ -1,9 +1,8 @@
 import type { JustosProBillingCycle } from "@/lib/justos/billing";
 import type { JustosPaymentMethod } from "./justos-pro";
-import type { JustosWorkspaceConfig } from "@/lib/justos/types";
 import { readJustosWorkspaceConfig } from "@/lib/justos/workspace-config";
 import { asaasRequest, readAsaasApiBaseUrl, isAsaasBillingConfigured } from "./client";
-import type { AsaasPayment, AsaasSubscription } from "./types";
+import type { AsaasSubscription } from "./types";
 import {
   ensureAsaasCustomer,
   listSubscriptionPayments,

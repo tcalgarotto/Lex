@@ -17,7 +17,7 @@ async function main() {
   try {
     const health = await fetch(`${base}/health`);
     console.log("health:", health.status, await health.json());
-  } catch (e) {
+  } catch {
     console.error("Command offline — rode: npm run justos:command");
     process.exit(1);
   }

@@ -11,7 +11,6 @@ import {
   setPersona,
 } from "./helpers";
 import { prisma } from "@/lib/prisma";
-import { can } from "@/lib/auth/permissions";
 import { vi } from "vitest";
 import { RT, RT_SECRET_MARKER_B } from "./fixture-ids";
 import { POST as postCompletion } from "@/app/api/completion/route";

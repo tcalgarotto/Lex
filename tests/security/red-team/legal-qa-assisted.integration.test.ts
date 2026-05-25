@@ -24,7 +24,6 @@ import { GET as getDocumentFile } from "@/app/api/documents/[documentId]/file/ro
 import { POST as uploadDocument } from "@/app/api/documents/upload/route";
 import { GET as getRetrievalSearch } from "@/app/api/retrieval/search/route";
 import { POST as postStrategyGenerate } from "@/app/api/cases/[id]/strategy/generate/route";
-import { POST as postCompletion } from "@/app/api/completion/route";
 import { retrieveContext } from "@/lib/retrieval/hybrid-retriever";
 import { normalizeAiProviderError } from "@/lib/ai/normalize-ai-error";
 
@@ -262,7 +261,7 @@ describe("FASE 5.2 — QA manual assistido", () => {
 
   it("LQA.15 Logs código: sem console.log de prompt/PDF em rotas API", async () => {
     const { readFileSync, readdirSync, statSync } = await import("node:fs");
-    const { join, resolve } = await import("node:path");
+    const { join } = await import("node:path");
     const root = process.cwd();
     const bad: string[] = [];
     function walk(dir: string) {

@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { extractN8nSecretaryFromCaseMetadata } from "@/lib/justos/secretary-from-case";
 import { normalizeCrmPhoneE164 } from "./phone";

@@ -1,9 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import {
-  isJustosProActive,
-  isJustosOperational,
-  readJustosWorkspaceConfig,
-} from "@/lib/justos/workspace-config";
+import { isJustosOperational, readJustosWorkspaceConfig } from "@/lib/justos/workspace-config";
 import type { JustosWorkspaceConfig } from "@/lib/justos/types";
 import { getJustosProEntitlement } from "@/lib/justos/billing-entitlement";
 

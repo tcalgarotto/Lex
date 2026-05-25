@@ -41,8 +41,6 @@ export async function subscribeJustosProForWorkspace(args: {
 
   const owner = ws.memberships[0]?.user;
   const ownerEmail = owner?.email ?? `owner+${args.workspaceId}@justos.local`;
-  const ownerName = owner?.name ?? ws.name;
-
   const useImmediate = isAsaasBillingImmediateMode() || !isAsaasBillingConfigured();
 
   if (useImmediate) {
