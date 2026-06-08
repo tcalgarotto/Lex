@@ -106,7 +106,7 @@ Amostra manual: mensagens `env-normalize`, Inngest, `GET /api/health` 200.
 | T+0–1h | Cursor Agent | PASSOU | PASSOU* | PASSOU* | — | *smoke/histórico |
 | T+24h | Cursor Agent (5.9 + **5.9.1**) | PASSOU† | PASSOU | PARCIAL | PASSOU | †Playwright/Inngest corrigidos em 5.9.1 |
 | T+72h | github-actions | PASSOU | PENDENTE | PARCIAL | PASSOU | relatório [docs/security/reports/post-release-monitor-2026-05-23T10-17.md](docs/security/reports/post-release-monitor-2026-05-23T10-17.md); cron FASE 5.10 |
-| Weekly 2026-06-01 | github-actions | PASSOU | PENDENTE | PARCIAL | PASSOU | relatório [docs/security/reports/post-release-monitor-2026-06-01T14-42.md](docs/security/reports/post-release-monitor-2026-06-01T14-42.md); cron FASE 5.10 |
+| Weekly 2026-06-08 | github-actions | PASSOU | PENDENTE | PARCIAL | FALHOU | relatório [docs/security/reports/post-release-monitor-2026-06-08T12-49.md](docs/security/reports/post-release-monitor-2026-06-08T12-49.md); cron FASE 5.10 |
 ---
 
 ## FASE 5.9 — Reamostragem T+24h (2026-05-19)
